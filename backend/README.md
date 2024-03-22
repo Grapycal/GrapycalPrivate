@@ -5,7 +5,6 @@
 
 [![pip install grapycal grapycal-builtin](https://img.shields.io/badge/pip_install-grapycal_grapycal--builtin-purple)](https://pypi.org/project/grapycal/)
 [![PyPI - Downloads](https://img.shields.io/pypi/dw/grapycal)](https://pypi.org/project/grapycal/)
-[![License](https://img.shields.io/github/license/Grapycal/Grapycal)](./LICENSE)
 
 
 [![Discord](https://img.shields.io/discord/1094532480721236041?logo=discord&labelColor=white&color=5865F2)](https://discord.gg/adNQcS42CT)
