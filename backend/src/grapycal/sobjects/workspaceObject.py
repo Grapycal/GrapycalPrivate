@@ -1,5 +1,7 @@
 import logging
 
+from grapycal.stores import main_store
+
 logger = logging.getLogger("WORKSPACE")
 from typing import Any, Dict, Self
 from grapycal.sobjects.edge import Edge
@@ -25,8 +27,6 @@ class WorkspaceObject(SObject):
 
     def build(self, old: SObjectSerialized | None = None):
         from grapycal.core.workspace import Workspace
-
-        self._workspace: Workspace = self._server.globals.workspace
         WorkspaceObject.ins = self
         if old is None:
             self.settings = self.add_child(Settings)
@@ -34,40 +34,30 @@ class WorkspaceObject(SObject):
             self.sidebar = self.add_child(Sidebar)
             self.main_editor = self.add_child(Editor)
         else:
-            if old.has_child("settings"):
-                self.settings = self.add_child(Settings, old=old.get_child("settings"))
-            else:
-                self.settings = self.add_child(Settings)
-            if old.has_child("webcam"):
-                self.webcam = self.add_child(WebcamStream, old=old.get_child("webcam"))
-            else:
-                self.webcam = self.add_child(WebcamStream)
+            self.settings = self.add_child(Settings, old=old.get_child("settings"))
+            self.webcam = self.add_child(WebcamStream, old=old.get_child("webcam"))
             self.sidebar = self.add_child(Sidebar, old=old.get_child("sidebar"))
+            self.main_editor = self.add_child(Editor, old=old.get_child("main_editor") )
 
-            if old.has_child("main_editor"):
-                self.main_editor = self.add_child(
-                    Editor, old=old.get_child("main_editor")
-                )
-            else:
-                self.main_editor = self.add_child(
-                    Editor, old=old.children[old.get_attribute("main_editor")]
-                )
+        main_store.main_editor = self.main_editor
+        main_store.settings = self.settings
+        main_store.webcam = self.webcam
 
         # Add local file view and remote file view
         self.file_view = self.add_child(LocalFileView, name="Local Files 💻")
 
         async def add_examples_file_view():
-            if not await self._workspace.data_yaml.is_avaliable():
+            if not await main_store.data_yaml.is_avaliable():
                 logger.info("Cannot get example files from GitHub.")
                 return  # no internet connection
-            data_yaml = await self._workspace.data_yaml.get()
+            data_yaml = await main_store.data_yaml.get()
 
             self.add_child(
                 RemoteFileView, url=data_yaml["examples_url"], name="Examples💡"
             )
             self._server.clear_history()
 
-        self._workspace.add_task_to_event_loop(add_examples_file_view())
+        main_store.event_loop.create_task(add_examples_file_view())
 
         # read by frontend
         self.add_attribute("main_editor", ObjTopic).set(self.main_editor)
@@ -83,4 +73,3 @@ class WebcamStream(SObject):
 
     def init(self):
         self.source_client.set(-1)
-        self._server.globals.workspace.webcam = self

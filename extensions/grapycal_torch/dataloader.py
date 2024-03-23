@@ -38,7 +38,7 @@ class DataLoaderNode(Node):
                 if self.double_clicked:
                     self.double_clicked = False
                     self.status_control.set('[idle]')
-                    self.workspace.send_message_to_all('DataLoader interrupted at epoch ' + str(i))
+                    main_store.send_message_to_all('DataLoader interrupted at epoch ' + str(i))
                     return
                 self.out.push(batch)
                 self.flash_running_indicator()

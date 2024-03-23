@@ -49,7 +49,7 @@ class CustomModuleNode(SimpleModuleNode):
         self.restore_controls('module_text')
 
     def create_module(self) -> nn.Module:
-        return eval(self.module_text.get(),self.workspace.vars())
+        return eval(self.module_text.get(),self.get_vars())
     
     def generate_label(self):
         return self.module.__class__.__name__

@@ -14,6 +14,7 @@ from grapycal.sobjects.controls.optionControl import OptionControl
 from grapycal.sobjects.controls.textControl import TextControl
 
 logger = logging.getLogger(__name__)
+from grapycal.stores import main_store
 from grapycal.utils.logging import error_extension, user_logger, warn_extension
 from contextlib import contextmanager
 import functools
@@ -195,7 +196,6 @@ class Node(SObject, metaclass=NodeMeta):
     ):
         self.is_new = is_new
         self.old_node_info = old_node_info
-        self.workspace: Workspace = self._server.globals.workspace
         self.is_building = True
 
         self.shape = self.add_attribute(
@@ -284,17 +284,15 @@ class Node(SObject, metaclass=NodeMeta):
             self.editor = parent
         else:
             self.editor = None
-
-        self.workspace: Workspace = self._server.globals.workspace
         
         self.on("double_click", self.double_click, is_stateful=False)
         self.on("spawn", self.spawn, is_stateful=False)
 
         self._output_stream = OutputStream(self.raw_print)
         self._output_stream.set_event_loop(
-            self.workspace.get_communication_event_loop()
+            main_store.event_loop
         )
-        self.workspace.get_communication_event_loop().create_task(
+        main_store.event_loop.create_task(
             self._output_stream.run()
         )
 
@@ -418,7 +416,7 @@ class Node(SObject, metaclass=NodeMeta):
         """
         Called when a client wants to spawn a node.
         """
-        new_node = self.workspace.get_workspace_object().main_editor.create_node(
+        new_node = main_store.main_editor.create_node(
             type(self)
         )
         if new_node is None:  # failed to create node
@@ -444,7 +442,7 @@ class Node(SObject, metaclass=NodeMeta):
                     f"Trying to destroy node {self.get_id()} but it still has output edges"
                 )
         for name in self.globally_exposed_attributes.get():
-            self.workspace.get_workspace_object().settings.entries.pop(name)
+            main_store.settings.entries.pop(name)
         
         if self.editor is not None:
             self.editor.set_running(self, False)
@@ -864,7 +862,7 @@ class Node(SObject, metaclass=NodeMeta):
 
         try:
             self._output_stream.enable_flush()
-            with self.workspace.redirect(self._output_stream):
+            with main_store.redirect(self._output_stream):
                 yield
         finally:
             self._output_stream.disable_flush()
@@ -879,23 +877,23 @@ class Node(SObject, metaclass=NodeMeta):
         def exception_callback(e):
             self.print_exception(e, truncate=3)
             if isinstance(e, KeyboardInterrupt):
-                self.workspace.send_message_to_all("Runner interrupted by user.")
-            self.workspace.background_runner.set_exception_callback(None)
-            self.workspace.clear_edges()
+                main_store.send_message_to_all("Runner interrupted by user.")
+            main_store.runner.set_exception_callback(None)
+            main_store.clear_edges()
 
         def wrapped():
             self.incr_n_running_tasks()
-            self.workspace.background_runner.set_exception_callback(exception_callback)
+            main_store.runner.set_exception_callback(exception_callback)
             if redirect_output:
                 with self._redirect_output():
                     ret = task()
             else:
                 ret = task()
             self.decr_n_running_tasks()
-            self.workspace.background_runner.set_exception_callback(None)
+            main_store.runner.set_exception_callback(None)
             return ret
 
-        self.workspace.background_runner.push(wrapped, to_queue=to_queue)
+        main_store.runner.push(wrapped, to_queue=to_queue)
 
     def _run_directly(self, task: Callable[[], None], redirect_output=False):
         """
@@ -924,7 +922,7 @@ class Node(SObject, metaclass=NodeMeta):
                 self.print_exception(e, truncate=1)
             self.decr_n_running_tasks()
 
-        self.workspace.get_communication_event_loop().create_task(wrapped())
+        main_store.event_loop.create_task(wrapped())
 
     def incr_n_running_tasks(self):
         self._n_running_tasks += 1
@@ -996,6 +994,11 @@ class Node(SObject, metaclass=NodeMeta):
             else:
                 self.editor.set_running(self, False)
 
+    def get_vars(self):
+        """
+        Get the variables of the running module.
+        """
+        return main_store.vars()
     """
     Node events
     """

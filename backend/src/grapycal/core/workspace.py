@@ -15,6 +15,7 @@ from grapycal.sobjects.settings import Settings
 from grapycal.sobjects.controls import *
 from grapycal.sobjects.editor import Editor
 from grapycal.sobjects.workspaceObject import WebcamStream, WorkspaceObject
+from grapycal.stores import main_store
 from grapycal.utils.httpResource import HttpResource
 from grapycal.utils.io import file_exists, read_workspace, write_workspace
 
@@ -62,71 +63,45 @@ class Workspace:
         self.host = host
         self.workspace_id = workspace_id # used for exit message file
         self.running_module = running_module
-        """"""
 
         """
         Enable stdout proxy for this process
         """
         stdout_helper.enable_proxy(redirect_error=False)
-        self.redirect = stdout_helper.redirect
-
-        self._communication_event_loop: asyncio.AbstractEventLoop | None = None
-
-        self.background_runner = BackgroundRunner()
 
         self._objectsync = objectsync.Server(port, host)
-
         self._extention_manager = ExtensionManager(self._objectsync, self)
-
         self.do_after_transition = self._objectsync.do_after_transition
-
-        self.clock = Clock(0.1)
-
-        self.webcam: WebcamStream | None = None
         self._slash_commands_topic = self._objectsync.create_topic("slash_commands", objectsync.DictTopic)
         self.slash = SlashCommandManager(self._slash_commands_topic)
 
-        self.slash.register("save workspace", lambda ctx: self.save_workspace(self.path))
-        
-        self.data_yaml = HttpResource(
-            "https://github.com/Grapycal/grapycal_data/raw/main/data.yaml", dict
-        )
+        self.slash.register("save workspace", lambda ctx: self.save_workspace(self.path)) 
 
         self.grapycal_id_count = 0
         self.is_running = False
+
+        self._setup_objectsync()
 
     def _communication_thread(self, event_loop_set_event: threading.Event):
         asyncio.run(self._async_communication_thread(event_loop_set_event))
 
     async def _async_communication_thread(self, event_loop_set_event: threading.Event):
-        self._communication_event_loop = asyncio.get_event_loop()
+        main_store.event_loop = asyncio.get_event_loop()
         event_loop_set_event.set()
         try:
-            await asyncio.gather(self._objectsync.serve(), self.clock.run())
+            await self._objectsync.serve()
         except OSError as e:
             if e.errno == 10048:
                 logger.error(
                     f"Port {self.port} is already in use. Maybe another instance of grapycal is running?"
                 )
-                self.get_communication_event_loop().stop()
+                main_store.event_loop.stop()
                 # send signal to the main thread to exit
                 os.kill(os.getpid(), signal.SIGTERM)
             else:
                 raise e
-
-    def run(self) -> None:
-        event_loop_set_event = threading.Event()
-        t = threading.Thread(
-            target=self._communication_thread, daemon=True, args=[event_loop_set_event]
-        )  # daemon=True until we have a proper exit strategy
-
-        t.start()
-        event_loop_set_event.wait()
-
-        self._extention_manager.start()
-
-        self._objectsync.globals.workspace = self
-
+            
+    def _setup_objectsync(self):
         self._objectsync.register_service("exit", self.exit)
         self._objectsync.register_service("interrupt", self.interrupt)
 
@@ -150,8 +125,39 @@ class Workspace:
         self._objectsync.register(WebcamStream)
         self._objectsync.register(LinePlotControl)
 
+    def run(self) -> None:
+        '''
+        The blocking function that make the workspace start functioning. The main thread will run a background_runner 
+        that runs the background tasks from nodes.
+        A communication thread will be started to handle the communication between the frontend and the backend.
+        '''
+
+        event_loop_set_event = threading.Event()
+        t = threading.Thread(
+            target=self._communication_thread, daemon=True, args=[event_loop_set_event]
+        ).start()  # daemon=True until we have a proper exit strategy
+        event_loop_set_event.wait()
+        self._extention_manager.start()
+
         """
-        Register all built-in node types
+        Setup the store
+        """
+
+        main_store.node_types = self._objectsync.create_topic('node_types',objectsync.DictTopic,is_stateful=False)
+        main_store.clock = Clock(0.1)
+        main_store.event_loop.create_task(main_store.clock.run())
+        main_store.redirect = stdout_helper.redirect
+        main_store.runner = BackgroundRunner()
+        main_store.send_message = self.send_message
+        main_store.send_message_to_all = self.send_message_to_all
+        main_store.clear_edges = self._clear_edges
+        main_store.open_workspace = self._open_workspace_callback
+        main_store.data_yaml = HttpResource("https://github.com/Grapycal/grapycal_data/raw/main/data.yaml", dict)
+        main_store.next_id = self._next_id
+        main_store.vars = self._vars
+
+        """
+        Load/initialize workspace
         """
 
         signal.signal(signal.SIGTERM, lambda sig, frame: self.exit())
@@ -195,18 +201,14 @@ class Workspace:
 
         self.is_running = True
 
-        self.background_runner.run()
+        main_store.runner.run()
 
     def exit(self):
-        self.background_runner.exit()
+        main_store.runner.exit()
 
     def interrupt(self):
-        self.background_runner.interrupt()
-        self.background_runner.clear_tasks()
-
-    def get_communication_event_loop(self) -> asyncio.AbstractEventLoop:
-        assert self._communication_event_loop is not None
-        return self._communication_event_loop
+        main_store.runner.interrupt()
+        main_store.runner.clear_tasks()
 
     """
     Save and load
@@ -259,13 +261,7 @@ class Workspace:
 
         self._objectsync.set_client_id_count(data["client_id_count"])
         self._objectsync.set_id_count(data["id_count"])
-        if (
-            "grapycal_id_count" in data
-        ):  # DEPRECATED from v0.11.0: v0.10.0 and before has no grapycal_id_count
-            self.grapycal_id_count = data["grapycal_id_count"]
-        else:
-            # we cannot know the exact value of grapycal_id_count, so we set it to 032.5, which will never collide. Very smart 🤯
-            self.grapycal_id_count = 032.5
+        self.grapycal_id_count = data["grapycal_id_count"]
         workspace_serialized = from_dict(
             SObjectSerialized, data["workspace_serialized"]
         )
@@ -329,7 +325,7 @@ class Workspace:
         # In case this called in self._objectsync.create_object(WorkspaceObject),
         return self._objectsync.get_root_object().get_child_of_type(WorkspaceObject)
 
-    def vars(self) -> Dict[str, Any]:
+    def _vars(self) -> Dict[str, Any]:
         return self.running_module.__dict__
 
     def _open_workspace_callback(self, path, no_exist_ok=False):
@@ -346,9 +342,6 @@ class Workspace:
         with open(exit_message_file, "w") as f:
             f.write(f"open {path}")
         self.exit()
-
-    def add_task_to_event_loop(self, task):
-        self._communication_event_loop.create_task(task)
 
     def send_message_to_all(self, message, type=ClientMsgTypes.NOTIFICATION):
         if not self.is_running:
@@ -380,11 +373,11 @@ class Workspace:
         except:
             pass  # topic may have not been created successfully.
 
-    def next_id(self):
+    def _next_id(self):
         self.grapycal_id_count += 1
         return self.grapycal_id_count
 
-    def clear_edges(self):
+    def _clear_edges(self):
         edges = self.get_workspace_object().top_down_search(type=Edge)
         for edge in edges:
             edge.clear()

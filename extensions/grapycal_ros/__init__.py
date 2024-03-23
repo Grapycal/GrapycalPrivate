@@ -8,6 +8,7 @@ from grapycal.extension.utils import NodeInfo
 from grapycal.sobjects.controls.imageControl import ImageControl
 from grapycal.sobjects.edge import Edge
 from grapycal.sobjects.port import InputPort
+from grapycal.stores import main_store
 from objectsync.sobject import SObjectSerialized
 import websockets
 from websockets.sync.client import connect
@@ -95,7 +96,7 @@ class RosbridgeNode(Node):
         self.connect_btn.label.set('Disconnect')
         self.url.editable.set(False)
         self.status = RosbridgeNode.Status.CONNECTED
-        self.workspace.clock.on_tick += self.on_tick
+        main_store.clock.on_tick += self.on_tick
 
         for topic_name,topic_type in self.subs_info.get().items():
             self.send(json.dumps({
@@ -106,7 +107,7 @@ class RosbridgeNode(Node):
 
     def disconnect(self):
         self.ws.close()
-        self.workspace.clock.on_tick -= self.on_tick
+        main_store.clock.on_tick -= self.on_tick
         self.url.editable.set(True)
         self.status = RosbridgeNode.Status.NOT_CONNECTED
         self.connect_btn.label.set('Connect')

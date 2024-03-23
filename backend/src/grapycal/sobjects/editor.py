@@ -1,6 +1,7 @@
 import logging
 import threading
 
+from grapycal.stores import main_store
 from grapycal.utils.misc import as_type
 
 logger = logging.getLogger(__name__)
@@ -22,8 +23,7 @@ class Editor(SObject):
     def build(self, old: SObjectSerialized | None = None):
         from grapycal.core.workspace import Workspace  # avoid circular import
 
-        self.workspace: Workspace = self._server.globals.workspace
-        self.node_types = self.workspace._extention_manager._node_types_topic
+        self.node_types = main_store.node_types
 
 
         # used by frontend
@@ -33,7 +33,7 @@ class Editor(SObject):
         self._running = set()
         self._set_running_lock = threading.Lock()
         
-        self.workspace.clock.on_tick += self.check_running_nodes
+        main_store.clock.on_tick += self.check_running_nodes
 
         if old is not None:
             # If the editor is loaded from a save, we need to recreate the nodes and edges.
@@ -80,7 +80,6 @@ class Editor(SObject):
         with self._server.record(allow_reentry=True):
             new_node_ids, new_edge_ids = self._restore(nodes, edges)
             for node in self._restored_nodes:
-                # the post_create method must called outside of the restore_event to be in auto mode
                 node.post_create()
 
         self._new_node_ids = new_node_ids  # the _paste() method will use this
@@ -109,14 +108,14 @@ class Editor(SObject):
         edges: dict[str, SObjectSerialized] = {}
         for obj in node_list:
             if obj.id in self._server._objects:
-                new_id = f"r_{self.workspace.next_id()}"  # r means restored
+                new_id = f"r_{main_store.next_id()}"  # r means restored
             else:
                 new_id = obj.id  # if possible, keep the old id
             nodes[new_id] = obj
 
         for obj in edge_list:
             if obj.id in self._server._objects:
-                new_id = f"r_{self.workspace.next_id()}"
+                new_id = f"r_{main_store.next_id()}"
             else:
                 new_id = obj.id
             edges[new_id] = obj
@@ -252,7 +251,7 @@ class Editor(SObject):
 
             # keep the old id if possible
             if obj.id in self._server._objects:
-                new_edge_id = f"r_{self.workspace.next_id()}"
+                new_edge_id = f"r_{main_store.next_id()}"
             else:
                 new_edge_id = obj.id
             new_edge_id = self.create_edge_from_port_id(
@@ -275,7 +274,7 @@ class Editor(SObject):
 
     def create_node(self, node_type: str | type[Node], **kwargs) -> Node | None:
         if isinstance(node_type, str):
-            node_type_cls = as_type(self._server._object_types[node_type], NodeMeta)
+            node_type_cls = as_type(self._server._object_types[node_type], type[Node])
         else:
             node_type_cls = node_type
         if node_type_cls._is_singleton and hasattr(node_type_cls, "instance"):

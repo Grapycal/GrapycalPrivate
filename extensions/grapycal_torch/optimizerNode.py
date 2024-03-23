@@ -209,7 +209,7 @@ class SaveNode(Node):
         network_name = self.network_name.get()
         path = self.path.get()
         self.ext.net.save_network(network_name, path)
-        self.workspace.send_message_to_all(f"Saved {network_name} to {path}.")
+        main_store.send_message_to_all(f"Saved {network_name} to {path}.")
 
     def destroy(self):
         self.to_unlink()
@@ -249,7 +249,7 @@ class LoadNode(Node):
         except Exception as e:
             self.print_exception(e,-1)
             return
-        self.workspace.send_message_to_all(f"Loaded {network_name} from {path}.")
+        main_store.send_message_to_all(f"Loaded {network_name} from {path}.")
 
     def destroy(self):
         self.to_unlink()

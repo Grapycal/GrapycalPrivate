@@ -84,7 +84,7 @@ class LambdaNode(Node):
         def task():
             for out_name, text_control in self.text_controls.get().items():
                 expr = f'lambda {",".join(self.input_args)}: {text_control.text.get()}'
-                y = eval(expr,self.workspace.vars())(*arg_values)
+                y = eval(expr,self.get_vars())(*arg_values)
                 self.get_out_port(out_name).push(y)
                 
         self.run(task)
