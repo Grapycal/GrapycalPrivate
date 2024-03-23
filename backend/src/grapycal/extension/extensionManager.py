@@ -33,11 +33,11 @@ class ExtensionManager:
         self._imported_extensions_topic = self._objectsync.create_topic('imported_extensions',objectsync.DictTopic,is_stateful=False)
         self._avaliable_extensions_topic = self._objectsync.create_topic('avaliable_extensions',objectsync.DictTopic,is_stateful=False)
         self._not_installed_extensions_topic = self._objectsync.create_topic('not_installed_extensions',objectsync.DictTopic,is_stateful=False)
-        self._objectsync.on('import_extension',self.import_extension,is_stateful=False)
-        self._objectsync.on('unimport_extension',self.unimport_extension,is_stateful=False)
-        self._objectsync.on('update_extension',self.update_extension,is_stateful=False)
-        self._objectsync.on('refresh_extensions',self._update_available_extensions_topic,is_stateful=False)
-        self._objectsync.on('install_extension',self._install_extension,is_stateful=False)
+        self._objectsync.register_service('import_extension',self.import_extension)
+        self._objectsync.register_service('unimport_extension',self.unimport_extension)
+        self._objectsync.register_service('update_extension',self.update_extension)
+        self._objectsync.register_service('refresh_extensions',self._update_available_extensions_topic)
+        self._objectsync.register_service('install_extension',self._install_extension)
 
     def start(self) -> None:
         '''

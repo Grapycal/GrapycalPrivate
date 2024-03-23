@@ -85,7 +85,7 @@ export class ExtensionsSetting extends Componentable{
         })
 
         document.getElementById('refresh-extensions').addEventListener('click',()=>{
-            this.objectsync.emit('refresh_extensions')
+            this.objectsync.makeRequest('refresh_extensions')
         })
     }
 
@@ -101,22 +101,22 @@ export class ExtensionsSetting extends Componentable{
         const cardContent = card.querySelector<HTMLDivElement>('.card-content')
         if(status == 'imported'){
             this.addButtonToCard(card,this.removeButtonTemplate,()=>{
-                this.objectsync.emit('unimport_extension',{extension_name:newExtension.name})
+                this.objectsync.makeRequest('unimport_extension',{extension_name:newExtension.name})
             })
             this.addButtonToCard(card,this.reloadButtonTemplate,()=>{
-                this.objectsync.emit('update_extension',{extension_name:newExtension.name})
+                this.objectsync.makeRequest('update_extension',{extension_name:newExtension.name})
             })
         }
 
         if(status == 'avaliable'){
             this.addButtonToCard(card,this.importButtonTemplate,()=>{
-                this.objectsync.emit('import_extension',{extension_name:newExtension.name})
+                this.objectsync.makeRequest('import_extension',{extension_name:newExtension.name})
             })
         }
 
         if(status == 'not_installed'){
             this.addButtonToCard(card,this.installButtonTemplate,()=>{
-                this.objectsync.emit('install_extension',{extension_name:newExtension.name})
+                this.objectsync.makeRequest('install_extension',{extension_name:newExtension.name})
             })
         }
 
@@ -127,14 +127,14 @@ export class ExtensionsSetting extends Componentable{
             popup.openAt(e.clientX,e.clientY)
             if(status == 'imported'){
                 popup.addOption('Reload',()=>{
-                    this.objectsync.emit('update_extension',{extension_name:newExtension.name})
+                    this.objectsync.makeRequest('update_extension',{extension_name:newExtension.name})
                 })
                 popup.addOption('Remove from workspace',()=>{
-                    this.objectsync.emit('unimport_extension',{extension_name:newExtension.name})
+                    this.objectsync.makeRequest('unimport_extension',{extension_name:newExtension.name})
                 })
             }else{
                 popup.addOption('Import to workspace',()=>{
-                    this.objectsync.emit('import_extension',{extension_name:newExtension.name})
+                    this.objectsync.makeRequest('import_extension',{extension_name:newExtension.name})
                 })
             }
         })

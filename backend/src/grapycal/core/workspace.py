@@ -155,14 +155,8 @@ class Workspace:
         self._objectsync.register_service("exit", self._exit)
         self._objectsync.register_service("interrupt", self._interrupt)
         self._objectsync.register_service("slash_command", lambda name,ctx: self.slash.call(name,CommandCtx(**ctx)))
-    
-        self._objectsync.on(
-            "ctrl+s", lambda: self._save_workspace(self.path), is_stateful=False
-        )
-        self._objectsync.on(
-            "open_workspace", self._open_workspace_callback, is_stateful=False
-        )
-    
+        self._objectsync.register_service("ctrl+s", lambda: self._save_workspace(self.path))
+        self._objectsync.register_service("open_workspace", self._open_workspace_callback)
 
     def _setup_slash_commands(self):
         self.slash.register("save workspace", lambda ctx: self._save_workspace(self.path)) 
@@ -204,6 +198,7 @@ class Workspace:
         main_store.next_id = self._next_id
         main_store.vars = self._vars
         main_store.record = self._objectsync.record
+        main_store.slash = self.slash
 
     def _load_or_create_workspace(self):
         """

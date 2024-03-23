@@ -68,7 +68,7 @@ export class Workspace extends CompSObject{
     }
 
     public openWorkspace(path:string){
-        this.objectsync.emit('open_workspace',{path:path})
+        this.objectsync.makeRequest('open_workspace',{path:path})
     }
 
     public callSlashCommand(name:string,ctx:any){
