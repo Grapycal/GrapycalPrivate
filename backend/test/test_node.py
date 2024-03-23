@@ -41,12 +41,14 @@ def test_node_creation_undo_redo(setup_workspace,main_editor):
     n1_restored = main_editor.get_children()[0]
     assert n1_restored != n1
     
-def test_node_deletion_undo_redo(setup_workspace,main_editor,test_ext):
+def test_node_deletion_undo_redo(setup_workspace,main_editor):
     '''
     Node deletion can be undone and redone on ctrl+z and ctrl+y respectively.
     '''
     
-    n1 = main_editor.create_node(test_ext.Test1Node)
+    n1 = main_editor.create_node('grapycal_test.Test1Node')
+
+    # Set some attribute values
     n1.int_topic.set(325)
     n1.string_topic.set('hello')
     n1.translation.set('-4,3')
@@ -59,13 +61,13 @@ def test_node_deletion_undo_redo(setup_workspace,main_editor,test_ext):
 
     # Although the node is added back to the editor, the restored node is not the same instance as the original node
     assert len(main_editor.get_children()) == 1
-    
+
     n1_restored = main_editor.get_children()[0]
     assert n1 != n1_restored
 
     # The attribute values of the restored node is the same as the original node.
     # This is because ObjectSync automatically restores all the attributes when the SObject is restored.
-    # This is a important feature of ObjectSync. You would not want the node teleported to a different position when you undo a deletion.
+    # This is a important feature of ObjectSync.
     assert n1_restored.int_topic.get() == n1.int_topic.get()
     assert n1_restored.string_topic.get() == n1.string_topic.get()
     assert n1_restored.translation.get() == n1.translation.get()
