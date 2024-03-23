@@ -351,7 +351,6 @@ class Workspace:
             client_id = self._objectsync.get_action_source()
         self._objectsync.emit(f"status_message_{client_id}", message=message, type=type)
     
-    
     def _next_id(self):
         self.grapycal_id_count += 1
         return self.grapycal_id_count

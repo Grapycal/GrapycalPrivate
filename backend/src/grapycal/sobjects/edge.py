@@ -70,7 +70,7 @@ class Edge(SObject):
             self.head.get().remove_edge(self)
         
         if hasattr(self, 'editor'):
-            self.editor.set_running(self, False)
+            self.editor.is_running_manager.set_running(self, False)
         return super().destroy()
 
     def get(self)->Any:
@@ -81,7 +81,7 @@ class Edge(SObject):
         if not self.reaquirable:
             self._data_ready = False
             
-            self.editor.set_running(self, False)
+            self.editor.is_running_manager.set_running(self, False)
             self._data = None # reloase memory
         return temp
     
@@ -101,7 +101,7 @@ class Edge(SObject):
         with self._server.record(allow_reentry=True): # aquire a lock to prevent calling set while destroying
             if self.is_destroyed():
                 return
-            self.editor.set_running(self, True)
+            self.editor.is_running_manager.set_running(self, True)
         if label:
             self.label.set(label)
         else:

@@ -445,7 +445,7 @@ class Node(SObject, metaclass=NodeMeta):
             main_store.settings.entries.pop(name)
         
         if self.editor is not None:
-            self.editor.set_running(self, False)
+            self.editor.is_running_manager.set_running(self, False)
         return super().destroy()
 
     T = TypeVar("T", bound=ValuedControl)
@@ -990,9 +990,9 @@ class Node(SObject, metaclass=NodeMeta):
             if self.is_destroyed():
                 return
             if running:
-                self.editor.set_running(self, True)
+                self.editor.is_running_manager.set_running(self, True)
             else:
-                self.editor.set_running(self, False)
+                self.editor.is_running_manager.set_running(self, False)
 
     def get_vars(self):
         """

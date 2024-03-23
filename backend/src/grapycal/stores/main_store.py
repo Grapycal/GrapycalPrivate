@@ -1,12 +1,11 @@
 
-from typing import TYPE_CHECKING, Any, Callable, Dict, Optional
+from typing import TYPE_CHECKING, Any, Callable, Dict
 
 from grapycal.core.slash_command import SlashCommandManager
 
 if TYPE_CHECKING:
     from contextlib import _GeneratorContextManager
     import asyncio
-    
     from grapycal.extension.utils import Clock
     from objectsync import DictTopic
     from grapycal.core.background_runner import BackgroundRunner
@@ -41,6 +40,7 @@ class MainStore:
         self.webcam: WebcamStream
         self.sidebar: Sidebar
     
+    # set by Workspace
     def open_workspace(self, path, no_exist_ok=False):
         raise NotImplementedError()
 
