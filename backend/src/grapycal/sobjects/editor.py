@@ -66,7 +66,8 @@ class Editor(SObject):
 
     def create_node(self, node_type: str | type[Node], **kwargs) -> Node | None:
         if isinstance(node_type, str):
-            node_type_cls = as_type(self._server._object_types[node_type], type[Node])
+            node_type_cls = self._server._object_types[node_type]
+            assert issubclass(node_type_cls, Node)
         else:
             node_type_cls = node_type
         if node_type_cls._is_singleton and hasattr(node_type_cls, "instance"):

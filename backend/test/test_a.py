@@ -9,9 +9,8 @@ def setup_workspace():
 
 def test_edge_creation():
     setup_workspace()
-    from grapycal_builtin.interaction.execNode import ExecNode
-    n1 = main_store.main_editor.create_node(ExecNode)
-    n2 = main_store.main_editor.create_node(ExecNode)
+    n1 = main_store.main_editor.create_node('grapycal_builtin.ExecNode')
+    n2 = main_store.main_editor.create_node('grapycal_builtin.ExecNode')
     p1 = n1.add_out_port('out')
     p2 = n2.add_in_port('in')
     e = main_store.main_editor.create_edge(p1, p2)
@@ -21,9 +20,8 @@ def test_edge_creation():
     
 def test_max_edges():
     setup_workspace()
-    from grapycal_builtin.interaction.execNode import ExecNode
-    n1 = main_store.main_editor.create_node(ExecNode)
-    n2 = main_store.main_editor.create_node(ExecNode)
+    n1 = main_store.main_editor.create_node('grapycal_builtin.ExecNode')
+    n2 = main_store.main_editor.create_node('grapycal_builtin.ExecNode')
     p1 = n1.add_out_port('out', max_edges=2)
     p2 = n2.add_in_port('in')
 
@@ -35,9 +33,8 @@ def test_max_edges():
 
 def test_edge_deletion():
     setup_workspace()
-    from grapycal_builtin.interaction.execNode import ExecNode
-    n1 = main_store.main_editor.create_node(ExecNode)
-    n2 = main_store.main_editor.create_node(ExecNode)
+    n1 = main_store.main_editor.create_node('grapycal_builtin.ExecNode')
+    n2 = main_store.main_editor.create_node('grapycal_builtin.ExecNode')
     p1 = n1.add_out_port('out')
     p2 = n2.add_in_port('in')
     e = main_store.main_editor.create_edge(p1, p2)
