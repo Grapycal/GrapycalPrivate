@@ -27,6 +27,9 @@ class SlashCommand:
         return f"<SlashCommand {self.name}>"
     
     def to_dict(self):
+        '''
+        Use to send the command's information to the client
+        '''
         return {
             "name": self.name,
             "source": self.source,

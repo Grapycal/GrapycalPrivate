@@ -42,6 +42,7 @@ class WorkspaceObject(SObject):
         main_store.main_editor = self.main_editor
         main_store.settings = self.settings
         main_store.webcam = self.webcam
+        main_store.sidebar = self.sidebar
 
         # Add local file view and remote file view
         self.file_view = self.add_child(LocalFileView, name="Local Files 💻")

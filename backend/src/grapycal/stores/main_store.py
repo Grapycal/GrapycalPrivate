@@ -1,8 +1,12 @@
 
 from typing import TYPE_CHECKING, Any, Callable, Dict, Optional
 
+from grapycal.core.slash_command import SlashCommandManager
+
 if TYPE_CHECKING:
     from contextlib import _GeneratorContextManager
+    import asyncio
+    
     from grapycal.extension.utils import Clock
     from objectsync import DictTopic
     from grapycal.core.background_runner import BackgroundRunner
@@ -10,7 +14,7 @@ if TYPE_CHECKING:
     from grapycal.sobjects.settings import Settings
     from grapycal.sobjects.workspaceObject import WebcamStream
     from grapycal.utils.httpResource import HttpResource
-    import asyncio
+    from grapycal.sobjects.sidebar import Sidebar
 
 class MainStore:
     def __init__(self):
@@ -27,12 +31,15 @@ class MainStore:
         self.data_yaml: HttpResource
         self.next_id: Callable[[],int]
         self.vars: Callable[[],Dict[str,Any]]
+        self.record: Callable[[],_GeneratorContextManager[None]]
+        self.slash: SlashCommandManager
 
         # set by workspaceObject
 
         self.main_editor: Editor
         self.settings: Settings
         self.webcam: WebcamStream
+        self.sidebar: Sidebar
     
     def open_workspace(self, path, no_exist_ok=False):
         raise NotImplementedError()
