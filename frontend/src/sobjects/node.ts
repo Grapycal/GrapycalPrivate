@@ -361,11 +361,6 @@ export class Node extends CompSObject implements IControlHost {
         if(this.icon_path.getValue() != ''){
             this.setIcon(this.icon_path.getValue())
         }
-        // setTimeout(() => {
-        //     let border = this.htmlItem.getHtmlEl('node-border')
-        //     bloomDiv(border,this.htmlItem.baseElement as HTMLElement)
-
-        // }, 0);
     }
 
     setIcon(path: string){

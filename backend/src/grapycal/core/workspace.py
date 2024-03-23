@@ -82,11 +82,15 @@ class Workspace:
         stdout_helper.enable_proxy(redirect_error=False)
 
 
-    def run(self) -> None:
+    def run(self, run_runner=True) -> None:
         '''
         The blocking function that make the workspace start functioning. The main thread will run a background_runner 
         that runs the background tasks from nodes.
         A communication thread will be started to handle the communication between the frontend and the backend.
+
+        args:
+            run_runner: bool
+                Set to False if you don't want to run the background runner. This is useful for testing.
         '''
 
         # Register all the sobject types to the objectsync server, and link some events to the callbacks.
@@ -111,9 +115,10 @@ class Workspace:
         self._load_or_create_workspace()
 
         # Setup is done. Hand the thread over to the background runner.
-        signal.signal(signal.SIGTERM, lambda sig, frame: self._exit())
-        self.is_running = True
-        main_store.runner.run() # this is a blocking call
+        if run_runner:
+            signal.signal(signal.SIGTERM, lambda sig, frame: self._exit())
+            self.is_running = True
+            main_store.runner.run() # this is a blocking call
 
     '''
     Subroutines of run()
