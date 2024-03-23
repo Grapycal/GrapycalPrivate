@@ -1,25 +1,24 @@
+import logging
+logger = logging.getLogger(__name__)
+from typing import TYPE_CHECKING, Awaitable, Callable, Literal, Self, TypeVar
+
 from abc import ABCMeta
 import asyncio
 import enum
 import io
 from itertools import count
-import logging
-import random
+from contextlib import contextmanager
+import functools
+import traceback
+
 from grapycal.sobjects.controls.buttonControl import ButtonControl
 from grapycal.sobjects.controls.imageControl import ImageControl
 from grapycal.sobjects.controls.linePlotControl import LinePlotControl
 from grapycal.sobjects.controls.nullControl import NullControl
 from grapycal.sobjects.controls.optionControl import OptionControl
-
 from grapycal.sobjects.controls.textControl import TextControl
-
-logger = logging.getLogger(__name__)
 from grapycal.stores import main_store
 from grapycal.utils.logging import error_extension, user_logger, warn_extension
-from contextlib import contextmanager
-import functools
-import traceback
-from typing import TYPE_CHECKING, Any, Awaitable, Callable, Generator, Literal, Self, TypeVar
 from grapycal.extension.utils import NodeInfo
 from grapycal.sobjects.controls.control import Control, ValuedControl
 from grapycal.sobjects.edge import Edge
@@ -40,11 +39,12 @@ from objectsync import (
 from objectsync.sobject import SObjectSerialized, WrappedTopic
 
 if TYPE_CHECKING:
-    from grapycal.core.workspace import Workspace
     from grapycal.extension.extension import Extension
 
-
 def warn_no_control_name(control_type, node):
+    '''
+    Log a warning if the control does not have a name.
+    '''
     node_type = node.get_type_name().split('.')[1]
     warn_extension(
         node,
@@ -53,6 +53,9 @@ to prevent error when Grapycal auto restores the control.",
         extra={"key": f"No control name {node_type}"},
     )
 
+'''
+Decorator for node development.
+'''
 
 def singletonNode(auto_instantiate=True):
     """
@@ -77,22 +80,6 @@ def singletonNode(auto_instantiate=True):
     T = TypeVar("T", bound=Node)
 
     def wrapper(cls: type[T]):
-        # class WrapperClass(cls):
-        #     instance: T
-        #     def __init__(self,*args,**kwargs):
-        #         super().__init__(*args,**kwargs)
-        #         if hasattr(WrapperClass, "instance"):
-        #             raise RuntimeError("Singleton node can only be instantiated once")
-        #         WrapperClass.instance = self # type: ignore # strange complaint from linter
-
-        #     def destroy(self) -> SObjectSerialized:
-        #         del WrapperClass.instance
-        #         return super().destroy()
-
-        # WrapperClass._is_singleton = True
-        # WrapperClass._auto_instantiate = auto_instantiate
-        # WrapperClass.__name__ = cls.__name__
-
         def new_init(self, *args, **kwargs):
             if hasattr(cls, "instance"):
                 raise RuntimeError("Singleton node can only be instantiated once")
@@ -144,7 +131,6 @@ def deprecated(message: str, from_version: str, to_version: str):
 
     return wrapper
 
-
 class NodeMeta(ABCMeta):
     class_def_counter = count()
     def_order = {}
@@ -156,7 +142,6 @@ class NodeMeta(ABCMeta):
         )
         self._auto_instantiate = True  # Used internally by the ExtensionManager.
         return super().__init__(name, bases, attrs)
-
 
 class RESTORE_FROM(enum.Enum):
     SAME = 0
@@ -177,7 +162,6 @@ class Node(SObject, metaclass=NodeMeta):
         return cls.def_order[cls.__name__]
     
     def initialize(self, serialized:SObjectSerialized|None=None, *args, **kwargs):
-
         self._already_restored_attributes = set()
         self._already_restored_controls = set()
         self.old_node_info = NodeInfo(serialized) if serialized is not None else None
