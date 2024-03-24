@@ -149,7 +149,7 @@ export class Node extends CompSObject implements IControlHost {
         
         // Bind attributes to UI
 
-        this.shape.onSet.add(this.reshape.bind(this))
+        this.link(this.shape.onSet,this.reshape)
 
         this.link(this.label.onSet, (label: string) => {
             this.htmlItem.getHtmlEl('label').innerText = label
@@ -206,7 +206,7 @@ export class Node extends CompSObject implements IControlHost {
         
         this.htmlItem.setParent(this.getComponentInAncestors(HtmlItem))
 
-        // Before setting up the transform, we need to add classes to the element then call updateUI so the shape is correct
+        // Before setting up the transform, we need to add classes to the element so the shape is correct
         
         this.link(this.css_classes.onAppend, (className: string) => {
             this.htmlItem.baseElement.classList.add(className)
@@ -243,18 +243,18 @@ export class Node extends CompSObject implements IControlHost {
                 }
             })
 
-            this.eventDispatcher.onMouseDown.add((e: MouseEvent) => {
+            this.link(this.eventDispatcher.onMouseDown,(e: MouseEvent) => {
                 // pass the event to the editor
                 if(e.buttons != 1) this.eventDispatcher.forwardEvent()
             })
 
-            this.eventDispatcher.onDragStart.add((e: MouseEvent,pos: Vector2) => {
+            this.link(this.eventDispatcher.onDragStart,(e: MouseEvent,pos: Vector2) => {
                 if(e.buttons != 1) return this.eventDispatcher.forwardEvent()
                 this.draggingTargetPos = this.transform.translation
                 this.htmlItem.baseElement.classList.add('dragging')
             })
 
-            this.eventDispatcher.onDrag.add((e: MouseEvent,newPos: Vector2,oldPos: Vector2) => {
+            this.link(this.eventDispatcher.onDrag,(e: MouseEvent,newPos: Vector2,oldPos: Vector2) => {
                 if (e.buttons != 1) return this.eventDispatcher.forwardEvent()
                 // pass the event to the editor to box select
                 if(e.ctrlKey){
@@ -286,7 +286,7 @@ export class Node extends CompSObject implements IControlHost {
                     }
                 }
             })
-            this.eventDispatcher.onDragEnd.add((e: MouseEvent,pos: Vector2) => {
+            this.link(this.eventDispatcher.onDragEnd,(e: MouseEvent,pos: Vector2) => {
                 this.objectsync.record(() => {
                     for(let selectable of this.selectable.selectedObjects){
                         if(selectable.object instanceof Node){
