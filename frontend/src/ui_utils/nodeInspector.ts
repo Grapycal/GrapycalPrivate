@@ -35,7 +35,7 @@ export class NodeInspector extends Componentable{
                 <div id="node_description"></div>
             </div>
             <hr>
-            <div id="slot_inspector"></div>
+            <div slot="inspector"></div>
             <hr>
             <div id="output_display"></div>
             <button id="clear_output">Clear Output</button>
@@ -64,7 +64,7 @@ export class NodeInspector extends Componentable{
         super()
         this.inspector = new Inspector()
         this.inspector.htmlItem.setParent(this.htmlItem,'inspector')
-        this.htmlItem.setParentElement(document.getElementById('slot_inspector'))
+        this.htmlItem.setParentElement(document.getElementById('inspector-container'))
         this.sidebarEl = document.getElementById('sidebar-right');
         this.baseEl = this.htmlItem.baseElement as HTMLElement;
         this.nodeTypeDiv = this.htmlItem.getHtmlEl('node_type');

@@ -21,11 +21,11 @@ export class DictEditor extends Editor<DictTopic<string,string>> {
         <div class="attribute-editor flex-horiz stretch">
             <div id="attribute-name" class="attribute-name"></div>
             <div class="container">
-                <div class="container" id="slot_container"></div>
+                <div class="container" slot="container" id="container"></div>
                 <div class="container container2">
-                    <div id="slot_key" class="grow"></div>
+                    <div slot="key" class="grow"></div>
                     <span id="colon">:</span>
-                    <div id="slot_value" class="grow"></div>
+                    <div slot="value" class="grow"></div>
                     <button id="add-button" class="button center-align">+</button>
                 </div>
             </div>
@@ -74,7 +74,7 @@ export class DictEditor extends Editor<DictTopic<string,string>> {
         super()
         this.connectedAttributes = connectedAttributes
 
-        this.container = as(this.htmlItem.getHtmlEl('slot_container'), HTMLDivElement)
+        this.container = as(this.htmlItem.getHtmlEl('container'), HTMLDivElement)
         this.keyInput = new AutoCompMenu()
         this.valueInput = new AutoCompMenu()
         this.keyInput.htmlItem.setParent(this.htmlItem, 'key')

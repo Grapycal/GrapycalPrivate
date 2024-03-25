@@ -40,7 +40,7 @@ export class Inspector extends Componentable{
     }
 
     protected get template(): string {return `
-        <div class="full-height flex-vert" id="slot_default">
+        <div class="full-height flex-vert" slot="default">
         </div>
         `;
     }

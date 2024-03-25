@@ -57,7 +57,7 @@ export class Port extends CompSObject implements IControlHost {
     <div class="port">
 
         <div class="port-label" id="label"></div>
-        <div class="slot-control" id="slot_control"></div>
+        <div class="slot-control" slot="control"></div>
         <div class="port-knob" id="Knob">
             <div class="port-knob-hitbox" id="Hitbox"></div>
         </div>

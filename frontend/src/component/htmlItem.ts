@@ -1,4 +1,5 @@
 import { print } from "../devUtils"
+import { Node } from "../sobjects/node"
 import { Action, Constructor, Vector2, as, defined } from "../utils"
 import { Component, IComponentable } from "./component"
 import { Transform } from "./transform"
@@ -29,6 +30,9 @@ function addPrefixToCssClasses(css: string, prefix: string): string{
     });
 }
 
+/**
+ * Display a template in the DOM.
+ */
 export class HtmlItem extends Component{
     private static styleAdded = new Set<string>()
 
@@ -36,7 +40,6 @@ export class HtmlItem extends Component{
 
     baseElement: Element;
     parent_slot: Element;
-    slots: Map<string,HTMLElement> = new Map();
     parent_: HtmlItem;
     get parent(){return this.parent_;}
     children: {item:HtmlItem,slotName:string,order:'append'|'prepend'}[] = [];
@@ -101,26 +104,10 @@ export class HtmlItem extends Component{
         else
             this.parent_slot?.prepend(this.baseElement);
 
-        // search for elements that id = slot_name
-        // if found, add to slots:
-        this.slots = new Map();
-        const slotElements = this.baseElement.querySelectorAll('[id^="slot_"]')
-        if(this.baseElement.id.startsWith('slot_')){
-            const slotName = this.baseElement.id.slice(5);
-            this.addSlot(slotName, as(this.baseElement,HTMLElement));
-        }
-
-        for(let element of slotElements){
-            const slotName = element.id.slice(5);
-            this.addSlot(slotName, as(element,HTMLElement));
-        }
-        
         // move children to slots
         for(let child of this.children){
             if(child.item.baseElement===null) continue;
-            const slot = this.slots.get(child.slotName);
-            if(slot === undefined)
-                throw new Error(`Slot ${child.slotName} not found`);
+            const slot = this.getSlot(child.slotName);
             if(order === "append")
                 slot.appendChild(child.item.baseElement);
             else
@@ -131,11 +118,11 @@ export class HtmlItem extends Component{
     }
 
     addChild(child: HtmlItem,slotName: string, order: "prepend"|"append" = "prepend"){
-        const slot = this.slots.get(slotName);
+        const slot = this.getSlot(slotName);
         if(slot === undefined)
             throw new Error(`Slot ${slotName} not found`);
 
-        if(child.baseElement===null) return slot;
+        if(child.baseElement===null) throw new Error('child.baseElement is null');
         if(order === "append")
             slot.appendChild(child.baseElement);
         else
@@ -233,18 +220,16 @@ export class HtmlItem extends Component{
     moveToBack(){
         this.parent_slot?.prepend(this.baseElement);
     }
-
-    addSlot(name: string, element: HTMLElement){
-        this.slots.set(name,element);
-    }
-    removeSlot(name: string){
-        this.slots.delete(name);
-    }
     getSlot(name: string): HTMLElement{
-        const slot = this.slots.get(name);
-        if (slot === undefined)
+        // if baseElement is the slot
+        if (this.baseElement.getAttribute('slot') === name)
+            return as(this.baseElement,HTMLElement);
+
+        // search for slot in children
+        var slot = this.baseElement.querySelector(`[slot="${name}"][template_id="${this.templateId}"]`);
+        if (slot === undefined || slot === null)
             throw new Error(`Slot ${name} not found`);
-        return slot;
+        return as(slot,HTMLElement);
     }
     findTransformParent(): Transform|null{
         let i : HtmlItem = this.parent;

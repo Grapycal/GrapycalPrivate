@@ -13,7 +13,7 @@ export class ListEditor extends Editor<ListTopic<any>> {
         <div class="attribute-editor flex-horiz stretch">
             <div id="attribute-name" class="attribute-name"></div>
             <div class="container">
-                <div class="container" id="slot_container"></div>
+                <div class="container" slot="container" id="container"></div>
                 <div class="container horiz">
                     <input id="input" type="text" class="grow">
                     <button id="add-button" class="button center-align">+</button>
@@ -57,7 +57,7 @@ export class ListEditor extends Editor<ListTopic<any>> {
             this.connectedAttributes.push(as(attr, ListTopic))
         }
 
-        this.container = as(this.htmlItem.getHtmlEl('slot_container'), HTMLDivElement)
+        this.container = as(this.htmlItem.getHtmlEl('container'), HTMLDivElement)
         this.addInput = as(this.htmlItem.getHtmlEl('input'), HTMLInputElement)
         this.addButton = as(this.htmlItem.getHtmlEl('add-button'), HTMLButtonElement)
 
