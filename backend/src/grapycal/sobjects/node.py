@@ -283,10 +283,10 @@ class Node(SObject, metaclass=NodeMeta):
         from grapycal.sobjects.workspaceObject import WorkspaceObject
 
         self.globally_exposed_attributes.on_add.add_auto(
-            lambda k, v: WorkspaceObject.ins.settings.entries.add(k, v)
+            lambda k, v: main_store.settings.entries.add(k, v)
         )
         for k, v in self.globally_exposed_attributes.get().items():
-            WorkspaceObject.ins.settings.entries.add(k, v)
+            main_store.settings.entries.add(k, v)
 
 
         self.init_node()
