@@ -29,12 +29,10 @@ class WorkspaceObject(SObject):
             self.settings = self.add_child(Settings)
             self.webcam = self.add_child(WebcamStream)
             self.sidebar = self.add_child(Sidebar)
-            self.main_editor = self.add_child(Editor)
         else:
             self.settings = self.add_child(Settings, old=old.get_child("settings"))
             self.webcam = self.add_child(WebcamStream, old=old.get_child("webcam"))
             self.sidebar = self.add_child(Sidebar, old=old.get_child("sidebar"))
-            self.main_editor = self.add_child(Editor, old=old.get_child("main_editor") )
 
         main_store.settings = self.settings
         main_store.webcam = self.webcam
