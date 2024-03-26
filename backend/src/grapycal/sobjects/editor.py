@@ -35,7 +35,7 @@ class Editor(SObject):
 
         # called by client
         self.register_service("create_edge", self.create_edge_from_port_id)
-        self.register_service("create_node", self.create_node)
+        self.register_service("create_node", self.create_node_service)
         self.register_service("copy", self._copy)
         self.register_service("paste", self._paste, pass_sender=True)
         self.register_service("delete", self._delete)
@@ -63,6 +63,9 @@ class Editor(SObject):
     '''
     Public methods
     '''
+
+    def create_node_service(self,**kwargs):
+        self.create_node(**kwargs) # no return value #TODO make it elegant
 
     def create_node(self, node_type: str | type[Node], **kwargs) -> Node | None:
         if isinstance(node_type, str):
