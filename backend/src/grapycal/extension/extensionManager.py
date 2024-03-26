@@ -45,7 +45,7 @@ class ExtensionManager:
         '''
         self._update_available_extensions_topic()
 
-    def import_extension(self, extension_name: str, create_nodes=True, log=True) -> Extension:
+    def import_extension(self, extension_name: str, create_nodes=True, log=True) -> None:
         extension = self._load_extension(extension_name)
         if create_nodes:
             try:
@@ -61,7 +61,6 @@ class ExtensionManager:
             logger.info(f'Imported extension {extension_name}')
             main_store.send_message_to_all(f'Imported extension {extension_name}')
         self._objectsync.clear_history_inclusive()
-        return extension
 
     def update_extension(self, extension_name: str) -> None:
         old_version = self._extensions[extension_name]
