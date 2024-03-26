@@ -23,11 +23,8 @@ from objectsync import (
 
 class WorkspaceObject(SObject):
     frontend_type = "Workspace"
-    ins: Self
 
     def build(self, old: SObjectSerialized | None = None):
-        from grapycal.core.workspace import Workspace
-        WorkspaceObject.ins = self
         if old is None:
             self.settings = self.add_child(Settings)
             self.webcam = self.add_child(WebcamStream)
