@@ -6,7 +6,7 @@ import { TextBox} from "../../utils"
 
 
 export class TextControl extends Control {
-    
+
     textBox: TextBox
     text = this.getAttribute("text", StringTopic)
     label = this.getAttribute("label", StringTopic)
@@ -26,6 +26,8 @@ export class TextControl extends Control {
         }
     `
 
+
+
     protected onStart(): void {
         super.onStart()
         this.textBox = new TextBox(this.htmlItem.getElByClass("control"),this.editable.getValue()==0)
@@ -37,13 +39,27 @@ export class TextControl extends Control {
         this.textBox.textarea.classList.add("control-text","text-field")
         this.textBox.value = this.text.getValue()
         this.textBox.onResize.add(()=>{this.node.moved.invoke()})
-        
+
         new BindInputBoxAndTopic(this,this.textBox, this.text,this.objectsync,true)
 
-        this.link2(this.textBox as any, "blur", () => { 
+        this.link2(this.textBox as any, "blur", () => {
             this.makeRequest('finish')
         })
-        
+
+        // this.link2(this.textBox as any, "input", () => {
+        //     this.makeRequest('suggestions', {text: this.textBox.value})
+        // })
+
+        this.textBox.addEventListener("input", () => {
+            if (this.textBox.value.endsWith(".")){
+                this.makeRequest('suggestions', {text: this.textBox.value}, handleResponse)
+            }
+        });
+
+        // this.link2(this.textBox as any, "focus", () => {
+        //
+        // }
+
         let labelEl = this.htmlItem.getEl("label", HTMLDivElement)
         this.link(this.label.onSet, (label) => {
             if (label == '') {
@@ -65,4 +81,23 @@ export class TextControl extends Control {
         })
     }
 
+}
+
+interface ResponseItem {
+    key: string;
+    value: string;
+}
+
+function handleResponse(response: ResponseItem[]) {
+    console.log('handleResponse', response)
+    const resultsContainer = document.getElementById('results-container');
+    if (!resultsContainer) return;
+
+    resultsContainer.innerHTML = '';
+
+    response.forEach(item => {
+        const div = document.createElement('div');
+        div.textContent = `${item.key} ${item.value}`;
+        resultsContainer.appendChild(div);
+    });
 }
