@@ -66,7 +66,7 @@ export class Node extends CompSObject implements IControlHost {
 
     protected readonly templates: {[key: string]: string} = {
     normal: 
-        `<div class="node normal-node" id="slot_default">
+        `<div class="node normal-node" slot="default">
             
             
             <div class="node-selection"></div>
@@ -80,13 +80,13 @@ export class Node extends CompSObject implements IControlHost {
                 </div>
             </div>
             <div class=" flex-vert space-between main-section">
-                <div id="slot_input_port" class=" flex-vert space-evenly slot-input-port"></div>
-                <div id="slot_output_port" class=" flex-vert space-evenly slot-output-port"></div>
-                <div id="slot_control" class="slot-control flex-vert space-between"></div>
+                <div slot="input_port" class=" flex-vert space-evenly slot-input-port"></div>
+                <div slot="output_port" class=" flex-vert space-evenly slot-output-port"></div>
+                <div slot="control" class="slot-control flex-vert space-between"></div>
             </div>
         </div>`,
     simple:
-        `<div class="node simple-node" id="slot_default">
+        `<div class="node simple-node" slot="default">
             <div class="node-border-container">
                 <div class="node-border"id="node-border">
                 </div>
@@ -94,35 +94,35 @@ export class Node extends CompSObject implements IControlHost {
             <div class="node-selection"></div>
             
             <div class="flex-horiz stretch-align space-between">
-                <div id="slot_input_port" class=" flex-vert justify-start slot-input-port"></div>
+                <div slot="input_port" class=" flex-vert justify-start slot-input-port"></div>
 
                 <div class="full-width flex-vert space-evenly">
                     <div class="node-label full-width flex-horiz">
                         <div class="node-label-underlay"></div>
                         <div id="label"></div>
                     </div>
-                    <div id="slot_control"  class="slot-control main-section"></div>
+                    <div slot="control"  class="slot-control main-section"></div>
                 </div>
 
-                <div id="slot_output_port" class=" flex-vert justify-start slot-output-port"></div>
+                <div slot="output_port" class=" flex-vert justify-start slot-output-port"></div>
             </div>
         </div>`,
     round:
-        `<div class="node round-node " id="slot_default">
+        `<div class="node round-node " slot="default">
             <div class="node-border-container">
                 <div class="node-border"id="node-border">
                 </div>
             </div>
             <div class="node-selection"></div>
             <div class="flex-horiz node-content">
-                <div id="slot_input_port" class=" flex-vert space-evenly slot-input-port"></div>
+                <div slot="input_port" class=" flex-vert space-evenly slot-input-port"></div>
                 <div class="full-width flex-vert space-evenly node-label"> 
                     <div class="node-label-underlay"></div>
                     <div id="label" class="center-align"></div>
                 </div>
-                <div id="slot_control" style="display:none"></div>
+                <div slot="control" style="display:none"></div>
                 
-                <div id="slot_output_port" class=" flex-vert space-evenly slot-output-port"></div>
+                <div slot="output_port" class=" flex-vert space-evenly slot-output-port"></div>
             </div>
         </div>`,
     }
@@ -149,7 +149,7 @@ export class Node extends CompSObject implements IControlHost {
         
         // Bind attributes to UI
 
-        this.shape.onSet.add(this.reshape.bind(this))
+        this.link(this.shape.onSet,this.reshape)
 
         this.link(this.label.onSet, (label: string) => {
             this.htmlItem.getHtmlEl('label').innerText = label
@@ -206,7 +206,7 @@ export class Node extends CompSObject implements IControlHost {
         
         this.htmlItem.setParent(this.getComponentInAncestors(HtmlItem))
 
-        // Before setting up the transform, we need to add classes to the element then call updateUI so the shape is correct
+        // Before setting up the transform, we need to add classes to the element so the shape is correct
         
         this.link(this.css_classes.onAppend, (className: string) => {
             this.htmlItem.baseElement.classList.add(className)
@@ -243,18 +243,18 @@ export class Node extends CompSObject implements IControlHost {
                 }
             })
 
-            this.eventDispatcher.onMouseDown.add((e: MouseEvent) => {
+            this.link(this.eventDispatcher.onMouseDown,(e: MouseEvent) => {
                 // pass the event to the editor
                 if(e.buttons != 1) this.eventDispatcher.forwardEvent()
             })
 
-            this.eventDispatcher.onDragStart.add((e: MouseEvent,pos: Vector2) => {
+            this.link(this.eventDispatcher.onDragStart,(e: MouseEvent,pos: Vector2) => {
                 if(e.buttons != 1) return this.eventDispatcher.forwardEvent()
                 this.draggingTargetPos = this.transform.translation
                 this.htmlItem.baseElement.classList.add('dragging')
             })
 
-            this.eventDispatcher.onDrag.add((e: MouseEvent,newPos: Vector2,oldPos: Vector2) => {
+            this.link(this.eventDispatcher.onDrag,(e: MouseEvent,newPos: Vector2,oldPos: Vector2) => {
                 if (e.buttons != 1) return this.eventDispatcher.forwardEvent()
                 // pass the event to the editor to box select
                 if(e.ctrlKey){
@@ -286,7 +286,7 @@ export class Node extends CompSObject implements IControlHost {
                     }
                 }
             })
-            this.eventDispatcher.onDragEnd.add((e: MouseEvent,pos: Vector2) => {
+            this.link(this.eventDispatcher.onDragEnd,(e: MouseEvent,pos: Vector2) => {
                 this.objectsync.record(() => {
                     for(let selectable of this.selectable.selectedObjects){
                         if(selectable.object instanceof Node){
@@ -361,11 +361,6 @@ export class Node extends CompSObject implements IControlHost {
         if(this.icon_path.getValue() != ''){
             this.setIcon(this.icon_path.getValue())
         }
-        // setTimeout(() => {
-        //     let border = this.htmlItem.getHtmlEl('node-border')
-        //     bloomDiv(border,this.htmlItem.baseElement as HTMLElement)
-
-        // }, 0);
     }
 
     setIcon(path: string){

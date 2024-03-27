@@ -1,6 +1,8 @@
 from grapycal.extension.utils import NodeInfo
 from grapycal.sobjects.edge import Edge
+from grapycal.sobjects.node import singletonNode
 from grapycal.sobjects.port import InputPort
+from grapycal.stores import main_store
 from objectsync.sobject import SObjectSerialized
 from .printNode import *
 from .evalNode import *
@@ -15,23 +17,9 @@ class LabelNode(Node):
         self.expose_attribute(self.label, editor_type='text')
         self.restore_attributes('label')
 
+@singletonNode(auto_instantiate=False)
 class WebcamNode(Node):
     category = 'interaction'
-
-    def spawn(self, client_id):
-        '''
-        Called when a client wants to spawn a node.
-        '''
-        existing = self.workspace.get_workspace_object().top_down_search(
-            type=WebcamNode,
-            stop=lambda obj: isinstance(obj,Node)
-            )
-        if len(existing)<2:
-            super().spawn(client_id)
-        else:
-            for node in existing:
-                if node != self:
-                    node.print_exception(Exception('Only one webcam node is allowed per workspace'))
 
     def build_node(self):
         self.label.set('Webcam')
@@ -43,7 +31,7 @@ class WebcamNode(Node):
     def init_node(self):
         if self.is_preview.get():
             return
-        self.webcam = self.workspace.webcam
+        self.webcam = main_store.webcam
         if not self.is_preview.get():
             self.webcam.image.on_set.add_manual(self._on_image_set)
         self.webcam.source_client.on_set.add_manual(self._source_client_changed)
@@ -67,7 +55,7 @@ class WebcamNode(Node):
         self.run(self._on_image_set_task)
 
     def _on_image_set_task(self):
-        image_bytes:bytes = self.workspace.get_workspace_object().webcam.image.to_binary()
+        image_bytes:bytes = main_store.webcam.image.to_binary()
         img = Image.open(io.BytesIO(image_bytes))
         # comvert image to torch or numpy
         if self.format.get() == 'torch':

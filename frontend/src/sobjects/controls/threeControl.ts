@@ -1,6 +1,4 @@
 import * as THREE from 'three';
-import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader.js';
-import { MTLLoader } from 'three/examples/jsm/loaders/MTLLoader.js';
 import { Control } from './control'
 import { ListTopic } from 'objectsync-client'
 import { print } from '../../devUtils'

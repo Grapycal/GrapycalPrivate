@@ -105,16 +105,16 @@ class ExecNode(SourceNode):
         for name in self.inputs:
             port = self.get_in_port(name)
             if port.is_all_ready():
-                self.workspace.vars().update({name:port.get()})
-        self.workspace.vars().update({'print':self.print,'self':self})
+                self.get_vars().update({name:port.get()})
+        self.get_vars().update({'print':self.print,'self':self})
         try:
-            result = exec_(stmt,self.workspace.vars(),print_=self.print if self.print_last_expr.get()=='yes' else None)
+            result = exec_(stmt,self.get_vars(),print_=self.print if self.print_last_expr.get()=='yes' else None)
         except Exception as e:
             self.print_exception(e,-3)
             return
         self.out_port.push(result)
         for name in self.outputs:
-            self.get_out_port(name).push(self.workspace.vars()[name])
+            self.get_out_port(name).push(self.get_vars()[name])
 
     def print(self, *args, **kwargs):
         output = io.StringIO()

@@ -18,7 +18,7 @@ type Message = {
 export class AppNotification extends Componentable{
     protected get template(): string {
         return `
-        <div class="cont" id="slot_default"></div>
+        <div class="cont" slot="default"></div>
         `
     }
     protected get style(): string {

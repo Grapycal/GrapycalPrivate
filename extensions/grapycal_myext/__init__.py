@@ -6,6 +6,19 @@ from grapycal.sobjects.controls.optionControl import OptionControl
 from grapycal.sobjects.controls.textControl import TextControl
 from grapycal.sobjects.functionNode import FunctionNode
 
+class CountNode(Node):
+    category = 'demo'
+    def build_node(self):
+        self.label.set('Count')
+        self.text_control = self.add_text_control('', 'Text')
+        self.count_control = self.add_text_control('0', 'Count')
+    
+    def init(self):
+        self.text_control.text.on_set += self.text_changed
+
+    def text_changed(self, text: str):
+        self.count_control.text.set(str(len(text)))
+
 class IsEvenNode(Node):
     category = 'function'
     def build_node(self):

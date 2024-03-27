@@ -52,10 +52,10 @@ export class HierarchyNode implements IComponentable{
     <div class="hierarchy-node full-width">
         <span id="name" class="hierarchy-name"></span>
         <div id="indent" class="hierarchy-indent">
-            <div id="slot_childnode" class="hierarchy-child-node-slot">
+            <div slot="childnode" class="hierarchy-child-node-slot">
                 
             </div>
-            <div id="slot_leaf" class="hierarchy-leaf-slot">
+            <div slot="leaf" class="hierarchy-leaf-slot">
                         
             </div>
         </div>
@@ -79,7 +79,6 @@ export class HierarchyNode implements IComponentable{
         this.htmlItem = new HtmlItem(this, document.body);
         this.htmlItem.applyTemplate(this.template);
         if(isRoot){
-            //no padding slot_childnode and slot_leaf
             this.htmlItem.getHtmlEl('name').remove();
             this.htmlItem.getHtmlEl('indent').classList.remove('hierarchy-indent');
             this.htmlItem.baseElement.classList.remove('hierarchy-node');

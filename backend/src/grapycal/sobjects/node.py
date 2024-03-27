@@ -1,24 +1,25 @@
+import logging
+
+logger = logging.getLogger(__name__)
+from typing import TYPE_CHECKING, Awaitable, Callable, Literal, Self, TypeVar
+
 from abc import ABCMeta
 import asyncio
 import enum
 import io
 from itertools import count
-import logging
-import random
+from contextlib import contextmanager
+import functools
+import traceback
+
 from grapycal.sobjects.controls.buttonControl import ButtonControl
 from grapycal.sobjects.controls.imageControl import ImageControl
 from grapycal.sobjects.controls.linePlotControl import LinePlotControl
 from grapycal.sobjects.controls.nullControl import NullControl
 from grapycal.sobjects.controls.optionControl import OptionControl
-
 from grapycal.sobjects.controls.textControl import TextControl
-
-logger = logging.getLogger(__name__)
+from grapycal.stores import main_store
 from grapycal.utils.logging import error_extension, user_logger, warn_extension
-from contextlib import contextmanager
-import functools
-import traceback
-from typing import TYPE_CHECKING, Any, Awaitable, Callable, Generator, Literal, Self, TypeVar
 from grapycal.extension.utils import NodeInfo
 from grapycal.sobjects.controls.control import Control, ValuedControl
 from grapycal.sobjects.edge import Edge
@@ -39,11 +40,13 @@ from objectsync import (
 from objectsync.sobject import SObjectSerialized, WrappedTopic
 
 if TYPE_CHECKING:
-    from grapycal.core.workspace import Workspace
     from grapycal.extension.extension import Extension
-
+    from grapycal.core.workspace import ClientMsgTypes
 
 def warn_no_control_name(control_type, node):
+    '''
+    Log a warning if the control does not have a name.
+    '''
     node_type = node.get_type_name().split('.')[1]
     warn_extension(
         node,
@@ -52,6 +55,9 @@ to prevent error when Grapycal auto restores the control.",
         extra={"key": f"No control name {node_type}"},
     )
 
+'''
+Decorator for node development.
+'''
 
 def singletonNode(auto_instantiate=True):
     """
@@ -76,22 +82,6 @@ def singletonNode(auto_instantiate=True):
     T = TypeVar("T", bound=Node)
 
     def wrapper(cls: type[T]):
-        # class WrapperClass(cls):
-        #     instance: T
-        #     def __init__(self,*args,**kwargs):
-        #         super().__init__(*args,**kwargs)
-        #         if hasattr(WrapperClass, "instance"):
-        #             raise RuntimeError("Singleton node can only be instantiated once")
-        #         WrapperClass.instance = self # type: ignore # strange complaint from linter
-
-        #     def destroy(self) -> SObjectSerialized:
-        #         del WrapperClass.instance
-        #         return super().destroy()
-
-        # WrapperClass._is_singleton = True
-        # WrapperClass._auto_instantiate = auto_instantiate
-        # WrapperClass.__name__ = cls.__name__
-
         def new_init(self, *args, **kwargs):
             if hasattr(cls, "instance"):
                 raise RuntimeError("Singleton node can only be instantiated once")
@@ -143,7 +133,6 @@ def deprecated(message: str, from_version: str, to_version: str):
 
     return wrapper
 
-
 class NodeMeta(ABCMeta):
     class_def_counter = count()
     def_order = {}
@@ -155,7 +144,6 @@ class NodeMeta(ABCMeta):
         )
         self._auto_instantiate = True  # Used internally by the ExtensionManager.
         return super().__init__(name, bases, attrs)
-
 
 class RESTORE_FROM(enum.Enum):
     SAME = 0
@@ -176,7 +164,6 @@ class Node(SObject, metaclass=NodeMeta):
         return cls.def_order[cls.__name__]
     
     def initialize(self, serialized:SObjectSerialized|None=None, *args, **kwargs):
-
         self._already_restored_attributes = set()
         self._already_restored_controls = set()
         self.old_node_info = NodeInfo(serialized) if serialized is not None else None
@@ -195,7 +182,6 @@ class Node(SObject, metaclass=NodeMeta):
     ):
         self.is_new = is_new
         self.old_node_info = old_node_info
-        self.workspace: Workspace = self._server.globals.workspace
         self.is_building = True
 
         self.shape = self.add_attribute(
@@ -284,27 +270,25 @@ class Node(SObject, metaclass=NodeMeta):
             self.editor = parent
         else:
             self.editor = None
-
-        self.workspace: Workspace = self._server.globals.workspace
         
         self.on("double_click", self.double_click, is_stateful=False)
         self.on("spawn", self.spawn, is_stateful=False)
 
         self._output_stream = OutputStream(self.raw_print)
         self._output_stream.set_event_loop(
-            self.workspace.get_communication_event_loop()
+            main_store.event_loop
         )
-        self.workspace.get_communication_event_loop().create_task(
+        main_store.event_loop.create_task(
             self._output_stream.run()
         )
 
         from grapycal.sobjects.workspaceObject import WorkspaceObject
 
         self.globally_exposed_attributes.on_add.add_auto(
-            lambda k, v: WorkspaceObject.ins.settings.entries.add(k, v)
+            lambda k, v: main_store.settings.entries.add(k, v)
         )
         for k, v in self.globally_exposed_attributes.get().items():
-            WorkspaceObject.ins.settings.entries.add(k, v)
+            main_store.settings.entries.add(k, v)
 
 
         self.init_node()
@@ -418,7 +402,7 @@ class Node(SObject, metaclass=NodeMeta):
         """
         Called when a client wants to spawn a node.
         """
-        new_node = self.workspace.get_workspace_object().main_editor.create_node(
+        new_node = main_store.main_editor.create_node(
             type(self)
         )
         if new_node is None:  # failed to create node
@@ -444,10 +428,10 @@ class Node(SObject, metaclass=NodeMeta):
                     f"Trying to destroy node {self.get_id()} but it still has output edges"
                 )
         for name in self.globally_exposed_attributes.get():
-            self.workspace.get_workspace_object().settings.entries.pop(name)
+            main_store.settings.entries.pop(name)
         
         if self.editor is not None:
-            self.editor.set_running(self, False)
+            self.editor.is_running_manager.set_running(self, False)
         return super().destroy()
 
     T = TypeVar("T", bound=ValuedControl)
@@ -864,10 +848,16 @@ class Node(SObject, metaclass=NodeMeta):
 
         try:
             self._output_stream.enable_flush()
-            with self.workspace.redirect(self._output_stream):
+            with main_store.redirect(self._output_stream):
                 yield
         finally:
             self._output_stream.disable_flush()
+
+    def _on_exception(self, e: Exception):
+        self.print_exception(e, truncate=2)
+        if isinstance(e, KeyboardInterrupt):
+            main_store.send_message_to_all("Runner interrupted by user.", ClientMsgTypes.BOTH)
+        main_store.clear_edges()
 
     def _run_in_background(
         self, task: Callable[[], None], to_queue=True, redirect_output=False
@@ -875,27 +865,21 @@ class Node(SObject, metaclass=NodeMeta):
         """
         Run a task in the background thread.
         """
-
-        def exception_callback(e):
-            self.print_exception(e, truncate=3)
-            if isinstance(e, KeyboardInterrupt):
-                self.workspace.send_message_to_all("Runner interrupted by user.")
-            self.workspace.background_runner.set_exception_callback(None)
-            self.workspace.clear_edges()
-
         def wrapped():
             self.incr_n_running_tasks()
-            self.workspace.background_runner.set_exception_callback(exception_callback)
-            if redirect_output:
-                with self._redirect_output():
+            try:
+                if redirect_output:
+                    with self._redirect_output():
+                        ret = task()
+                else:
                     ret = task()
-            else:
-                ret = task()
-            self.decr_n_running_tasks()
-            self.workspace.background_runner.set_exception_callback(None)
+            except Exception:
+                raise
+            finally:
+                self.decr_n_running_tasks()
             return ret
 
-        self.workspace.background_runner.push(wrapped, to_queue=to_queue)
+        main_store.runner.push(wrapped, to_queue=to_queue, exception_callback=self._on_exception)
 
     def _run_directly(self, task: Callable[[], None], redirect_output=False):
         """
@@ -924,7 +908,7 @@ class Node(SObject, metaclass=NodeMeta):
                 self.print_exception(e, truncate=1)
             self.decr_n_running_tasks()
 
-        self.workspace.get_communication_event_loop().create_task(wrapped())
+        main_store.event_loop.create_task(wrapped())
 
     def incr_n_running_tasks(self):
         self._n_running_tasks += 1
@@ -992,10 +976,15 @@ class Node(SObject, metaclass=NodeMeta):
             if self.is_destroyed():
                 return
             if running:
-                self.editor.set_running(self, True)
+                self.editor.is_running_manager.set_running(self, True)
             else:
-                self.editor.set_running(self, False)
+                self.editor.is_running_manager.set_running(self, False)
 
+    def get_vars(self):
+        """
+        Get the variables of the running module.
+        """
+        return main_store.vars()
     """
     Node events
     """

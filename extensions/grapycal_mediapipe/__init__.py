@@ -103,7 +103,7 @@ class PoseEstimateNode(Node):
         annotated_image = draw_landmarks_on_image(image.numpy_view(), result)
         y_scale = image.numpy_view().shape[0]/image.numpy_view().shape[1]
         points = []
-        self.workspace.vars()['result'] = result
+        self.get_vars()['result'] = result
         if len(result.pose_world_landmarks) == 0:
             self.print('no pose detected')
             return

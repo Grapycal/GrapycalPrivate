@@ -29,9 +29,9 @@ class EvalNode(SourceNode):
 
     def task(self):
         expression = self.expr_control.text.get()
-        self.workspace.vars().update({'print':self.print,'self':self})
+        self.get_vars().update({'print':self.print,'self':self})
         try:
-            value = eval(expression,self.workspace.vars())
+            value = eval(expression,self.get_vars())
         except Exception as e:
             self.print_exception(e,-1)
             return

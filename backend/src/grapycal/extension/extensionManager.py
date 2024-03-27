@@ -6,6 +6,7 @@ import subprocess
 from unittest import skip
 from grapycal.extension.extensionSearch import get_remote_extensions
 from grapycal.extension.utils import get_extension_info, get_package_version, list_to_dict, snap_node
+from grapycal.stores import main_store
 logger = logging.getLogger(__name__)
 
 from typing import TYPE_CHECKING, Dict, List, Tuple
@@ -21,9 +22,8 @@ if TYPE_CHECKING:
     from grapycal.core.workspace import Workspace
 
 class ExtensionManager:
-    def __init__(self,objectsync_server:objectsync.Server,workspace:'Workspace') -> None:
+    def __init__(self,objectsync_server:objectsync.Server) -> None:
         self._objectsync = objectsync_server
-        self._workspace = workspace
         cwd = sys.path[0]
         self._local_extension_dir = join(cwd,'.grapycal','extensions')
         sys.path.append(self._local_extension_dir)
@@ -33,12 +33,11 @@ class ExtensionManager:
         self._imported_extensions_topic = self._objectsync.create_topic('imported_extensions',objectsync.DictTopic,is_stateful=False)
         self._avaliable_extensions_topic = self._objectsync.create_topic('avaliable_extensions',objectsync.DictTopic,is_stateful=False)
         self._not_installed_extensions_topic = self._objectsync.create_topic('not_installed_extensions',objectsync.DictTopic,is_stateful=False)
-        self._node_types_topic = self._objectsync.create_topic('node_types',objectsync.DictTopic,is_stateful=False)
-        self._objectsync.on('import_extension',self.import_extension,is_stateful=False)
-        self._objectsync.on('unimport_extension',self.unimport_extension,is_stateful=False)
-        self._objectsync.on('update_extension',self.update_extension,is_stateful=False)
-        self._objectsync.on('refresh_extensions',self._update_available_extensions_topic,is_stateful=False)
-        self._objectsync.on('install_extension',self._install_extension,is_stateful=False)
+        self._objectsync.register_service('import_extension',self.import_extension)
+        self._objectsync.register_service('unimport_extension',self.unimport_extension)
+        self._objectsync.register_service('update_extension',self.update_extension)
+        self._objectsync.register_service('refresh_extensions',self._update_available_extensions_topic)
+        self._objectsync.register_service('install_extension',self._install_extension)
 
     def start(self) -> None:
         '''
@@ -46,7 +45,7 @@ class ExtensionManager:
         '''
         self._update_available_extensions_topic()
 
-    def import_extension(self, extension_name: str, create_nodes=True, log=True) -> Extension:
+    def import_extension(self, extension_name: str, create_nodes=True, log=True) -> None:
         extension = self._load_extension(extension_name)
         if create_nodes:
             try:
@@ -56,18 +55,17 @@ class ExtensionManager:
                 raise
             self._instantiate_singletons(extension_name)
         self._update_available_extensions_topic()
-        self._workspace.slash.register(f'reload: {extension_name}',lambda _: self.update_extension(extension_name),source=extension_name)
-        self._workspace.slash.register(f'unimport: {extension_name}',lambda _: self.unimport_extension(extension_name),source=extension_name)
+        main_store.slash.register(f'reload: {extension_name}',lambda _: self.update_extension(extension_name),source=extension_name)
+        main_store.slash.register(f'unimport: {extension_name}',lambda _: self.unimport_extension(extension_name),source=extension_name)
         if log:
             logger.info(f'Imported extension {extension_name}')
-            self._workspace.send_message_to_all(f'Imported extension {extension_name}')
+            main_store.send_message_to_all(f'Imported extension {extension_name}')
         self._objectsync.clear_history_inclusive()
-        return extension
 
     def update_extension(self, extension_name: str) -> None:
         old_version = self._extensions[extension_name]
         old_node_types = set(old_version.node_types_d_without_extension_name.keys())
-        new_version = get_extension(extension_name,self._workspace,set(self._objectsync.get_all_node_types().values())-set(old_version.node_types_d.values()))
+        new_version = get_extension(extension_name,set(self._objectsync.get_all_node_types().values())-set(old_version.node_types_d.values()))
 
         # Get diff between old and new version
         new_node_types = set(new_version.node_types_d_without_extension_name.keys())
@@ -75,7 +73,7 @@ class ExtensionManager:
         added_node_types = new_node_types - old_node_types
         changed_node_types = old_node_types & new_node_types
 
-        existing_nodes = self._workspace.get_workspace_object().get_children_of_type(Node)
+        existing_nodes = main_store.main_editor.get_children_of_type(Node) + main_store.sidebar.get_children_of_type(Node)
 
         # Ensure there are no nodes of removed types
         for node in existing_nodes:
@@ -98,7 +96,7 @@ class ExtensionManager:
             node_extension_name,node_type_name_without_extension = node_type_name.split('.')
             return node_extension_name == extension_name and node_type_name_without_extension in changed_node_types
 
-        nodes_to_update = self._workspace.get_workspace_object().main_editor.top_down_search(
+        nodes_to_update = main_store.main_editor.top_down_search(
             accept=hit,
             stop=hit,
             type=Node
@@ -136,14 +134,14 @@ class ExtensionManager:
         self.unimport_extension(old_version.name,log=False)
         self.import_extension(new_version.name,create_nodes=False,log=False)
 
-        self._workspace.get_workspace_object().main_editor.restore(nodes_to_recover,edges_to_recover)
+        main_store.main_editor.restore(nodes_to_recover,edges_to_recover)
 
         self.create_preview_nodes(new_version.name)
         self._instantiate_singletons(new_version.name)
         self._update_available_extensions_topic()
 
         logger.info(f'Reloaded extension {extension_name}')
-        self._workspace.send_message_to_all(f'Reloaded extension {extension_name} {new_version.version}')
+        main_store.send_message_to_all(f'Reloaded extension {extension_name} {new_version.version}')
         self._objectsync.clear_history_inclusive()
 
     def unimport_extension(self, extension_name: str, log=True) -> None:
@@ -151,10 +149,10 @@ class ExtensionManager:
         self._destroy_nodes(extension_name)
         self._unload_extension(extension_name)
         self._update_available_extensions_topic()
-        self._workspace.slash.unregister_source(extension_name)
+        main_store.slash.unregister_source(extension_name)
         if log:
             logger.info(f'Unimported extension {extension_name}')
-            self._workspace.send_message_to_all(f'Unimported extension {extension_name}')
+            main_store.send_message_to_all(f'Unimported extension {extension_name}')
         self._objectsync.clear_history_inclusive() 
 
     def _instantiate_singletons(self, extension_name: str) -> None:
@@ -164,10 +162,10 @@ class ExtensionManager:
         extension = self._extensions[extension_name]
         for node_type_name, node_type in extension.singletonNodeTypes.items():
             if node_type._auto_instantiate and not hasattr(node_type,'instance'):
-                self._workspace.get_workspace_object().main_editor.create_node(node_type, translation='9999,9999',is_new = True)
+                main_store.main_editor.create_node(node_type, translation='9999,9999',is_new = True)
 
     def _update_available_extensions_topic(self) -> None:
-        self._workspace.add_task_to_event_loop(self._update_available_extensions_topic_async())
+        main_store.event_loop.create_task(self._update_available_extensions_topic_async())
 
     async def _update_available_extensions_topic_async(self) -> None:
         '''
@@ -175,10 +173,10 @@ class ExtensionManager:
         '''
         available_extensions = self._scan_available_extensions()
         self._avaliable_extensions_topic.set(list_to_dict(available_extensions,'name'))
-        self._workspace.slash.unregister_source('import_extension')
+        main_store.slash.unregister_source('import_extension')
         for extension in available_extensions:
             extension_name = extension['name']+''
-            self._workspace.slash.register(f'import: {extension_name}',lambda _,n=extension_name: self.import_extension(n),source='import_extension')
+            main_store.slash.register(f'import: {extension_name}',lambda _,n=extension_name: self.import_extension(n),source='import_extension')
         not_installed_extensions = await get_remote_extensions()
         not_installed_extensions = [info for info in not_installed_extensions 
                                         if (info['name'] not in self._avaliable_extensions_topic and 
@@ -225,7 +223,7 @@ class ExtensionManager:
                             ')
         
     def _install_extension(self, extension_name: str) -> None:
-        self._workspace.add_task_to_event_loop(self._install_extension_async(extension_name))
+        main_store.event_loop.create_task(self._install_extension_async(extension_name))
     
     async def _install_extension_async(self, extension_name: str) -> None:
         # TODO: async this slow stuff
@@ -248,11 +246,11 @@ class ExtensionManager:
         await self._update_available_extensions_topic_async()
 
     def _load_extension(self, name: str) -> Extension:
-        extension = self._extensions[name] = get_extension(name,self._workspace,set(self._objectsync.get_all_node_types().values()))
+        extension = self._extensions[name] = get_extension(name,set(self._objectsync.get_all_node_types().values()))
         self._register_extension(name)
         self._imported_extensions_topic.add(name,extension.get_info())
         for node_type_name, node_type in extension.node_types_d.items():
-            self._node_types_topic.add(node_type_name,{
+            main_store.node_types.add(node_type_name,{
                 'name':node_type_name,
                 'category':node_type.category,
                 'description':node_type.__doc__,
@@ -262,20 +260,20 @@ class ExtensionManager:
     def _register_extension(self, name: str) -> None:
         for node_type_name, node_type in self._extensions[name].node_types_d.items():
             self._objectsync.register(node_type,node_type_name)
-            self._workspace.slash.register(
+            main_store.slash.register(
                     node_type_name.split('.')[1][:-4],
                     lambda ctx,n=node_type_name: self._create_node_slash_listener(ctx,n), # the lambda is necessary to capture the value of n
                     source=name,
                     prefix=''
                 )
         for slash in self._extensions[name].get_slash_commands().values():
-            self._workspace.slash.register(slash['name'],slash['callback'],source=name)
+            main_store.slash.register(slash['name'],slash['callback'],source=name)
 
     def _create_node_slash_listener(self, ctx:CommandCtx, node_type_name: str) -> None:
         x = snap_node(ctx.mouse_pos[0])
         y = snap_node(ctx.mouse_pos[1])
         translation = [x,y]
-        self._workspace.get_workspace_object().main_editor.create_node(node_type_name,translation=translation)
+        main_store.main_editor.create_node(node_type_name,translation=translation)
     
     def _check_extension_not_used(self, name: str) -> None:
         extension = self._extensions[name]
@@ -285,7 +283,7 @@ class ExtensionManager:
             if node_type._auto_instantiate:
                 skip_types.add(extension.add_extension_name_to_node_type(node_type.__name__))
 
-        for obj in self._workspace.get_workspace_object().main_editor.top_down_search(type=Node):
+        for obj in main_store.main_editor.top_down_search(type=Node):
             if obj.get_type_name() not in node_types: continue
             if obj.is_preview.get(): continue
             if obj.get_type_name() in skip_types: continue
@@ -298,18 +296,18 @@ class ExtensionManager:
         self._extensions.pop(name)
         self._imported_extensions_topic.pop(name)
         for node_type_name in node_types:
-            self._node_types_topic.pop(node_type_name)
+            main_store.node_types.pop(node_type_name)
             
     def create_preview_nodes(self, name: str) -> None:
         node_types = self._extensions[name].node_types_d
         for node_type in node_types.values():
             if not node_type.category == 'hidden' and not node_type._is_singleton:
-                self._objectsync.create_object(node_type,parent_id=self._workspace.get_workspace_object().sidebar.get_id(),is_preview=True,is_new=True)
+                self._objectsync.create_object(node_type,parent_id=main_store.sidebar.get_id(),is_preview=True,is_new=True)
  
     def _destroy_nodes(self, name: str) -> None:
         node_types = self._extensions[name].node_types_d
-        for obj in self._workspace.get_workspace_object().sidebar.get_children_of_type(Node)\
-        + self._workspace.get_workspace_object().main_editor.top_down_search(type=Node):
+        for obj in main_store.sidebar.get_children_of_type(Node)\
+        + main_store.main_editor.top_down_search(type=Node):
             if obj.get_type_name() in node_types:
                 self._objectsync.destroy_object(obj.get_id())
 

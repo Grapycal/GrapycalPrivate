@@ -6,6 +6,7 @@ from types import ModuleType
 from typing import Any, Callable, Dict, List, TypeVar
 
 from grapycal.sobjects.port import InputPort, OutputPort, Port
+from grapycal.stores import main_store
 if 1+1==3:
     from grapycal.core.workspace import Workspace
 from grapycal.extension.utils import get_extension_info, snap_node
@@ -46,10 +47,10 @@ class Extension(metaclass=ExtensionMeta):
 
     _slash_commands: Dict[str, dict]
 
-    def __init__(self,extension_name:str,module:ModuleType,workspace:'Workspace',existing_node_types:set[type[SObject]]=set()) -> None:
+    def __init__(self,extension_name:str,module:ModuleType,existing_node_types:set[type[SObject]]=set()) -> None:
         self.name = extension_name
         self.version = module.__version__ if hasattr(module,'__version__') else get_extension_info(extension_name)['version']
-        self._workspace = workspace
+
         self._ctx:CommandCtx|None = None
         
         self.node_types_d:Dict[str,type[Node]] = {}
@@ -95,7 +96,7 @@ class Extension(metaclass=ExtensionMeta):
     def _wrap(self,callback):
         def wrapper(ctx:CommandCtx):
             self._ctx = ctx
-            with self._workspace._objectsync.record():
+            with main_store.record():
                 callback(ctx)
             self._ctx = None
         return wrapper
@@ -119,7 +120,7 @@ class Extension(metaclass=ExtensionMeta):
             x = snap_node(x)
             y = snap_node(y)
         translation = [x, y]
-        node = self._workspace.get_workspace_object().main_editor.create_node(node_type, translation=translation,**kwargs)
+        node = main_store.main_editor.create_node(node_type, translation=translation,**kwargs)
         assert isinstance(node, node_type)
         if self._ctx is not None:
             node.add_tag(f"pasted_by_{self._ctx.client_id}")
@@ -132,23 +133,23 @@ class Extension(metaclass=ExtensionMeta):
             x = snap_node(x)
             y = snap_node(y)
         translation = [x, y]
-        node = self._workspace.get_workspace_object().main_editor.create_node(node_type, translation=translation,**kwargs)
+        node = main_store.main_editor.create_node(node_type, translation=translation,**kwargs)
         assert isinstance(node, Node)
         if self._ctx is not None:
             node.add_tag(f"pasted_by_{self._ctx.client_id}")
         return node
     
     def create_edge(self, tail:OutputPort, head:InputPort):
-        self._workspace.get_workspace_object().main_editor.create_edge(tail, head)
+        main_store.main_editor.create_edge(tail, head)
 
     def register_command(self, name:str, callback:Callable[[CommandCtx],None]):
-        self._workspace.slash.register(name, self._wrap(callback), source=self.name)
+        main_store.slash.register(name, self._wrap(callback), source=self.name)
 
     def unregister_command(self, name:str):
-        self._workspace.slash.unregister(name, source=self.name)
+        main_store.slash.unregister(name, source=self.name)
 
     def has_command(self, name:str):
-        return self._workspace.slash.has_command(name, source=self.name)
+        return main_store.slash.has_command(name, source=self.name)
 
 def load_or_reload_module(module_name:str):
     if module_name not in sys.modules:
@@ -165,7 +166,7 @@ def load_or_reload_module(module_name:str):
         module = importlib.import_module(module_name)
     return module
 
-def get_extension(extension_name:str,workspace:'Workspace',existing_node_types:set[type[SObject]]=set())->'Extension':
+def get_extension(extension_name:str,existing_node_types:set[type[SObject]]=set())->'Extension':
     '''
     Finds an importable module with the given name and parses it into an Extension object.
     '''
@@ -182,12 +183,12 @@ def get_extension(extension_name:str,workspace:'Workspace',existing_node_types:s
         if inspect.isclass(obj) and issubclass(obj, Extension):
             if obj == Extension:
                 continue
-            extension = obj(extension_name,module,workspace,existing_node_types)
+            extension = obj(extension_name,module,existing_node_types)
             break
     
     # if not, just take all the Node classes and put them in the extension
     if extension is None:
         subclass = type(extension_name, (Extension,), {})
-        extension = subclass(extension_name,module,workspace,existing_node_types)
+        extension = subclass(extension_name,module,existing_node_types)
 
     return extension

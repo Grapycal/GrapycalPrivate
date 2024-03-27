@@ -15,7 +15,7 @@ export class OptionControl extends Control {
     protected template = `
     <div class="control flex-horiz">
         <div class="label" id="label">Text</div>
-        <div id="slot_menu"></div>
+        <div slot="menu"></div>
     </div>
     `
 

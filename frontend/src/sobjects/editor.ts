@@ -20,7 +20,7 @@ export class Editor extends CompSObject{
         <div class="viewport" id="Viewport" style="width:100%;height:100%;top:0;left:0;">
             <div style="position:absolute;top:50%;left:50%">
                 
-                <div id="slot_default" class="editor" style="position:absolute;top:50%;left:50%;width:1px;height:1px;">
+                <div slot="default" class="editor" id="editor" style="position:absolute;top:50%;left:50%;width:1px;height:1px;">
                 <svg class="bg" id="bg"
                     
                     <defs>
@@ -66,7 +66,7 @@ export class Editor extends CompSObject{
         this.htmlItem = new HtmlItem(this, document.body.getElementsByClassName('main')[0] as HTMLElement);
         this.htmlItem.applyTemplate(this.template);
         let viewport = this.htmlItem.getHtmlEl('Viewport')
-        let editor = this.htmlItem.getHtmlEl('slot_default')
+        let editor = this.htmlItem.getHtmlEl('editor')
         
         this.transform = new Transform(this,editor);
 

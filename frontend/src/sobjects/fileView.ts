@@ -82,7 +82,7 @@ export class FileView extends CompSObject{
                 <span class="tab-title">File View Name</span>
             </h2>
             📁<span id="dir-path"></span>
-            <div id="slot_default" class="files-container"></div>
+            <div slot="default" class="files-container"></div>
             <div class="flex-horiz add">
                 <input id="add-file-input" class="input">
                 <button id="add-file-button" class="grow btn">+📄</button>

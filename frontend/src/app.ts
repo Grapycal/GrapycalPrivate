@@ -150,7 +150,7 @@ function startObjectSync(wsUrl:string){
         }
         if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() == 's') {
             event.preventDefault();
-            objectsync.emit('ctrl+s');
+            objectsync.makeRequest('ctrl+s');
         }
         if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() == 'q') {
             event.preventDefault();

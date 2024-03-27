@@ -3,6 +3,7 @@ from grapycal import Node, IntTopic
 from grapycal.extension.utils import NodeInfo
 from grapycal.sobjects.edge import Edge
 from grapycal.sobjects.port import InputPort
+from grapycal.stores import main_store
 from torch.utils.data import DataLoader
 
 class DataLoaderNode(Node):
@@ -38,7 +39,7 @@ class DataLoaderNode(Node):
                 if self.double_clicked:
                     self.double_clicked = False
                     self.status_control.set('[idle]')
-                    self.workspace.send_message_to_all('DataLoader interrupted at epoch ' + str(i))
+                    main_store.send_message_to_all('DataLoader interrupted at epoch ' + str(i))
                     return
                 self.out.push(batch)
                 self.flash_running_indicator()
