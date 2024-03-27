@@ -1,3 +1,4 @@
+from enum import Enum
 import grapycal.utils.logging
 import logging
 grapycal.utils.logging.setup_logging()
@@ -36,7 +37,7 @@ from grapycal.sobjects.port import InputPort, OutputPort
 from grapycal.sobjects.sidebar import Sidebar
 from grapycal.sobjects.node import Node
 
-class ClientMsgTypes:
+class ClientMsgTypes(Enum):
     '''
     Used to specify the type of message to send to the client. 
     Status messages are displayed in the status bar,
@@ -45,6 +46,9 @@ class ClientMsgTypes:
     STATUS = "status"
     NOTIFICATION = "notification"
     BOTH = "both"
+
+    def __eq__(self, other):
+        return self.value == other.value
 
 
 class Workspace:

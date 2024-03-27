@@ -1,5 +1,5 @@
 
-from typing import TYPE_CHECKING, Any, Callable, Dict
+from typing import TYPE_CHECKING, Any, Callable, Dict, Optional, Protocol, Union
 
 from grapycal.core.slash_command import SlashCommandManager
 
@@ -14,6 +14,15 @@ if TYPE_CHECKING:
     from grapycal.sobjects.workspaceObject import WebcamStream
     from grapycal.utils.httpResource import HttpResource
     from grapycal.sobjects.sidebar import Sidebar
+    from grapycal.core.workspace import ClientMsgTypes
+
+    class SendMessageProtocol(Protocol):
+        def __call__(self, message: str, client_id: int, type: ClientMsgTypes = ...) -> None:
+            ...
+
+    class SendMessageToAllProtocol(Protocol):
+        def __call__(self, message: str, type: ClientMsgTypes = ...) -> None:
+            ...
 
 class MainStore:
     def __init__(self):
@@ -24,8 +33,8 @@ class MainStore:
         self.event_loop: asyncio.AbstractEventLoop
         self.redirect: Callable[[Any],_GeneratorContextManager[None]]
         self.runner: BackgroundRunner
-        self.send_message: Callable[[str,str],None]
-        self.send_message_to_all: Callable[[str],None]
+        self.send_message: SendMessageProtocol
+        self.send_message_to_all: SendMessageToAllProtocol
         self.clear_edges: Callable[[],None]
         self.data_yaml: HttpResource
         self.next_id: Callable[[],int]

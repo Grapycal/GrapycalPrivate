@@ -10,10 +10,10 @@ class BatchNorm2dNode(SimpleModuleNode):
     outputs = ['out']
     display_port_names = False
 
-    def build_node(self):
+    def build_node(self,num_features=1):
         super().build_node()
         self.label.set('BatchNorm2d')
-        self.num_features = self.add_attribute('num_features',IntTopic,1,editor_type='int')
+        self.num_features = self.add_attribute('num_features',IntTopic,num_features,editor_type='int')
         self.icon_path.set('bn')
 
     def restore_from_version(self, version: str, old: NodeInfo):

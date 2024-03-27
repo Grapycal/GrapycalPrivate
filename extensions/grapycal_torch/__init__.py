@@ -215,6 +215,71 @@ class GrapycalTorch(Extension):
 
         self.wrap_with_network(inputs,outputs,x0,y0,x,y,'VGG16')
 
+    @command('Create network: VGG16-BN')
+    def create_vgg16_bn(self,ctx:CommandCtx):
+        node_types = [
+            (Conv2dNode,{'in_channels':3,'out_channels':64,'kernel_size':3,'padding':1}),
+            (BatchNorm2dNode,{'num_features':64}),
+            LeakyReLUNode,
+            (Conv2dNode,{'in_channels':64,'out_channels':64,'kernel_size':3,'padding':1}),
+            (BatchNorm2dNode,{'num_features':64}),
+            LeakyReLUNode,
+            (MaxPool2dNode,{'kernel_size':2}),
+            (Conv2dNode,{'in_channels':64,'out_channels':128,'kernel_size':3,'padding':1}),
+            (BatchNorm2dNode,{'num_features':128}),
+            LeakyReLUNode,
+            (Conv2dNode,{'in_channels':128,'out_channels':128,'kernel_size':3,'padding':1}),
+            (BatchNorm2dNode,{'num_features':128}),
+            LeakyReLUNode,
+            (MaxPool2dNode,{'kernel_size':2}),
+            (Conv2dNode,{'in_channels':128,'out_channels':256,'kernel_size':3,'padding':1}),
+            (BatchNorm2dNode,{'num_features':256}),
+            LeakyReLUNode,
+            (Conv2dNode,{'in_channels':256,'out_channels':256,'kernel_size':3,'padding':1}),
+            (BatchNorm2dNode,{'num_features':256}),
+            LeakyReLUNode,
+            (Conv2dNode,{'in_channels':256,'out_channels':256,'kernel_size':3,'padding':1}),
+            (BatchNorm2dNode,{'num_features':256}),
+            LeakyReLUNode,
+            (MaxPool2dNode,{'kernel_size':2}),
+            '\n',
+            (Conv2dNode,{'in_channels':256,'out_channels':512,'kernel_size':3,'padding':1}),
+            (BatchNorm2dNode,{'num_features':512}),
+            LeakyReLUNode,
+            (Conv2dNode,{'in_channels':512,'out_channels':512,'kernel_size':3,'padding':1}),
+            (BatchNorm2dNode,{'num_features':512}),
+            LeakyReLUNode,
+            (Conv2dNode,{'in_channels':512,'out_channels':512,'kernel_size':3,'padding':1}),
+            (BatchNorm2dNode,{'num_features':512}),
+            LeakyReLUNode,
+            (MaxPool2dNode,{'kernel_size':2}),
+            (Conv2dNode,{'in_channels':512,'out_channels':512,'kernel_size':3,'padding':1}),
+            (BatchNorm2dNode,{'num_features':512}),
+            LeakyReLUNode,
+            (Conv2dNode,{'in_channels':512,'out_channels':512,'kernel_size':3,'padding':1}),
+            (BatchNorm2dNode,{'num_features':512}),
+            LeakyReLUNode,
+            (Conv2dNode,{'in_channels':512,'out_channels':512,'kernel_size':3,'padding':1}),
+            (BatchNorm2dNode,{'num_features':512}),
+            LeakyReLUNode,
+            (MaxPool2dNode,{'kernel_size':2}),
+            '\n',
+            FlattenNode,
+            (LinearNode,{'in_features':512*7*7,'out_features':4096}),
+            LeakyReLUNode,
+            (LinearNode,{'in_features':4096,'out_features':4096}),
+            LeakyReLUNode,
+            (LinearNode,{'in_features':4096,'out_features':1000})
+        ]
+        x0, y0 = ctx.mouse_pos
+        nodes, x, y = self.create_sequential(ctx.mouse_pos[0],ctx.mouse_pos[1],node_types,gap=3)
+
+        inputs = {'image':cast(InputPort,nodes[0].in_ports[0])}
+        outputs = {'class pred':cast(OutputPort,nodes[-1].out_ports[0])}
+        
+        self.wrap_with_network(inputs,outputs,x0,y0,x,y,'VGG16-BN')
+
+
 class MnistDatasetNode(SourceNode):
     category = "torch/dataset"
 

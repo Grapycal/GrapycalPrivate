@@ -8,6 +8,7 @@ from grapycal.sobjects.functionNode import FunctionNode
 from grapycal.sobjects.node import Node, deprecated
 from grapycal.sobjects.port import InputPort
 from grapycal import FloatTopic, StringTopic
+from grapycal.stores import main_store
 from objectsync import ObjSetTopic, SObject
 import torch
 from torch import nn

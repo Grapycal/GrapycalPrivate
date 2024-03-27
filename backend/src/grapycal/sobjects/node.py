@@ -1,4 +1,5 @@
 import logging
+
 logger = logging.getLogger(__name__)
 from typing import TYPE_CHECKING, Awaitable, Callable, Literal, Self, TypeVar
 
@@ -40,6 +41,7 @@ from objectsync.sobject import SObjectSerialized, WrappedTopic
 
 if TYPE_CHECKING:
     from grapycal.extension.extension import Extension
+    from grapycal.core.workspace import ClientMsgTypes
 
 def warn_no_control_name(control_type, node):
     '''
@@ -851,33 +853,33 @@ class Node(SObject, metaclass=NodeMeta):
         finally:
             self._output_stream.disable_flush()
 
+    def _on_exception(self, e: Exception):
+        self.print_exception(e, truncate=2)
+        if isinstance(e, KeyboardInterrupt):
+            main_store.send_message_to_all("Runner interrupted by user.", ClientMsgTypes.BOTH)
+        main_store.clear_edges()
+
     def _run_in_background(
         self, task: Callable[[], None], to_queue=True, redirect_output=False
     ):
         """
         Run a task in the background thread.
         """
-
-        def exception_callback(e):
-            self.print_exception(e, truncate=3)
-            if isinstance(e, KeyboardInterrupt):
-                main_store.send_message_to_all("Runner interrupted by user.")
-            main_store.runner.set_exception_callback(None)
-            main_store.clear_edges()
-
         def wrapped():
             self.incr_n_running_tasks()
-            main_store.runner.set_exception_callback(exception_callback)
-            if redirect_output:
-                with self._redirect_output():
+            try:
+                if redirect_output:
+                    with self._redirect_output():
+                        ret = task()
+                else:
                     ret = task()
-            else:
-                ret = task()
-            self.decr_n_running_tasks()
-            main_store.runner.set_exception_callback(None)
+            except Exception:
+                raise
+            finally:
+                self.decr_n_running_tasks()
             return ret
 
-        main_store.runner.push(wrapped, to_queue=to_queue)
+        main_store.runner.push(wrapped, to_queue=to_queue, exception_callback=self._on_exception)
 
     def _run_directly(self, task: Callable[[], None], redirect_output=False):
         """
