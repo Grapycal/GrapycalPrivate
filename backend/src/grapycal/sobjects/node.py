@@ -737,7 +737,7 @@ class Node(SObject, metaclass=NodeMeta):
         Args:
             - attribute: The attribute to expose.
 
-            - editor_type: The type of the editor to use. Can be ``text`` or ``list``.
+            - editor_type: The type of the editor to use. Can be ``text``, ``list``, ``int``, ``float``,  ``button``, ``options``, or ``dict``.
 
             - display_name: The name to display in the editor. If not specified, the attribute's name will be used.
 
