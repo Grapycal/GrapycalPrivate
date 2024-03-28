@@ -348,7 +348,7 @@ class Workspace:
             self._send_message_to_all(message, ClientMsgTypes.NOTIFICATION)
             self._send_message_to_all(message, ClientMsgTypes.STATUS)
     
-        self._objectsync.emit("status_message", message=message, type=type)
+        self._objectsync.emit("status_message", message=message, type=type.value)
     
     def _send_message(self, message, client_id=None, type=ClientMsgTypes.NOTIFICATION):
         if not self.is_running:
@@ -358,7 +358,7 @@ class Workspace:
             self._send_message(message, ClientMsgTypes.STATUS)
         if client_id is None:
             client_id = self._objectsync.get_action_source()
-        self._objectsync.emit(f"status_message_{client_id}", message=message, type=type)
+        self._objectsync.emit(f"status_message_{client_id}", message=message, type=type.value)
     
     def _next_id(self):
         self.grapycal_id_count += 1
