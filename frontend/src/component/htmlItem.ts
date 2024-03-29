@@ -112,7 +112,9 @@ export class HtmlItem extends Component{
                 slot.appendChild(child.item.baseElement);
             else
                 slot.prepend(child.item.baseElement);
+            child.item.parent_slot = slot;
         }
+        
         
         this.templateChanged.invoke();
     }

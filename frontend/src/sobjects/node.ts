@@ -421,6 +421,8 @@ export class Node extends CompSObject implements IControlHost {
         this.eventDispatcher.setEventElement(as(this.htmlItem.baseElement, HTMLElement))
         this.mouseOverDetector.eventElement = this.htmlItem.baseElement
         
+        this.htmlItem.getHtmlEl('label').innerText = this.label.getValue()
+        
         this.link2(this.htmlItem.baseElement,'mousedown', () => {
             soundManager.playClick()
         })
