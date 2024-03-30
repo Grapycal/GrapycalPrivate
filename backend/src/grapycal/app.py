@@ -75,11 +75,18 @@ class GrapycalApp:
             print(f'Start browser at URL: http://localhost:{self._config["http_port"]}')
 
         while True:  # Restart workspace when it exits. Convenient for development
+            
+            # turn on sigint handler
+            signal.signal(signal.SIGINT, signal.default_int_handler)
+            
             import random
             workspace_id = random.randint(0, 1000000) # used for exit message file
             with self._run_workspace(workspace_id) as workspace:
                 self._waitForWorkspace(workspace)
 
+            # turn off sigint handler to avoid the third sigint
+            signal.signal(signal.SIGINT, lambda sig, frame: None)
+            
             restart = self._config["restart"] and workspace.poll() == 0
 
             exit_message_file = f"grapycal_exit_message_{workspace_id}"
@@ -146,7 +153,7 @@ class GrapycalApp:
                 time.sleep(3)
             except KeyboardInterrupt:
                 print(
-                    "Shutting down Grapycal server will force kill all workspaces. Press Ctrl+C again to confirm."
+                    "Press Ctrl+C again to confirm exit."
                 )
                 try:
                     time.sleep(3)
