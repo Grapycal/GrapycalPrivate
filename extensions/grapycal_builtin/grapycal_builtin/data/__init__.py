@@ -3,7 +3,7 @@ from grapycal.extension.utils import NodeInfo
 from grapycal.sobjects.sourceNode import SourceNode
 from grapycal.sobjects.controls import TextControl
 from grapycal.sobjects.edge import Edge
-from grapycal.sobjects.node import Node
+from grapycal.sobjects.node import Node, deprecated
 from grapycal.sobjects.port import InputPort
 from grapycal import ListTopic, StringTopic
 
@@ -50,6 +50,7 @@ class VariableNode(SourceNode):
         for edge in self.out_port.edges:
             edge.push(self.value)
 
+@deprecated('Use SplitList or SplitDict instead','0.12.0','0.13.0')
 class SplitNode(Node):
     '''
     SplitNode is used to get items from a list or a dictionary using keys.
@@ -100,4 +101,70 @@ class SplitNode(Node):
             else:
                 out_port.push(data[key])
 
+class SplitListNode(Node):
+    '''
+    '''
+    category = 'data'
+
+    def build_node(self):
+        self.in_port = self.add_in_port('list',1)
+        self.label.set('Split List')
+        self.shape.set('normal')
+        self.keys = self.add_attribute('keys', ListTopic, editor_type='list')
         
+        if not self.is_new:
+            for key in self.keys:
+                self.add_out_port(key)
+
+    def init_node(self):
+        self.keys.on_insert.add_auto(self.add_key)
+        self.keys.on_pop.add_auto(self.remove_key)
+
+    def add_key(self, key, position):
+        self.add_out_port(key)
+
+    def remove_key(self, key, position):
+        self.remove_out_port(key)
+
+    def edge_activated(self, edge: Edge, port: InputPort):
+        self.run(self.task,background=False)
+        
+    def task(self):
+        data = self.in_port.get()
+        for out_port in self.out_ports:
+            key = out_port.name.get()
+            out_port.push(eval(f'_data[{key}]',self.get_vars(),{'_data':data}))
+
+class SplitDictNode(Node):
+    '''
+    '''
+    category = 'data'
+
+    def build_node(self):
+        self.in_port = self.add_in_port('dict',1)
+        self.label.set('Split Dict')
+        self.shape.set('normal')
+        self.keys = self.add_attribute('keys', ListTopic, editor_type='list')
+        
+        if not self.is_new:
+            for key in self.keys:
+                self.add_out_port(key)
+
+    def init_node(self):
+        self.keys.on_insert.add_auto(self.add_key)
+        self.keys.on_pop.add_auto(self.remove_key)
+
+    def add_key(self, key, position):
+        self.add_out_port(key)
+
+    def remove_key(self, key, position):
+        self.remove_out_port(key)
+
+    def edge_activated(self, edge: Edge, port: InputPort):
+        self.run(self.task,background=False)
+        
+    def task(self):
+        data = self.in_port.get()
+        for out_port in self.out_ports:
+            key = out_port.name.get()
+            out_port.push(data[key])
