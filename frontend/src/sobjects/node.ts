@@ -25,6 +25,7 @@ export class Node extends CompSObject implements IControlHost {
         for(let subCat of category.split('/')){
             if(subCat == '') continue
             str += '-'+subCat.replace(/[^a-zA-Z0-9]/g,'-')
+            str = str.toLowerCase()
             classes.push(str)
         }
         return classes

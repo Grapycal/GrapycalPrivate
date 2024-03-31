@@ -287,11 +287,40 @@ class MnistDatasetNode(SourceNode):
         super().build_node()
         self.label.set("MNIST Dataset")
         self.out = self.add_out_port("MNIST Dataset")
-
+        self.include_labels = self.add_option_control(name='include_labels',options=['True','False'], value= 'True',label='Include labels')
+        self.max_size = self.add_text_control("0", "max_size", name="max_size")
     def task(self):
-        ds = torchvision.datasets.mnist.MNIST("data", download=True)
-        self.out.push(ds)
 
+        try:
+            max_size = int(self.max_size.get())
+        except ValueError:
+            max_size = 0
+            self.max_size.set("0")
+        
+        transform = transforms.Compose(
+            [
+                transforms.ToTensor(),
+            ]
+        )
+
+        with self._redirect_output():
+            raw_ds = torchvision.datasets.mnist.MNIST(
+                root=main_store.settings.data_path.get(),
+                download=True,
+                transform=transform,
+            )
+
+        if max_size == 0:
+            max_size = len(raw_ds)
+            
+        ds = []
+        for i in range(max_size):
+            ds.append(raw_ds[i])
+
+        if self.include_labels.get() == 'False':
+            ds = [x[0] for x in ds]
+
+        self.out.push(ds)
 
 import aiofiles
 
