@@ -1,4 +1,5 @@
 import logging
+
 logger = logging.getLogger(__name__)
 
 from collections import deque
@@ -9,31 +10,35 @@ from typing import Callable, Iterator, Tuple
 import signal
 from .stdout_helper import orig_print
 
+
 class TaskInfo:
-    def __init__(self, task: Callable|Iterator, exception_callback: Callable[[Exception], None]|None=None):
+    def __init__(self, task: Callable | Iterator, exception_callback: Callable[[Exception], None] | None = None):
         self.task = task
         self.exception_callback = exception_callback
 
-def on_exception(e: Exception, exception_callback: Callable[[Exception], None]|None=None):
+
+def on_exception(e: Exception, exception_callback: Callable[[Exception], None] | None = None):
     if exception_callback is None:
-        orig_print('No exception callback',e)
+        orig_print('No exception callback', e)
     else:
         exception_callback(e)
 
+
 class BackgroundRunner:
     def __init__(self):
-        self._inputs: Queue[Tuple[TaskInfo,bool]] = Queue()
+        self._inputs: Queue[Tuple[TaskInfo, bool]] = Queue()
         self._queue: deque[TaskInfo] = deque()
         self._stack: deque[TaskInfo] = deque()
         self._exit_flag = False
 
-    def push(self, task: Callable, to_queue: bool = True, exception_callback: Callable[[Exception], None]|None=None):
+    def push(self, task: Callable, to_queue: bool = True,
+             exception_callback: Callable[[Exception], None] | None = None):
         self._inputs.put((TaskInfo(task, exception_callback), to_queue))
 
-    def push_to_queue(self, task: Callable, exception_callback: Callable[[Exception], None]|None=None):
+    def push_to_queue(self, task: Callable, exception_callback: Callable[[Exception], None] | None = None):
         self._inputs.put((TaskInfo(task, exception_callback), True))
 
-    def push_to_stack(self, task: Callable, exception_callback: Callable[[Exception], None]|None=None):
+    def push_to_stack(self, task: Callable, exception_callback: Callable[[Exception], None] | None = None):
         self._inputs.put((TaskInfo(task, exception_callback), False))
 
     def interrupt(self):
@@ -75,7 +80,6 @@ class BackgroundRunner:
                         self._queue.append(task_info)
                     else:
                         self._stack.append(task_info)
-
 
                 # queue is prioritized
                 if len(self._queue) > 0:

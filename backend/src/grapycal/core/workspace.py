@@ -1,6 +1,7 @@
 from enum import Enum
 import grapycal.utils.logging
 import logging
+
 grapycal.utils.logging.setup_logging()
 logger = logging.getLogger("workspace")
 
@@ -29,13 +30,15 @@ from grapycal.stores import main_store
 ''' import all sobject types to register them to the objectsync server '''
 from grapycal.sobjects.fileView import LocalFileView, RemoteFileView
 from grapycal.sobjects.settings import Settings
-from grapycal.sobjects.controls import ButtonControl, ImageControl, LinePlotControl, NullControl, OptionControl, TextControl, ThreeControl
+from grapycal.sobjects.controls import ButtonControl, ImageControl, LinePlotControl, NullControl, OptionControl, \
+    TextControl, ThreeControl
 from grapycal.sobjects.editor import Editor
 from grapycal.sobjects.workspaceObject import WebcamStream, WorkspaceObject
 from grapycal.sobjects.edge import Edge
 from grapycal.sobjects.port import InputPort, OutputPort
 from grapycal.sobjects.sidebar import Sidebar
 from grapycal.sobjects.node import Node
+
 
 class ClientMsgTypes(Enum):
     '''
@@ -62,12 +65,13 @@ class Workspace:
     workspace.run()
     ```
     '''
+
     def __init__(self, port, host, path, workspace_id) -> None:
         self.path = path
         self.port = port
         self.host = host
 
-        self.workspace_id = workspace_id 
+        self.workspace_id = workspace_id
         '''used for exit message file'''
 
         self.grapycal_id_count = 0
@@ -84,7 +88,6 @@ class Workspace:
         self._slash_commands_topic = self._objectsync.create_topic("slash_commands", objectsync.DictTopic)
         self.slash = SlashCommandManager(self._slash_commands_topic)
         stdout_helper.enable_proxy(redirect_error=False)
-
 
     def run(self, run_runner=True) -> None:
         '''
@@ -106,12 +109,13 @@ class Workspace:
         # Start the communication thread.
         # The thread runs the objectsync server in an asyncio event loop.
         event_loop_set_event = threading.Event()
-        threading.Thread(target=self._communication_thread, daemon=True, args=[event_loop_set_event]).start()  # daemon=True until we have a proper exit strategy
+        threading.Thread(target=self._communication_thread, daemon=True,
+                         args=[event_loop_set_event]).start()  # daemon=True until we have a proper exit strategy
         event_loop_set_event.wait()
-        
+
         # The extension manager starts searching for all extensions available.
         self._extention_manager.start()
-        
+
         # The store is a global object that holds all the data and functions that are shared across classes.
         self._setup_store()
 
@@ -122,12 +126,12 @@ class Workspace:
         if run_runner:
             signal.signal(signal.SIGTERM, lambda sig, frame: self._exit())
             self.is_running = True
-            main_store.runner.run() # this is a blocking call
+            main_store.runner.run()  # this is a blocking call
 
     '''
     Subroutines of run()
     '''
-    
+
     def _setup_objectsync(self):
         # Register all the sobject types to the objectsync server so they can be created dynamically.
         self._objectsync.register(WorkspaceObject)
@@ -139,20 +143,20 @@ class Workspace:
         self._objectsync.register(InputPort)
         self._objectsync.register(OutputPort)
         self._objectsync.register(Edge)
-    
+
         self._objectsync.register(TextControl)
         self._objectsync.register(ButtonControl)
         self._objectsync.register(ImageControl)
         self._objectsync.register(ThreeControl)
         self._objectsync.register(NullControl)
         self._objectsync.register(OptionControl)
-    
+
         self._objectsync.register(WebcamStream)
         self._objectsync.register(LinePlotControl)
-    
+
         self._objectsync.on_client_connect += self._client_connected
         self._objectsync.on_client_disconnect += self._client_disconnected
-    
+
         # creates the status message topic so client can subscribe to it
         self._objectsync.create_topic(
             f"status_message", objectsync.EventTopic, is_stateful=False
@@ -160,19 +164,19 @@ class Workspace:
         self._objectsync.create_topic(
             "meta", objectsync.DictTopic, {"workspace name": self.path}
         )
-    
+
         self._objectsync.register_service("exit", self._exit)
         self._objectsync.register_service("interrupt", self._interrupt)
-        self._objectsync.register_service("slash_command", lambda name,ctx: self.slash.call(name,CommandCtx(**ctx)))
+        self._objectsync.register_service("slash_command", lambda name, ctx: self.slash.call(name, CommandCtx(**ctx)))
         self._objectsync.register_service("ctrl+s", lambda: self._save_workspace(self.path))
         self._objectsync.register_service("open_workspace", self._open_workspace_callback)
 
     def _setup_slash_commands(self):
-        self.slash.register("save workspace", lambda ctx: self._save_workspace(self.path)) 
-    
+        self.slash.register("save workspace", lambda ctx: self._save_workspace(self.path))
+
     def _communication_thread(self, event_loop_set_event: threading.Event):
         asyncio.run(self._async_communication_thread(event_loop_set_event))
-    
+
     async def _async_communication_thread(self, event_loop_set_event: threading.Event):
         main_store.event_loop = asyncio.get_event_loop()
         event_loop_set_event.set()
@@ -193,7 +197,7 @@ class Workspace:
         """
         Assign members needed for the main_store.
         """
-        main_store.node_types = self._objectsync.create_topic('node_types',objectsync.DictTopic,is_stateful=False)
+        main_store.node_types = self._objectsync.create_topic('node_types', objectsync.DictTopic, is_stateful=False)
         main_store.clock = Clock(0.1)
         main_store.event_loop.create_task(main_store.clock.run())
         main_store.redirect = stdout_helper.redirect
@@ -259,10 +263,10 @@ class Workspace:
             main_store.main_editor.top_down_search(type=Edge)
         )
         logger.info(
-            f"Workspace saved to {path}. Node count: {node_count}. Edge count: {edge_count}. File size: {file_size//1024} KB."
+            f"Workspace saved to {path}. Node count: {node_count}. Edge count: {edge_count}. File size: {file_size // 1024} KB."
         )
         self._send_message_to_all(
-            f"Workspace saved to {path}. Node count: {node_count}. Edge count: {edge_count}. File size: {file_size//1024} KB."
+            f"Workspace saved to {path}. Node count: {node_count}. Edge count: {edge_count}. File size: {file_size // 1024} KB."
         )
 
     def _load_workspace(self, path: str) -> None:
@@ -341,15 +345,16 @@ class Workspace:
     '''
     Utility functions
     '''
+
     def _send_message_to_all(self, message, type=ClientMsgTypes.NOTIFICATION):
         if not self.is_running:
             return
         if type == ClientMsgTypes.BOTH:
             self._send_message_to_all(message, ClientMsgTypes.NOTIFICATION)
             self._send_message_to_all(message, ClientMsgTypes.STATUS)
-    
+
         self._objectsync.emit("status_message", message=message, type=type.value)
-    
+
     def _send_message(self, message, client_id=None, type=ClientMsgTypes.NOTIFICATION):
         if not self.is_running:
             return
@@ -359,34 +364,35 @@ class Workspace:
         if client_id is None:
             client_id = self._objectsync.get_action_source()
         self._objectsync.emit(f"status_message_{client_id}", message=message, type=type.value)
-    
+
     def _next_id(self):
         self.grapycal_id_count += 1
         return self.grapycal_id_count
-    
+
     def _clear_edges(self):
         edges = self._workspace_object.top_down_search(type=Edge)
         for edge in edges:
             edge.clear()
-    
+
     def _vars(self) -> Dict[str, Any]:
         return self.running_module.__dict__
 
     '''
     Callbacks
     '''
+
     def _exit(self):
         main_store.runner.exit()
-    
+
     def _interrupt(self):
         main_store.runner.interrupt()
         main_store.runner.clear_tasks()
-    
+
     def _client_connected(self, client_id):
         self._objectsync.create_topic(
             f"status_message_{client_id}", objectsync.EventTopic
         )
-    
+
     def _client_disconnected(self, client_id):
         try:
             self._objectsync.remove_topic(f"status_message_{client_id}")
@@ -395,6 +401,7 @@ class Workspace:
 
 
 import argparse
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--port", type=int, default=8765)
