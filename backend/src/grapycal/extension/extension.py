@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 import importlib
 import inspect
+import os
 import sys
 from types import ModuleType
 from typing import Any, Callable, Dict, List, TypeVar
@@ -150,6 +151,9 @@ class Extension(metaclass=ExtensionMeta):
 
     def has_command(self, name:str):
         return main_store.slash.has_command(name, source=self.name)
+    
+    def get_data_path(self, path:str)->str:
+        return os.path.join(main_store.settings.data_path.get(),path)
 
 def load_or_reload_module(module_name:str):
     if module_name not in sys.modules:

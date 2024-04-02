@@ -20,6 +20,7 @@ from .networkDef import *
 from .settings import *
 from .configureNode import *
 from .pooling import *
+from .conversion import *
 
 
 import torch
