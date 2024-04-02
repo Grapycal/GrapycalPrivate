@@ -105,6 +105,8 @@ class Instrument:
     
     def get_frames(self,pitch:int,velocity:int,start:int,length:int) -> np.ndarray:
         file = self.get(pitch,velocity)
+        if start >= file.getnframes():
+            return np.zeros(length)
         file.setpos(start)
         frames = file.readframes(length)
         frames = np.frombuffer(frames,dtype='int16').astype('float32') / 32768

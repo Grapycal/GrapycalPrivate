@@ -23,6 +23,7 @@ import { FileView } from './sobjects/fileView'
 import { LoginApiClient } from './loginApi/loginApi'
 import { OptionControl } from './sobjects/controls/optionControl'
 import { AppNotification } from './ui_utils/appNotification'
+import { KeyboardControl } from './sobjects/controls/keyboardControl'
 
 export const soundManager = new SoundManager();
 
@@ -131,6 +132,7 @@ function startObjectSync(wsUrl:string){
     objectsync.register(ThreeControl)
     objectsync.register(LinePlotControl)
     objectsync.register(OptionControl)
+    objectsync.register(KeyboardControl)
 
     objectsync.register(WebcamStream)
 

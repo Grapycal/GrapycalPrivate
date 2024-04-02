@@ -1,5 +1,7 @@
 import logging
 
+from grapycal.sobjects.controls.keyboardControl import KeyboardControl
+
 logger = logging.getLogger(__name__)
 from typing import TYPE_CHECKING, Awaitable, Callable, Literal, Self, TypeVar
 
@@ -668,6 +670,13 @@ class Node(SObject, metaclass=NodeMeta):
         control = self.add_control(
             OptionControl, value=value, options=options, label=label, name=name
         )
+        return control
+    
+    def add_keyboard_control(self, label: str = "") -> KeyboardControl:
+        """
+        Add a keyboard control to the node.
+        """
+        control = self.add_control(KeyboardControl, label=label)
         return control
 
     def remove_control(self, control: str | Control):

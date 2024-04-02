@@ -55,7 +55,12 @@ class SynthNode(Node):
             return
         while self.sample_t < t: # Generate samples until current time
             n = int((self.sample_t % self.t_mod) * self.ext.sample_rate)
-            self.out_port.push(self.sample(n, self.ext.chunk_size))
+            try:
+                samples = self.sample(n, self.ext.chunk_size)
+            except Exception as e:
+                self.print_exception(e)
+                samples = np.zeros(self.ext.chunk_size, dtype='float32')
+            self.out_port.push(samples)
             self.sample_t += self.ext.chunk_duration
 
         self.flash_running_indicator() #If performance is an issue, remove this line
@@ -170,6 +175,10 @@ class InstrumentNode(SynthNode):
         self.instrument = Instrument(self.ext.get_data_path('grand_piano'))
         if not self.instrument.files_exist():
             self.print_exception(f'instrument file missing: {self.instrument._root}') # TODO download the instrument
+        self.release_time = 0.05 # seconds
+        self.relase_envelope = np.concatenate([np.linspace(1, 0, int(self.release_time*self.ext.sample_rate), dtype='float32'),
+            np.zeros(self.ext.chunk_size, dtype='float32')]
+        )
 
     def edge_activated(self, edge: Edge, port: InputPort):
         super().edge_activated(edge, port)
@@ -186,7 +195,7 @@ class InstrumentNode(SynthNode):
             note_info:dict = edge.get()
             pitch = note_info['pitch']
             if pitch in self.playing_notes:
-                self.playing_notes[pitch].offset = note_info.get('offset',self.sample_t)
+                self.playing_notes[pitch].offset = note_info.get('offset',int(self.sample_t*self.ext.sample_rate))
 
     def sample(self, n:int, l:int):
         # stack all playing notes
@@ -195,12 +204,36 @@ class InstrumentNode(SynthNode):
         for note in self.playing_notes.values():
             samples_since_onset = n - note.onset
             samples_since_offset = n - note.offset
-            if samples_since_onset < 0:
+
+            # note has not started yet
+            if samples_since_onset < 0: 
                 continue
-            if samples_since_offset > 0:
+
+            # note is still playing
+            if samples_since_offset < 0: 
+                note.velocity = 1 # TODO implement velocity
+                try:
+                    samples += self.instrument.get_frames(note.pitch, note.velocity, samples_since_onset, self.ext.chunk_size)
+                except Exception as e:
+                    self.print_exception(e)
+                    to_delete.append(note.pitch)
+                    continue
+
+            # note is releasing
+            elif samples_since_offset < self.release_time*self.ext.sample_rate: 
+                try:
+                    samples += self.instrument.get_frames(note.pitch, note.velocity, samples_since_onset, self.ext.chunk_size)*\
+                        self.relase_envelope[samples_since_offset:samples_since_offset+l]
+                except Exception as e:
+                    self.print_exception(e)
+                    to_delete.append(note.pitch)
+                    continue
+            
+            # note is done
+            else: 
                 to_delete.append(note.pitch)
                 continue
-            samples += self.instrument.get_frames(note.pitch, note.velocity, samples_since_onset, self.ext.chunk_size)
+            
         for pitch in to_delete:
             del self.playing_notes[pitch]
         return samples
