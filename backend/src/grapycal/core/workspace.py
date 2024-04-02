@@ -1,10 +1,7 @@
 from enum import Enum
 import grapycal.utils.logging
 import logging
-
-grapycal.utils.logging.setup_logging()
-logger = logging.getLogger("workspace")
-
+import argparse
 import os
 import threading
 import asyncio
@@ -14,8 +11,6 @@ from dacite import from_dict
 from typing import Any, Dict
 import objectsync
 from objectsync.sobject import SObjectSerialized
-
-''' Import utils from grapycal '''
 import grapycal
 from grapycal.core.slash_command import SlashCommandManager
 from grapycal.extension.extension import CommandCtx
@@ -26,8 +21,6 @@ from grapycal.utils.io import file_exists, read_workspace, write_workspace
 from grapycal.core import stdout_helper, running_module
 from grapycal.core.background_runner import BackgroundRunner
 from grapycal.stores import main_store
-
-''' import all sobject types to register them to the objectsync server '''
 from grapycal.sobjects.fileView import LocalFileView, RemoteFileView
 from grapycal.sobjects.settings import Settings
 from grapycal.sobjects.controls import ButtonControl, ImageControl, LinePlotControl, NullControl, OptionControl, \
@@ -39,13 +32,16 @@ from grapycal.sobjects.port import InputPort, OutputPort
 from grapycal.sobjects.sidebar import Sidebar
 from grapycal.sobjects.node import Node
 
+grapycal.utils.logging.setup_logging()
+logger = logging.getLogger("workspace")
+
 
 class ClientMsgTypes(Enum):
-    '''
-    Used to specify the type of message to send to the client. 
+    """
+    Used to specify the type of message to send to the client.
     Status messages are displayed in the status bar,
     while notifications are displayed as a popup.
-    '''
+    """
     STATUS = "status"
     NOTIFICATION = "notification"
     BOTH = "both"
@@ -55,7 +51,7 @@ class ClientMsgTypes(Enum):
 
 
 class Workspace:
-    '''
+    """
     This is the core class of a Grapycal workspace.
 
     To run a Grapycal workspace:
@@ -64,7 +60,7 @@ class Workspace:
     workspace = Workspace(port=8765, host="localhost", path="workspace.grapycal", workspace_id=0)
     workspace.run()
     ```
-    '''
+    """
 
     def __init__(self, port, host, path, workspace_id) -> None:
         self.path = path
@@ -84,23 +80,23 @@ class Workspace:
         ''' Grapycal uses objectsync to store stateful objects and communicate with the frontend.'''
 
         # utilities
-        self._extention_manager = ExtensionManager(self._objectsync)
+        self._extension_manager = ExtensionManager(self._objectsync)
         self._slash_commands_topic = self._objectsync.create_topic("slash_commands", objectsync.DictTopic)
         self.slash = SlashCommandManager(self._slash_commands_topic)
         stdout_helper.enable_proxy(redirect_error=False)
 
     def run(self, run_runner=True) -> None:
-        '''
-        The blocking function that make the workspace start functioning. The main thread will run a background_runner 
+        """
+        The blocking function that make the workspace start functioning. The main thread will run a background_runner
         that runs the background tasks from nodes.
         A communication thread will be started to handle the communication between the frontend and the backend.
 
         args:
             run_runner: bool
                 Set to False if you don't want to run the background runner. This is useful for testing.
-        '''
+        """
 
-        # Register all the sobject types to the objectsync server, and link some events to the callbacks.
+        # Register all the SObject types to the objectsync server, and link some events to the callbacks.
         self._setup_objectsync()
 
         # Setup slash commands
@@ -114,12 +110,13 @@ class Workspace:
         event_loop_set_event.wait()
 
         # The extension manager starts searching for all extensions available.
-        self._extention_manager.start()
+        self._extension_manager.start()
 
         # The store is a global object that holds all the data and functions that are shared across classes.
         self._setup_store()
 
-        # Make SObject tree present. After this, the workspace is ready to be used. Most of the operations will be done on the tree.
+        # Make SObject tree present. After this, the workspace is ready to be used.
+        # Most of the operations will be done on the tree.
         self._load_or_create_workspace()
 
         # Setup is done. Hand the thread over to the background runner.
@@ -133,7 +130,7 @@ class Workspace:
     '''
 
     def _setup_objectsync(self):
-        # Register all the sobject types to the objectsync server so they can be created dynamically.
+        # Register all the SObject types to the objectsync server, so they can be created dynamically.
         self._objectsync.register(WorkspaceObject)
         self._objectsync.register(Editor)
         self._objectsync.register(Sidebar)
@@ -237,7 +234,7 @@ class Workspace:
     def _initialize_workspace(self) -> None:
         self._workspace_object = self._objectsync.create_object(WorkspaceObject, parent_id="root")
         try:
-            self._extention_manager.import_extension("grapycal_builtin")
+            self._extension_manager.import_extension("grapycal_builtin")
         except ModuleNotFoundError:
             pass
 
@@ -246,10 +243,10 @@ class Workspace:
 
         metadata = {
             "version": grapycal.__version__,
-            "extensions": self._extention_manager.get_extensions_info(),
+            "extensions": self._extension_manager.get_extensions_info(),
         }
         data = {
-            "extensions": self._extention_manager.get_extention_names(),
+            "extensions": self._extension_manager.get_extension_names(),
             "client_id_count": self._objectsync.get_client_id_count(),
             "id_count": self._objectsync.get_id_count(),
             "grapycal_id_count": self.grapycal_id_count,
@@ -263,10 +260,16 @@ class Workspace:
             main_store.main_editor.top_down_search(type=Edge)
         )
         logger.info(
-            f"Workspace saved to {path}. Node count: {node_count}. Edge count: {edge_count}. File size: {file_size // 1024} KB."
+            f"Workspace saved to {path}. "
+            f"Node count: {node_count}. "
+            f"Edge count: {edge_count}. "
+            f"File size: {file_size // 1024} KB."
         )
         self._send_message_to_all(
-            f"Workspace saved to {path}. Node count: {node_count}. Edge count: {edge_count}. File size: {file_size // 1024} KB."
+            f"Workspace saved to {path}. "
+            f"Node count: {node_count}. "
+            f"Edge count: {edge_count}. "
+            f"File size: {file_size // 1024} KB."
         )
 
     def _load_workspace(self, path: str) -> None:
@@ -283,7 +286,7 @@ class Workspace:
         )
 
         for extension_name in data["extensions"]:
-            self._extention_manager.import_extension(extension_name, create_nodes=False)
+            self._extension_manager.import_extension(extension_name, create_nodes=False)
 
         self._workspace_object = self._objectsync.create_object(
             WorkspaceObject,
@@ -293,8 +296,8 @@ class Workspace:
         )
 
         for extension_name in data["extensions"]:
-            self._extention_manager.create_preview_nodes(extension_name)
-            self._extention_manager._instantiate_singletons(extension_name)
+            self._extension_manager.create_preview_nodes(extension_name)
+            self._extension_manager._instantiate_singletons(extension_name)
 
         self._objectsync.clear_history_inclusive()
 
@@ -304,7 +307,8 @@ class Workspace:
         current_version_tuple = tuple(map(int, grapycal.__version__.split(".")))
         if current_version_tuple < workspace_version_tuple:
             logger.warning(
-                f"Attempting to downgrade workspace from version {version} to {grapycal.__version__}. This may cause errors."
+                f"Attempting to downgrade workspace from version {version} to {grapycal.__version__}. "
+                f"This may cause errors."
             )
 
     def _check_extensions_version(self, extensions_info):
@@ -324,7 +328,10 @@ class Workspace:
                 continue  # ignore extensions that are not installed
             if current_version_tuple < extension_version_tuple:
                 logger.warning(
-                    f'Attempting to downgrade extension {extension_info["name"]} from version {extension_info["version"]} to {importlib.metadata.version(extension_info["name"])}. This may cause errors.'
+                    f'Attempting to downgrade extension {extension_info["name"]} '
+                    f'from version {extension_info["version"]} '
+                    f'to {importlib.metadata.version(extension_info["name"])}. '
+                    f'This may cause errors.'
                 )
 
     def _open_workspace_callback(self, path, no_exist_ok=False):
@@ -346,24 +353,24 @@ class Workspace:
     Utility functions
     '''
 
-    def _send_message_to_all(self, message, type=ClientMsgTypes.NOTIFICATION):
+    def _send_message_to_all(self, message, _type=ClientMsgTypes.NOTIFICATION):
         if not self.is_running:
             return
         if type == ClientMsgTypes.BOTH:
             self._send_message_to_all(message, ClientMsgTypes.NOTIFICATION)
             self._send_message_to_all(message, ClientMsgTypes.STATUS)
 
-        self._objectsync.emit("status_message", message=message, type=type.value)
+        self._objectsync.emit("status_message", message=message, type=_type.value)
 
-    def _send_message(self, message, client_id=None, type=ClientMsgTypes.NOTIFICATION):
+    def _send_message(self, message, client_id=None, _type=ClientMsgTypes.NOTIFICATION):
         if not self.is_running:
             return
         if type == ClientMsgTypes.BOTH:
-            self._send_message(message, ClientMsgTypes.NOTIFICATION)
-            self._send_message(message, ClientMsgTypes.STATUS)
+            self._send_message(message, client_id, ClientMsgTypes.NOTIFICATION)
+            self._send_message(message, client_id, ClientMsgTypes.STATUS)
         if client_id is None:
             client_id = self._objectsync.get_action_source()
-        self._objectsync.emit(f"status_message_{client_id}", message=message, type=type.value)
+        self._objectsync.emit(f"status_message_{client_id}", message=message, type=_type.value)
 
     def _next_id(self):
         self.grapycal_id_count += 1
@@ -399,8 +406,6 @@ class Workspace:
         except:
             pass  # topic may have not been created successfully.
 
-
-import argparse
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
