@@ -356,16 +356,15 @@ class Workspace:
     def _send_message_to_all(self, message, _type=ClientMsgTypes.NOTIFICATION):
         if not self.is_running:
             return
-        if type == ClientMsgTypes.BOTH:
+        if _type == ClientMsgTypes.BOTH:
             self._send_message_to_all(message, ClientMsgTypes.NOTIFICATION)
             self._send_message_to_all(message, ClientMsgTypes.STATUS)
-
         self._objectsync.emit("status_message", message=message, type=_type.value)
 
     def _send_message(self, message, client_id=None, _type=ClientMsgTypes.NOTIFICATION):
         if not self.is_running:
             return
-        if type == ClientMsgTypes.BOTH:
+        if _type == ClientMsgTypes.BOTH:
             self._send_message(message, client_id, ClientMsgTypes.NOTIFICATION)
             self._send_message(message, client_id, ClientMsgTypes.STATUS)
         if client_id is None:
