@@ -97,8 +97,8 @@ class Instrument:
         return data
 
     def get(self,pitch,velocity) -> Wave_read:
-        assert 21 <= pitch <= 108
-        assert 0 <= velocity <= 2 # 0,1,2
+        assert 21 <= pitch <= 108, f'pitch must be in [21,108], got {pitch}'
+        assert 0 <= velocity <= 2, f'velocity must be in [0,2], got {velocity}'
         name = pitch-21 + velocity*88
         name = f'{name:03d}.wav'
         return self.get_file(name)

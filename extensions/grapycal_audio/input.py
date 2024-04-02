@@ -27,6 +27,9 @@ class KeyboardToMidiNode(Node):
         self.keyboard_control.on_up += self.keyup
         self.base = 36 # C2
         self.mapping = get_major_mapping()
+        self.pedal_pressed = False
+        self.playing_notes = set()
+        self.pressed_notes = set()
 
     def key_to_pitch(self, key):
         if key in self.mapping:
@@ -34,6 +37,9 @@ class KeyboardToMidiNode(Node):
         return None
             
     def keydown(self, key):
+        if key == ' ':
+            self.pedal_pressed = True
+            return
         pitch = self.key_to_pitch(key)
         if pitch is None:
             return
@@ -41,11 +47,33 @@ class KeyboardToMidiNode(Node):
             'pitch': pitch,
             'velocity': 100
         })
+        self.playing_notes.add(pitch)
+        self.pressed_notes.add(pitch)
 
     def keyup(self, key):
+        if key == ' ':
+            self.pedal_pressed = False
+            # send note off for all notes
+            for pitch in self.playing_notes:
+                if pitch not in self.pressed_notes:
+                    self.note_off_out.push({
+                        'pitch': pitch
+                    })
+            self.playing_notes = self.pressed_notes.copy()
+
+            return
+        
         pitch = self.key_to_pitch(key)
         if pitch is None:
             return
-        self.note_off_out.push({
-            'pitch': pitch
-        })
+        if pitch in self.playing_notes:
+            self.pressed_notes.remove(pitch)
+        
+        if not self.pedal_pressed:
+            if pitch is None:
+                return
+            self.note_off_out.push({
+                'pitch': pitch
+            })
+            if pitch in self.playing_notes:
+                self.playing_notes.remove(pitch)
