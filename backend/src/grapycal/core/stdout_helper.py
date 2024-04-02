@@ -16,8 +16,10 @@ orig_stdout = sys.stdout
 orig_stderr = sys.stderr
 thread_proxies = {}
 
-def orig_print(*args,flush=False):
-    orig___stdout__.write(' '.join([str(arg) for arg in args])+'\n')
+
+def orig_print(*args, flush=False):
+    orig___stdout__.write(' '.join([str(arg) for arg in args]) + '\n')
+
 
 # def redirect():
 #     """
@@ -73,6 +75,7 @@ def redirect(stringio: Any):
         else:
             thread_proxies[ident] = old_proxy
 
+
 def _get_stream(original):
     """
     Returns the inner function for use in the LocalProxy object.
@@ -82,6 +85,7 @@ def _get_stream(original):
     :return: The inner function for use in the LocalProxy object.
     :rtype: ``function``
     """
+
     def proxy():
         """
         Returns the original stream if the current thread is not proxied,
