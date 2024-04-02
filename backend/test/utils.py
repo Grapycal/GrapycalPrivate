@@ -10,7 +10,7 @@ def setup_workspace():
     workspace.run(run_runner=False)
 
     # Import test extension, so we can create test nodes
-    workspace._extention_manager.import_extension('grapycal_test')
+    workspace._extension_manager.import_extension('grapycal_test')
 
 @pytest.fixture
 def main_editor() -> Editor:

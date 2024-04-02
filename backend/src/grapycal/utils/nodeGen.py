@@ -39,7 +39,7 @@ class FunctionNodeGenerator():
             self.func_name = self.func.__name__
         if self.category is None:
             if self.func.__module__ == 'builtins':
-                self.category = 'builtins/extentions/function'
+                self.category = 'builtins/extensions/function'
             else:
                 self.category = self.func.__module__
         if self.max_in_degree is None:
@@ -156,7 +156,7 @@ class ClassNodeGenerator():
             self.cls_name = self.cls.__name__
         if self.category is None:
             if self.cls.__module__ == 'builtins':
-                self.category = 'builtins/extentions/class'
+                self.category = 'builtins/extensions/class'
             else:
                 self.category = self.cls.__module__
         if self.max_in_degree is None:

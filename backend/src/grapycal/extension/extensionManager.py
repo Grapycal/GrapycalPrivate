@@ -316,7 +316,7 @@ class ExtensionManager:
     def get_extension(self, name: str) -> Extension:
         return self._extensions[name]
     
-    def get_extention_names(self) -> list[str]:
+    def get_extension_names(self) -> list[str]:
         return list(self._extensions.keys())
     
     def get_extensions_info(self) -> List[dict]:
