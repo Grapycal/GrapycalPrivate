@@ -1,7 +1,5 @@
 from grapycal import Node
 
-import numpy as np
-
 major_scale = [0, 2, 4, 5, 7, 9, 11, 12, 14, 16, 17, 19, 21, 23, 24, 26, 28, 29, 31, 33, 35]
 
 def get_major_mapping():

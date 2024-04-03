@@ -12,7 +12,8 @@ export class KeyboardControl extends Control {
 
     protected template = `
     <div class="control flex-horiz">
-        <button class="control-button  full-width" id="button"></button>
+        <div class="control-label" id="label"></div>
+        <button class="control-button full-width" id="button"></button>
     </div>
     `
 
@@ -28,6 +29,11 @@ export class KeyboardControl extends Control {
             } else {
                 this.disable()
             }
+            this.enableButton.blur() // prevent spacebar from toggling the button
+        })
+        this.enableButton.innerText = this._enabled ? "Disable" : "Enable"
+        this.label.onSet.add((value) => {
+            (this.htmlItem.getEl("label") as HTMLDivElement).innerText = value
         })
     }
 
@@ -43,6 +49,7 @@ export class KeyboardControl extends Control {
 
     protected onKeydown(e: KeyboardEvent): void {
         if (this._pressedKeys.has(e.key)) {
+            e.preventDefault()
             return
         }
         this._pressedKeys.add(e.key)
