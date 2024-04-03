@@ -1,5 +1,6 @@
 from enum import Enum
 from grapycal.sobjects.controls.keyboardControl import KeyboardControl
+from grapycal.sobjects.controls.sliderControl import SliderControl
 import grapycal.utils.logging
 import logging
 
@@ -152,6 +153,7 @@ class Workspace:
         self._objectsync.register(NullControl)
         self._objectsync.register(OptionControl)
         self._objectsync.register(KeyboardControl)
+        self._objectsync.register(SliderControl)
 
         self._objectsync.register(WebcamStream)
         self._objectsync.register(LinePlotControl)

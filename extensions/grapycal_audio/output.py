@@ -21,7 +21,7 @@ class AudioOuputNode(Node):
     def build_node(self):
         self.samples_port = self.add_in_port('samples')
         self.reset_port = self.add_in_port('reset',control_type=ButtonControl)
-        self.gain_control = self.add_text_control(name='gain',label='Gain', text='0.2')
+        self.gain_control = self.add_slider_control(name='gain',label='Gain', min=-5, max=5, step=0.01)
         self.delay_control = self.add_text_control(name='delay',label='Delay', text='',readonly=True)
         self.label.set('Audio Output')
 
@@ -55,7 +55,8 @@ class AudioOuputNode(Node):
         for edge in self.samples_port.edges:
             if edge.is_activated():
                 samples = edge.get()
-                samples = (to_numpy(samples).astype('float32')*float(self.gain_control.get())).tobytes()
+                voltage = 10**(self.gain_control.get()/20)
+                samples = (to_numpy(samples).astype('float32')*voltage).tobytes()
                 self.buffer.put(samples)
                 if len(self.buffer) > 44100 * 5:
                     self.print_exception('Buffer overflow')

@@ -530,6 +530,21 @@ footer{
     object-fit: contain;
 }
 
+input[type="range"]{
+    width: 100%;
+    -webkit-appearance: none;
+    border-radius: 2px;
+    outline: none;
+    padding: 0px;
+    margin: 0px;
+}
+
+input::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 1px;
+}
+
 input:enabled:hover, textarea:enabled:hover{
     background-color: #8d8d8d2b;
 }

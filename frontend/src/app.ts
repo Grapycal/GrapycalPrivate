@@ -24,6 +24,7 @@ import { LoginApiClient } from './loginApi/loginApi'
 import { OptionControl } from './sobjects/controls/optionControl'
 import { AppNotification } from './ui_utils/appNotification'
 import { KeyboardControl } from './sobjects/controls/keyboardControl'
+import { SliderControl } from './sobjects/controls/sliderControl'
 
 export const soundManager = new SoundManager();
 
@@ -133,6 +134,7 @@ function startObjectSync(wsUrl:string){
     objectsync.register(LinePlotControl)
     objectsync.register(OptionControl)
     objectsync.register(KeyboardControl)
+    objectsync.register(SliderControl)
 
     objectsync.register(WebcamStream)
 

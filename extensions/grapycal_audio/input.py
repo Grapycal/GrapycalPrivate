@@ -64,7 +64,7 @@ class KeyboardToMidiNode(Node):
         pitch = self.key_to_pitch(key)
         if pitch is None:
             return
-        if pitch in self.playing_notes:
+        if pitch in self.pressed_notes:
             self.pressed_notes.remove(pitch)
         
         if not self.pedal_pressed:

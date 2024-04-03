@@ -1,6 +1,7 @@
 import logging
 
 from grapycal.sobjects.controls.keyboardControl import KeyboardControl
+from grapycal.sobjects.controls.sliderControl import SliderControl
 
 logger = logging.getLogger(__name__)
 from typing import TYPE_CHECKING, Awaitable, Callable, Literal, Self, TypeVar
@@ -677,6 +678,13 @@ class Node(SObject, metaclass=NodeMeta):
         Add a keyboard control to the node.
         """
         control = self.add_control(KeyboardControl, label=label)
+        return control
+    
+    def add_slider_control(self, label: str = "", min: float = 0, max: float = 1, step: float = 0.01, int_mode: bool = False, name: str | None = None) -> SliderControl:
+        """
+        Add a slider control to the node.
+        """
+        control = self.add_control(SliderControl, label=label, min=min, max=max, step=step, int_mode=int_mode, name=name)
         return control
 
     def remove_control(self, control: str | Control):
