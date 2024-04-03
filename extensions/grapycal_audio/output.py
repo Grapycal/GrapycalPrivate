@@ -21,7 +21,7 @@ class AudioOuputNode(Node):
     def build_node(self):
         self.samples_port = self.add_in_port('samples')
         self.reset_port = self.add_in_port('reset',control_type=ButtonControl)
-        self.gain_control = self.add_slider_control(name='gain',label='Gain', min=-5, max=5, step=0.01)
+        self.gain_control = self.add_slider_control(name='gain',label='Gain', min=-5, max=0, step=0.01)
         self.delay_control = self.add_text_control(name='delay',label='Delay', text='',readonly=True)
         self.label.set('Audio Output')
 

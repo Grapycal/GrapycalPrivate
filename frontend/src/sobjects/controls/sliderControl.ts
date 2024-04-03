@@ -26,7 +26,7 @@ export class SliderControl extends Control {
     .control-slider-container{
         position: relative;
         flex-grow: 1;
-        height: 15px;
+        height: 13px;
     }
     .control-input {
         position: absolute;
@@ -78,22 +78,46 @@ export class SliderControl extends Control {
         this.link(this.value.onSet, (value) => {
             this.slider.value = value
             this.numberInput.value = value
-            this.slider.style.backgroundImage = `linear-gradient(to right, #007bff 0%, #007bff ${((value - this.min) / (this.max - this.min)) * 100}%, #ccc ${((value - this.min) / (this.max - this.min)) * 100}%, #ccc 100%)`
+            this.slider.style.backgroundImage = `linear-gradient(to right, var(--t1) 0%, var(--t1) ${((value - this.min) / (this.max - this.min)) * 100}%, var(--z0) ${((value - this.min) / (this.max - this.min)) * 100}%, var(--z0) 100%)`
         })
         this.link2(this.slider,"input", (e) => {
-            if (this.config.get('int_mode')) {
-                this.value.set(parseInt(this.slider.value))
-            } else {
-                this.value.set(parseFloat(this.slider.value))
-            }
+            this.input(this.slider.valueAsNumber)
         })
         this.link2(this.numberInput,"blur", (e) => {
-            if (this.config.get('int_mode')) {
-                this.value.set(parseInt(this.numberInput.value))
-            } else {
-                this.value.set(parseFloat(this.numberInput.value))
+        })
+
+        this.link2(this.slider,'dblclick', (e) => {
+            this.numberInput.style.pointerEvents = 'auto'
+            this.numberInput.focus()
+            this.numberInput.select()
+        })
+
+        this.link2(this.numberInput,'blur', (e) => {
+            this.numberInput.style.pointerEvents = 'none'
+            this.input(this.numberInput.valueAsNumber)
+            
+        })
+        this.link2(this.numberInput,'keydown', (e: KeyboardEvent) => {
+            if (e.key === 'Enter') {
+                this.numberInput.blur()
+                this.input(this.numberInput.valueAsNumber)
             }
         })
+        this.numberInput.style.pointerEvents = 'none'
+    }
+
+    private input(value: number) {
+        if (value < this.min) {
+            value = this.min
+        }
+        if (value > this.max) {
+            value = this.max
+        }
+        if (this.config.get('int_mode')) {
+            this.value.set(Math.round(value))
+        } else {
+            this.value.set(value)
+        }
     }
 
 }
