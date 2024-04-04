@@ -88,5 +88,4 @@ class CodeControl(ValuedControl[str]):
 
     def get_auto_complete_suggestions(self, text: str):
         s = get_autocomplete_suggestions(text,main_store.vars())
-        print(s)
         return s
