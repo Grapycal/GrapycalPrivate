@@ -154,7 +154,7 @@ export class ActionDict<K,ARGS extends any[], OUT=void> {
         if(!this.actions.has(key))this.actions.set(key,new Action<ARGS,OUT>())
         this.actions.get(key).add(callback)
     }
-    
+
     remove(key:K,callback: Callback<ARGS, OUT>) {
         this.actions.get(key).remove(callback)
         if(this.actions.get(key).numCallbacks==0)this.actions.delete(key)
@@ -178,7 +178,7 @@ class ActionDictSlice<K,ARGS extends any[], OUT=void> extends Action<ARGS,OUT>{
     add(callback: Callback<ARGS, OUT>) {
         this.actionDict.add(this.key,callback)
     }
-    
+
     remove(callback: Callback<ARGS, OUT>) {
         this.actionDict.remove(this.key,callback)
     }
@@ -270,7 +270,7 @@ export class TextBox{
         parent.appendChild(this.textarea)
         parent.appendChild(this.sizeSimulator)
 
-        
+
         this.textarea.style.height='0px'
         this.textarea.style.width='0px'
         this.sizeSimulator.style.height='0px'
@@ -282,7 +282,7 @@ export class TextBox{
     resize (){
         setTimeout(() => {
 
-            
+
             if(this.textarea.value=='' && this.textarea.disabled){
                 this.textarea.style.height='0px'
                 this.textarea.style.width='0px'
@@ -296,7 +296,7 @@ export class TextBox{
             this.sizeSimulator.innerHTML = textToHtml(this.textarea.value);
             let calculatedWidth =this.sizeSimulator.scrollWidth+ 4 // I don't know why it needs more 10px
             this.textarea.style.width = calculatedWidth+ 'px';
-            
+
             this.textarea.style.height = '0';
             this.textarea.style.height = this.textarea.scrollHeight + this._heightDelta + 'px';
             // if(this.textarea.value=='' && this.textarea.disabled){
@@ -318,7 +318,52 @@ export class TextBox{
     removeEventListener(eventName:string,callback:EventListenerOrEventListenerObject){
         this.textarea.removeEventListener(eventName,callback)
     }
-    
+
+}
+
+import { keymap, EditorView } from '@codemirror/view';
+import {defaultKeymap} from "@codemirror/commands"
+
+export class CodeBox {
+    private editorView: EditorView;
+
+    constructor(parent: HTMLElement = document.body, private hideTrailingNewline: boolean = false) {
+        // Create CodeMirror instance
+        this.editorView = new EditorView({
+            doc: "hello",
+            extensions: [keymap.of(defaultKeymap)],
+            parent: parent
+        });
+
+        // Bind resize event
+        this.editorView.dom.addEventListener("input", () => {
+            this.resize();
+        });
+
+        // Resize initially
+        this.resize();
+    }
+
+    setValue(value: string) {
+        // Update the document content
+        this.editorView.dispatch({
+            changes: { from: 0, to: this.editorView.state.doc.length, insert: value }
+        });
+    }
+
+    getValue(): string {
+        // Get current document content
+        return this.editorView.state.doc.toString();
+    }
+
+    private resize() {
+        // Resize the editor view
+        this.editorView.dom.style.height = 'auto';
+        this.editorView.dom.style.height = this.editorView.dom.scrollHeight + 'px';
+    }
+
+
+    // Other methods can be added as needed
 }
 
 export class FetchWithCache{
@@ -349,7 +394,7 @@ export function bindTopicCookie(topic:Topic<string>,cookieName:string,defaultVal
     if(getCookie(cookieName)!=undefined){
         topic.set(getCookie(cookieName))
     }
-    
+
     topic.onSet.add((value)=>{
         setCookie(cookieName,value)
     })

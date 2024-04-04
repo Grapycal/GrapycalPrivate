@@ -21,6 +21,7 @@ from grapycal.sobjects.controls.linePlotControl import LinePlotControl
 from grapycal.sobjects.controls.nullControl import NullControl
 from grapycal.sobjects.controls.optionControl import OptionControl
 from grapycal.sobjects.controls.textControl import TextControl
+from grapycal.sobjects.controls.codeControl import CodeControl
 from grapycal.stores import main_store
 from grapycal.utils.logging import error_extension, user_logger, warn_extension
 from grapycal.extension.utils import NodeInfo
@@ -46,11 +47,12 @@ if TYPE_CHECKING:
     from grapycal.extension.extension import Extension
     from grapycal.core.workspace import ClientMsgTypes
 
+
 def warn_no_control_name(control_type, node):
-    '''
+    """
     Log a warning if the control does not have a name.
-    '''
-    node_type = node.get_type_name().split('.')[1]
+    """
+    node_type = node.get_type_name().split(".")[1]
     warn_extension(
         node,
         f"Consider giving a name to the {control_type.__name__} in {node_type} \
@@ -58,9 +60,11 @@ to prevent error when Grapycal auto restores the control.",
         extra={"key": f"No control name {node_type}"},
     )
 
-'''
+
+"""
 Decorator for node development.
-'''
+"""
+
 
 def singletonNode(auto_instantiate=True):
     """
@@ -136,6 +140,7 @@ def deprecated(message: str, from_version: str, to_version: str):
 
     return wrapper
 
+
 class NodeMeta(ABCMeta):
     class_def_counter = count()
     def_order = {}
@@ -148,8 +153,10 @@ class NodeMeta(ABCMeta):
         self._auto_instantiate = True  # Used internally by the ExtensionManager.
         return super().__init__(name, bases, attrs)
 
+
 class RESTORE_FROM(enum.Enum):
     SAME = 0
+
 
 class Node(SObject, metaclass=NodeMeta):
     frontend_type = "Node"
@@ -165,8 +172,8 @@ class Node(SObject, metaclass=NodeMeta):
     @classmethod
     def get_def_order(cls):
         return cls.def_order[cls.__name__]
-    
-    def initialize(self, serialized:SObjectSerialized|None=None, *args, **kwargs):
+
+    def initialize(self, serialized: SObjectSerialized | None = None, *args, **kwargs):
         self._already_restored_attributes = set()
         self._already_restored_controls = set()
         self.old_node_info = NodeInfo(serialized) if serialized is not None else None
@@ -199,7 +206,13 @@ class Node(SObject, metaclass=NodeMeta):
         self.label_offset = self.add_attribute(
             "label_offset", FloatTopic, 0, restore_from=None
         )
-        self.translation = self.add_attribute("translation", StringTopic, translation if isinstance(translation, str) else ",".join(map(str, translation)))
+        self.translation = self.add_attribute(
+            "translation",
+            StringTopic,
+            translation
+            if isinstance(translation, str)
+            else ",".join(map(str, translation)),
+        )
         self.is_preview = self.add_attribute(
             "is_preview", IntTopic, 1 if is_preview else 0, restore_from=None
         )
@@ -249,8 +262,9 @@ class Node(SObject, metaclass=NodeMeta):
         """
         # check for override of create
         if type(self).create != Node.create:
-            error_extension(self,
-                f"Class {self.__class__.__name__} has overridden create() method. The Node.create() method was orignated from a wrong design and should not be used. It will be removed in few commits. Use build_node() and init_node() instead."
+            error_extension(
+                self,
+                f"Class {self.__class__.__name__} has overridden create() method. The Node.create() method was orignated from a wrong design and should not be used. It will be removed in few commits. Use build_node() and init_node() instead.",
             )
             exit(1)
 
@@ -273,17 +287,13 @@ class Node(SObject, metaclass=NodeMeta):
             self.editor = parent
         else:
             self.editor = None
-        
+
         self.on("double_click", self.double_click, is_stateful=False)
         self.on("spawn", self.spawn, is_stateful=False)
 
         self._output_stream = OutputStream(self.raw_print)
-        self._output_stream.set_event_loop(
-            main_store.event_loop
-        )
-        main_store.event_loop.create_task(
-            self._output_stream.run()
-        )
+        self._output_stream.set_event_loop(main_store.event_loop)
+        main_store.event_loop.create_task(self._output_stream.run())
 
         from grapycal.sobjects.workspaceObject import WorkspaceObject
 
@@ -292,7 +302,6 @@ class Node(SObject, metaclass=NodeMeta):
         )
         for k, v in self.globally_exposed_attributes.get().items():
             main_store.settings.entries.add(k, v)
-
 
         self.init_node()
 
@@ -349,7 +358,7 @@ class Node(SObject, metaclass=NodeMeta):
                 )
                 continue
             new_attr = self.get_attribute(new_name)
-            old_attr = self.old_node_info[old_name] #type: ignore # not self.is_new grarauntees old_node_info is not None
+            old_attr = self.old_node_info[old_name]  # type: ignore # not self.is_new grarauntees old_node_info is not None
             if isinstance(new_attr, WrappedTopic):
                 new_attr.set_raw(old_attr)
             else:
@@ -377,14 +386,18 @@ class Node(SObject, metaclass=NodeMeta):
                 warn_extension(
                     self,
                     f"Control {new_name} does not exist in {self}",
-                    extra={"key": f"Control not exist {self.get_type_name()} {new_name}"},
+                    extra={
+                        "key": f"Control not exist {self.get_type_name()} {new_name}"
+                    },
                 )
                 continue
             if not (old_name in self.old_node_info.controls):
                 warn_extension(
                     self,
                     f"Control {old_name} does not exist in the old node of {self}",
-                    extra={"key": f"Control not exist old {self.get_type_name()} {old_name}"},
+                    extra={
+                        "key": f"Control not exist old {self.get_type_name()} {old_name}"
+                    },
                 )
                 continue
             try:
@@ -405,9 +418,7 @@ class Node(SObject, metaclass=NodeMeta):
         """
         Called when a client wants to spawn a node.
         """
-        new_node = main_store.main_editor.create_node(
-            type(self)
-        )
+        new_node = main_store.main_editor.create_node(type(self))
         if new_node is None:  # failed to create node
             return
         new_node.add_tag(
@@ -432,7 +443,7 @@ class Node(SObject, metaclass=NodeMeta):
                 )
         for name in self.globally_exposed_attributes.get():
             main_store.settings.entries.pop(name)
-        
+
         if self.editor is not None:
             self.editor.is_running_manager.set_running(self, False)
         return super().destroy()
@@ -470,13 +481,13 @@ class Node(SObject, metaclass=NodeMeta):
             control_name = None
         if control_name is not None:
             if control_name in self.controls:
-                raise ValueError(f'Control with name {control_name} already exists')
+                raise ValueError(f"Control with name {control_name} already exists")
         else:
-            control_name = 'Control0'
-            i=0
+            control_name = "Control0"
+            i = 0
             while control_name in self.controls:
-                i+=1
-                control_name = f'Control{i}'
+                i += 1
+                control_name = f"Control{i}"
 
         self.controls.add(control_name, port.default_control)
         if control_type is not NullControl:
@@ -603,7 +614,7 @@ class Node(SObject, metaclass=NodeMeta):
                 i += 1
                 name = f"Control{i}"
 
-        control = self.add_child(control_type,  **kwargs)
+        control = self.add_child(control_type, **kwargs)
         self.controls.add(name, control)
 
         # restore the control
@@ -672,19 +683,58 @@ class Node(SObject, metaclass=NodeMeta):
             OptionControl, value=value, options=options, label=label, name=name
         )
         return control
-    
+
     def add_keyboard_control(self, label: str = "") -> KeyboardControl:
         """
         Add a keyboard control to the node.
         """
         control = self.add_control(KeyboardControl, label=label)
         return control
-    
-    def add_slider_control(self, label: str = "", min: float = 0, max: float = 1, step: float = 0.01, int_mode: bool = False, name: str | None = None) -> SliderControl:
+
+    def add_slider_control(
+        self,
+        label: str = "",
+        min: float = 0,
+        max: float = 1,
+        step: float = 0.01,
+        int_mode: bool = False,
+        name: str | None = None,
+    ) -> SliderControl:
         """
         Add a slider control to the node.
         """
-        control = self.add_control(SliderControl, label=label, min=min, max=max, step=step, int_mode=int_mode, name=name)
+        control = self.add_control(
+            SliderControl,
+            label=label,
+            min=min,
+            max=max,
+            step=step,
+            int_mode=int_mode,
+            name=name,
+        )
+        return control
+
+    def add_code_control(
+        self,
+        text: str = "",
+        label: str = "",
+        readonly=False,
+        editable: bool = True,
+        name: str | None = None,
+        placeholder: str = "",
+    ) -> CodeControl:
+        """
+        Add a code control to the node.
+        """
+        control = self.add_control(
+            CodeControl,
+            text=text,
+            label=label,
+            readonly=readonly,
+            editable=editable,
+            name=name,
+            placeholder=placeholder,
+        )
         return control
 
     def remove_control(self, control: str | Control):
@@ -873,7 +923,9 @@ class Node(SObject, metaclass=NodeMeta):
     def _on_exception(self, e: Exception):
         self.print_exception(e, truncate=2)
         if isinstance(e, KeyboardInterrupt):
-            main_store.send_message_to_all("Runner interrupted by user.", ClientMsgTypes.BOTH)
+            main_store.send_message_to_all(
+                "Runner interrupted by user.", ClientMsgTypes.BOTH
+            )
         main_store.clear_edges()
 
     def _run_in_background(
@@ -882,6 +934,7 @@ class Node(SObject, metaclass=NodeMeta):
         """
         Run a task in the background thread.
         """
+
         def wrapped():
             self.incr_n_running_tasks()
             try:
@@ -896,7 +949,9 @@ class Node(SObject, metaclass=NodeMeta):
                 self.decr_n_running_tasks()
             return ret
 
-        main_store.runner.push(wrapped, to_queue=to_queue, exception_callback=self._on_exception)
+        main_store.runner.push(
+            wrapped, to_queue=to_queue, exception_callback=self._on_exception
+        )
 
     def _run_directly(self, task: Callable[[], None], redirect_output=False):
         """
@@ -917,6 +972,7 @@ class Node(SObject, metaclass=NodeMeta):
         """
         Run an async task.
         """
+
         async def wrapped():
             self.incr_n_running_tasks()
             try:
@@ -936,7 +992,7 @@ class Node(SObject, metaclass=NodeMeta):
         self._n_running_tasks -= 1
         if self._n_running_tasks == 0:
             self.set_running(False)
-            
+
     def run(
         self,
         task: Callable,
@@ -966,7 +1022,7 @@ class Node(SObject, metaclass=NodeMeta):
         else:
             self._run_directly(task, redirect_output=False)
 
-    def print_exception(self, e:Exception|str, truncate=0):
+    def print_exception(self, e: Exception | str, truncate=0):
         if isinstance(e, str):
             message = e
         else:
@@ -1002,6 +1058,7 @@ class Node(SObject, metaclass=NodeMeta):
         Get the variables of the running module.
         """
         return main_store.vars()
+
     """
     Node events
     """
@@ -1014,8 +1071,8 @@ class Node(SObject, metaclass=NodeMeta):
 
     def port_activated(self, port: InputPort):
         """
-        Called when an input port is activated, which means either 
-        1. an connected edge is activated 
+        Called when an input port is activated, which means either
+        1. an connected edge is activated
         2. or the control on the port is activated.
         """
         pass

@@ -5,3 +5,4 @@ from .optionControl import OptionControl
 from .linePlotControl import LinePlotControl
 from .threeControl import ThreeControl
 from .nullControl import NullControl
+from .codeControl import CodeControl

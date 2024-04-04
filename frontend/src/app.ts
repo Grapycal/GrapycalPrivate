@@ -25,6 +25,7 @@ import { OptionControl } from './sobjects/controls/optionControl'
 import { AppNotification } from './ui_utils/appNotification'
 import { KeyboardControl } from './sobjects/controls/keyboardControl'
 import { SliderControl } from './sobjects/controls/sliderControl'
+import {CodeControl} from "./sobjects/controls/codeControl";
 
 export const soundManager = new SoundManager();
 
@@ -135,6 +136,7 @@ function startObjectSync(wsUrl:string){
     objectsync.register(OptionControl)
     objectsync.register(KeyboardControl)
     objectsync.register(SliderControl)
+    objectsync.register(CodeControl)
 
     objectsync.register(WebcamStream)
 
