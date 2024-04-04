@@ -25,6 +25,7 @@
     "postbuild:service": "python ./postbuild.py"
   },
   "dependencies": {
+    "@codemirror/lang-python": "^6.1.5",
     "@sentry/node": "^7.85.0",
     "@ts-stack/markdown": "^1.5.0",
     "@types/three": "^0.157.0",

@@ -1,5 +1,6 @@
 from enum import Enum
 from grapycal.sobjects.controls.control import ValuedControl
+from grapycal.stores import main_store
 from grapycal.utils.misc import Action
 from grapycal.utils.suggestion import get_autocomplete_suggestions
 from objectsync import StringTopic, IntTopic
@@ -86,6 +87,6 @@ class CodeControl(ValuedControl[str]):
         self.set(str(value))  # TODO find more proper way to handle this
 
     def get_auto_complete_suggestions(self, text: str):
-        s = get_autocomplete_suggestions(text)
+        s = get_autocomplete_suggestions(text,main_store.vars())
         print(s)
         return s
