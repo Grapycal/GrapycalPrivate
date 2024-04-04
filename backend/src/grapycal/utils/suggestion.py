@@ -1,4 +1,4 @@
-from types import BuiltinFunctionType, FunctionType, ModuleType
+from types import BuiltinFunctionType, FunctionType, MethodType, ModuleType
 from typing import Any, Callable, Dict, Generator, Literal, Sized, Tuple
 import inspect
 import ast
@@ -28,17 +28,25 @@ class TypeInfo:
     def __init__(self, name:str):
         self.name = name
 
-def get_attrs_in_init(cls:type) -> Generator[Tuple[str,str], None, None]:
-    print(f"Getting attributes for {cls}, {type(cls)}")
+def get_attrs_in_init(cls:type) -> Generator[Tuple[str,str|TypeInfo], None, None]:
+    #print(f"Getting attributes for {cls}, {type(cls)}")
     for stmt in ast.parse(unindent(inspect.getsource(cls.__init__))).body[0].body:
         if isinstance(stmt, ast.AnnAssign|ast.Assign):
-            attr_type = TypeInfo(stmt.annotation.__qualname__ if isinstance(stmt, ast.AnnAssign) else '')
-            for target in stmt.targets:
+            if isinstance(stmt,ast.AnnAssign) and hasattr(stmt.annotation, '__qualname__'):
+                attr_type = TypeInfo(stmt.annotation.__qualname__)
+            else:
+                attr_type = ''
+            if isinstance(stmt, ast.AnnAssign):
+                target = stmt.target
                 if isinstance(target, ast.Attribute):
                     yield target.attr, attr_type
+            elif isinstance(stmt, ast.Assign):
+                for target in stmt.targets:
+                    if isinstance(target, ast.Attribute):
+                        yield target.attr, attr_type
 
 def resolve_expr(expr:ast.expr,vars:Dict[str,object]) -> Tuple[Literal["type"], type]|Tuple[Literal["object"], object]|Tuple[None, None]:
-    print(f"Resolving expression: {ast.unparse(expr)}")
+    #print(f"Resolving expression: {ast.unparse(expr)}")
     if isinstance(expr, ast.Attribute):
         t, base = resolve_expr(expr.value, vars)
         if t is None or base is None:
@@ -55,7 +63,7 @@ def resolve_expr(expr:ast.expr,vars:Dict[str,object]) -> Tuple[Literal["type"], 
                     annotation = get_annotation_in_init(base, expr.attr)
                     if annotation is not None:
                         return "type", eval(annotation, vars)
-                print(f"Attribute {expr.attr} not found in {base}")
+                #print(f"Attribute {expr.attr} not found in {base}")
                 return None, None
     elif isinstance(expr, ast.Name):
         return "object", eval(expr.id, vars)
@@ -72,10 +80,10 @@ def resolve_expr(expr:ast.expr,vars:Dict[str,object]) -> Tuple[Literal["type"], 
             if isinstance(base, type): # a call of a type returns object of that type
                 return "type", base
             else:
-                print(f"Unsupported call: {base}")
+                #print(f"Unsupported call: {base}")
                 return None, None
     else:# TODO: handle other cases
-        print(f"Unsupported expression type: {expr}")
+        #print(f"Unsupported expression type: {expr}")
         return None, None
 
 
@@ -95,7 +103,7 @@ def _get_attr_suggestions(code:str,module_vars:Dict[str,object]) -> list[Tuple[s
     if expr is None:
         return []
     t, base = resolve_expr(expr,module_vars)
-    print(f"Resolved expression: {t}, {base}")
+    #print(f"Resolved expression: {t}, {base}")
     if t is None:
         return []
         
@@ -141,13 +149,23 @@ def get_info_str(value:Any):
         return f"{type(value).__qualname__} [{len(value)}]"
     return f"{type(value).__qualname__}"
 
+def get_completion_type(value:Any):
+    # class, method, function, or variable
+    if isinstance(value, type):
+        return "class"
+    elif isinstance(value, MethodType):
+        return "method"
+    elif isinstance(value, FunctionType) or isinstance(value, BuiltinFunctionType):
+        return "function"
+    else:
+        return "variable"
+
 def get_autocomplete_suggestions(code:str,vars:Dict[str,object]):
     res = []
 
     # if start with import, suggest modules
     if code.strip().startswith('import ') or code.strip().startswith('from '):
         last_module_name = get_last_identifier(code)
-        print(f"last_module_name: {last_module_name}")
         for pkg in pkgutil.iter_modules():
             if  pkg.name.startswith(last_module_name):
                 res.append({
@@ -170,7 +188,7 @@ def get_autocomplete_suggestions(code:str,vars:Dict[str,object]):
             boost = -10
         res.append({
             "label": name,
-            "type": "variable",
+            "type": get_completion_type(value),
             "info": get_info_str(value),
             "boost": boost
         })
