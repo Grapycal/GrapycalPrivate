@@ -1,4 +1,5 @@
 import logging
+from pprint import pprint
 
 from grapycal.sobjects.controls.keyboardControl import KeyboardControl
 from grapycal.sobjects.controls.sliderControl import SliderControl
@@ -884,7 +885,7 @@ class Node(SObject, metaclass=NodeMeta):
 
         # maybe the self._output_stream can be abandoned
         output = io.StringIO()
-        print(*args, file=output, **kwargs)
+        pprint(*args, stream=output, **kwargs)
         contents = output.getvalue()
         output.close()
 

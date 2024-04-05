@@ -24,7 +24,7 @@ from .conversion import *
 
 
 import torch
-from torch import nn
+torch.set_printoptions(threshold=20)
 import torchvision
 from torchvision import transforms
 
