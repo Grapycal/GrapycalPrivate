@@ -146,7 +146,10 @@ def get_info_str(value:Any):
     elif get_type_full_name(type(value)) == 'numpy.ndarray':
         return f"numpy.ndarray {list(value.shape)}"
     elif isinstance(value, Sized):
-        return f"{type(value).__qualname__} [{len(value)}]"
+        try:
+            return f"{type(value).__qualname__} [{len(value)}]"
+        except TypeError:
+            return f"{type(value).__qualname__}"
     return f"{type(value).__qualname__}"
 
 def get_completion_type(value:Any):

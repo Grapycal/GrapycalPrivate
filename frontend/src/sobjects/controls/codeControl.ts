@@ -119,7 +119,8 @@ export class CodeControl extends Control {
           parent: this.htmlItem.baseElement,
         })
 
-        this.editorView.dom.style.minWidth = "200px"
+        this.editorView.dom.style.minWidth = "150px"
+        this.editorView.dom.style.flexGrow = "1"
 
         // this.editorView.from
         this.editorView.dom.addEventListener("mousedown", (e) => {
