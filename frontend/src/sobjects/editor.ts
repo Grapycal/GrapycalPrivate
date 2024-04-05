@@ -97,6 +97,7 @@ export class Editor extends CompSObject{
         this.link(GlobalEventDispatcher.instance.onKeyDown.slice('Backspace'),this.delete)
         this.link(GlobalEventDispatcher.instance.onKeyDown.slice('ctrl y'),this.preventDefault)
         this.link(GlobalEventDispatcher.instance.onKeyDown.slice('ctrl z'),this.preventDefault)
+        this.link2(document, "keydown", (e: KeyboardEvent) => { if (e.key == "Enter") this.createExecNode() })
     }
 
     private preventDefault(e: KeyboardEvent){
@@ -319,5 +320,10 @@ export class Editor extends CompSObject{
             }
         }
         this.makeRequest('delete',{ids:selectedIds})
+    }
+
+    private createExecNode(){
+        if(document.activeElement != document.body) return;
+        this.createNode('grapycal_builtin.ExecNode')
     }
 }

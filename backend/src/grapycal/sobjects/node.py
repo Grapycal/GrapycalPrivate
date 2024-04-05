@@ -419,11 +419,11 @@ class Node(SObject, metaclass=NodeMeta):
         """
         Called when a client wants to spawn a node.
         """
-        new_node = main_store.main_editor.create_node(type(self))
+        new_node = main_store.main_editor.create_node(type(self),sender=client_id)
         if new_node is None:  # failed to create node
             return
         new_node.add_tag(
-            f"spawned_by_{client_id}"
+            f"drag_created_by{client_id}"
         )  # So the client can find the node it spawned and make it follow the mouse
 
     def destroy(self) -> SObjectSerialized:

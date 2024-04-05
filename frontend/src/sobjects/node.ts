@@ -324,20 +324,6 @@ export class Node extends CompSObject implements IControlHost {
             this.htmlItem.baseElement.classList.remove('functional-selected')
         })
 
-        if(this.hasTag(`spawned_by_${this.objectsync.clientId}`))
-        {
-            this.removeTag(`spawned_by_${this.objectsync.clientId}`)
-            this.selectable.click()
-            let pivot = this.transform.pivot
-            this.transform.globalPosition = this.eventDispatcher.mousePos.add(pivot.mul(this.transform.size)).add(this.transform.size.mulScalar(-0.5))
-            this.eventDispatcher.fakeOnMouseDown() //fake a mouse down to start dragging
-        }
-
-        if(this.hasTag(`pasted_by_${this.objectsync.clientId}`))
-        {
-            this.removeTag(`pasted_by_${this.objectsync.clientId}`)
-            this.selectable.select()
-        }
 
         if(this.isPreview){
             this.selectable.enabled = false
@@ -361,6 +347,46 @@ export class Node extends CompSObject implements IControlHost {
         //set background image
         if(this.icon_path.getValue() != ''){
             this.setIcon(this.icon_path.getValue())
+        }
+    }
+
+    protected postStart(): void {
+        // called after all the children are set up
+        super.postStart()
+        
+        if(this.hasTag(`drag_created_by${this.objectsync.clientId}`))
+        {
+            this.removeTag(`drag_created_by${this.objectsync.clientId}`)
+            this.selectable.click()
+            let pivot = this.transform.pivot
+            this.transform.globalPosition = this.eventDispatcher.mousePos.add(pivot.mul(this.transform.size)).add(this.transform.size.mulScalar(-0.5))
+            this.eventDispatcher.fakeOnMouseDown() //fake a mouse down to start dragging
+        }
+        
+        if(this.hasTag(`pasted_by_${this.objectsync.clientId}`))
+        {
+            this.removeTag(`pasted_by_${this.objectsync.clientId}`)
+            this.selectable.select()
+            // focus the first input or .cm-editor element in the node
+            let input = this.htmlItem.baseElement.querySelector('.code-control') as HTMLElement
+            || this.htmlItem.baseElement.querySelector('textarea')
+            || this.htmlItem.baseElement.querySelector('input');
+
+            if(input) input.focus()
+        }
+        
+        if(this.hasTag(`created_by_${this.objectsync.clientId}`))
+        {
+            this.removeTag(`created_by_${this.objectsync.clientId}`)
+            this.selectable.select()
+            // focus the first input or .cm-editor element in the node
+            let input = this.htmlItem.baseElement.querySelector('.code-control') as HTMLElement
+            || this.htmlItem.baseElement.querySelector('textarea')
+            || this.htmlItem.baseElement.querySelector('input') 
+            
+            
+            if(input) input.focus();
+            (window as any).i = input
         }
     }
 

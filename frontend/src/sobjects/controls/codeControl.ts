@@ -16,7 +16,7 @@ export class CodeControl extends Control {
 
     private lock = false
     protected template = `
-    <div class="control flex-horiz" id="codecontrol">
+    <div class="control code-control flex-horiz" id="codecontrol" tabindex="0">
         <div class="label" id="label"></div>
     </div>    
     `
@@ -167,9 +167,13 @@ export class CodeControl extends Control {
             if (this.lock) return
             this.editorView.dispatch({changes: {from: 0, to: this.editorView.state.doc.length, insert: value}})
         })
+
+        this.link2(this.htmlItem.baseElement,"focus", this.editorView.focus.bind(this.editorView))
+        this.link2(this.htmlItem.baseElement,"focus", () => { console.log("focus")})
     }
 
     protected update(e: any): void {
+        if(e.state.doc.toString() === this.text.getValue()) return
         this.lock = true
         this.text.set(e.state.doc.toString())
         this.lock = false

@@ -273,7 +273,7 @@ class ExtensionManager:
         x = snap_node(ctx.mouse_pos[0])
         y = snap_node(ctx.mouse_pos[1])
         translation = [x,y]
-        main_store.main_editor.create_node(node_type_name,translation=translation)
+        main_store.main_editor.create_node(node_type_name,translation=translation,sender=ctx.client_id)
     
     def _check_extension_not_used(self, name: str) -> None:
         extension = self._extensions[name]
