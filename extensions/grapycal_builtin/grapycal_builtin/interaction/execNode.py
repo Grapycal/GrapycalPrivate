@@ -57,7 +57,7 @@ class ExecNode(SourceNode):
     def build_node(self, text=""):
         super().build_node()
         self.out_port = self.add_out_port("done")
-        self.text_control = self.add_code_control(name="text")
+        self.code_control = self.add_code_control(name="text")
         self.label.set("Execute")
         self.shape.set("simple")
         self.css_classes.append("fit-content")
@@ -76,7 +76,7 @@ class ExecNode(SourceNode):
         self.icon_path.set("python")
 
         if self.is_new:
-            self.text_control.set(text)
+            self.code_control.set(text)
         else:
             for name in self.inputs:
                 self.add_input(name, None)
@@ -89,6 +89,7 @@ class ExecNode(SourceNode):
         self.inputs.on_pop.add_auto(self.pop_input)
         self.outputs.on_insert.add_auto(self.add_output)
         self.outputs.on_pop.add_auto(self.pop_output)
+        self.code_control.on_execute += lambda: self.run(self.task)
 
     def add_input(self, name, _):
         self.add_in_port(name, 1)
@@ -119,7 +120,7 @@ class ExecNode(SourceNode):
 
     def task(self):
         self.output_control.set("")
-        stmt = self.text_control.text.get()
+        stmt = self.code_control.text.get()
         for name in self.inputs:
             port = self.get_in_port(name)
             if port.is_all_ready():

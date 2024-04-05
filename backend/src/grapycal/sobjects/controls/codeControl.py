@@ -52,8 +52,10 @@ class CodeControl(ValuedControl[str]):
     def init(self):
         super().init()
         self.on_finish = Action()
+        self.on_execute = Action()
         self.register_service("finish", self.on_finish.invoke)
         self.register_service("suggestions", self.get_auto_complete_suggestions)
+        self.register_service("execute", self.on_execute.invoke)
 
     def set(self, text: str):
         self.text.set(text)

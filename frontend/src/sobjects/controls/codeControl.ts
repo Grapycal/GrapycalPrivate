@@ -161,6 +161,11 @@ export class CodeControl extends Control {
                 
                 }
             }
+            if (e.key === "Enter" && e.shiftKey) {
+                this.makeRequest('execute')
+                e.preventDefault()
+                e.stopPropagation()
+            }
         })
 
         this.link(this.text.onSet, (value) => {
