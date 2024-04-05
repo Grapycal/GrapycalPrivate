@@ -75,7 +75,10 @@ def resolve_expr(expr:ast.expr,vars:Dict[str,object]) -> Tuple[Literal["type"], 
             # if t is class, its result is an object of that class
             if isinstance(base, type):
                 return "type", base
-            return "type", eval(base.__annotations__['return'], vars)
+            if isinstance(base.__annotations__['return'], str):
+                return "type", eval(base.__annotations__['return'], vars)
+            else:
+                return "type", base.__annotations__['return']
         else:
             if isinstance(base, type): # a call of a type returns object of that type
                 return "type", base
@@ -111,8 +114,12 @@ def _get_attr_suggestions(code:str,module_vars:Dict[str,object]) -> list[Tuple[s
     if t == "object":
         suggestions = [(name,getattr(base,name)) for name in dir(base) if name.startswith(uncompleted_identifier)]
     else:
-        suggestions = [attr for attr in get_attrs_in_init(base) if attr[0].startswith(uncompleted_identifier)]+\
-            [(name,value) for name, value in base.__dict__.items() if name.startswith(uncompleted_identifier)]
+        suggestions = []
+        try:
+            suggestions += [attr for attr in get_attrs_in_init(base) if attr[0].startswith(uncompleted_identifier)]
+        except Exception as e:
+            pass
+            suggestions += [(name,value) for name, value in base.__dict__.items() if name.startswith(uncompleted_identifier)]
             
     return suggestions
 def get_last_identifier(code:str):
@@ -180,8 +187,8 @@ def get_autocomplete_suggestions(code:str,vars:Dict[str,object]):
     try:
         attr_suggestions = _get_attr_suggestions(code, vars)
     except Exception as e:
-        import traceback
-        traceback.print_exc()
+        # import traceback
+        # traceback.print_exc()
         attr_suggestions = []
     for name, value in attr_suggestions:
         boost = 0
