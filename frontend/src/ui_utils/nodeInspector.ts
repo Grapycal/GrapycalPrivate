@@ -132,10 +132,15 @@ export class NodeInspector extends Componentable{
         }
         else{//multiple nodes
             let nodeTypeString = '';
-            for(let node of this.nodes){
-                nodeTypeString += node.type_topic.getValue().split('.')[1] + ', ';
+            if (this.nodes.length <3){
+                for(let node of this.nodes){
+                    nodeTypeString += node.type_topic.getValue().split('.')[1] + ', ';
+                }
+                nodeTypeString = nodeTypeString.slice(0,-2);
             }
-            nodeTypeString = nodeTypeString.slice(0,-2);
+            else{
+                nodeTypeString = `${this.nodes.length} nodes`
+            }
             this.nodeTypeDiv.innerText = nodeTypeString;
             this.extensionNameDiv.innerText = '';
         }

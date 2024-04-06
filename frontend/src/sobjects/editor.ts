@@ -3,7 +3,7 @@ import { ComponentManager } from "../component/component"
 import { EventDispatcher as EventDispatcher, GlobalEventDispatcher } from "../component/eventDispatcher"
 import { HtmlItem } from "../component/htmlItem"
 import { MouseOverDetector } from "../component/mouseOverDetector"
-import { Transform } from "../component/transform"
+import { ScrollBehavior, Transform } from "../component/transform"
 import { CompSObject } from "./compSObject"
 import { Linker } from "../component/linker"
 import { Port } from "./port"
@@ -78,7 +78,7 @@ export class Editor extends CompSObject{
         this.transform.maxScale = 8
         this.transform.minScale = 0.1
         this.transform.draggable = true;
-        this.transform.scrollable = true;
+        this.transform.scroll_behavior = ScrollBehavior.TranslateOrScale
 
         this.link(this.eventDispatcher.onDragStart,this.onDragStart)
         this.link(this.eventDispatcher.onDrag,this.onDrag)
@@ -97,6 +97,7 @@ export class Editor extends CompSObject{
         this.link(GlobalEventDispatcher.instance.onKeyDown.slice('Backspace'),this.delete)
         this.link(GlobalEventDispatcher.instance.onKeyDown.slice('ctrl y'),this.preventDefault)
         this.link(GlobalEventDispatcher.instance.onKeyDown.slice('ctrl z'),this.preventDefault)
+        this.link(GlobalEventDispatcher.instance.onKeyDown.slice('ctrl a'),this.selectAll)
         this.link2(document, "keydown", (e: KeyboardEvent) => { if (e.key == "Enter") this.createExecNode() })
     }
 
@@ -325,5 +326,11 @@ export class Editor extends CompSObject{
     private createExecNode(){
         if(document.activeElement != document.body) return;
         this.createNode('grapycal_builtin.ExecNode')
+    }
+
+    private selectAll(e: KeyboardEvent){
+        if(document.activeElement != document.body) return;
+        Workspace.instance.selection.selectAll()
+        e.preventDefault()
     }
 }

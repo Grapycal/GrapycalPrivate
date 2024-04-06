@@ -64,6 +64,12 @@ class RequestFrameManager{
 export enum Space{
     Local,World
 }
+export enum ScrollBehavior{
+    Scale,
+    Translate,
+    TranslateOrScale,
+    None
+}
 // Dependency: HtmlItem
 export class Transform extends Component{
 
@@ -163,12 +169,12 @@ export class Transform extends Component{
     }
 
 
-    _scrollable: boolean = false;
-    get scrollable(){return this._scrollable;}
-    set scrollable(scrollable: boolean){
-        if(this._scrollable == scrollable) return;
-        this._scrollable = scrollable;
-        if (this.enabled && scrollable)
+    _scroll_behavior: ScrollBehavior = ScrollBehavior.None;
+    get scroll_behavior(){return this._scroll_behavior;}
+    set scroll_behavior(value: ScrollBehavior){
+        if(this._scroll_behavior == value) return;
+        this._scroll_behavior = value;
+        if (this.enabled && value != ScrollBehavior.None)
             this.actuallyScrollable = true;
         else
             this.actuallyScrollable = false;
@@ -215,7 +221,7 @@ export class Transform extends Component{
         else
             this.actuallyDraggable = false;
 
-        if (enabled && this.scrollable)
+        if (enabled && this.scroll_behavior != ScrollBehavior.None)
             this.actuallyScrollable = true;
         else
             this.actuallyScrollable = false;
@@ -301,7 +307,19 @@ export class Transform extends Component{
 
     private onScroll(e:WheelEvent){
         e.stopPropagation();
-        this.smoothScroll(-0.002*e.deltaY);
+        if (this.scroll_behavior == ScrollBehavior.Scale){
+            this.smoothScroll(-0.002*e.deltaY);
+        }
+        else if (this.scroll_behavior == ScrollBehavior.Translate){
+            this.translate(new Vector2(-e.deltaX,-e.deltaY));
+        }else if (this.scroll_behavior == ScrollBehavior.TranslateOrScale){
+            if(e.ctrlKey){
+                this.smoothScroll(-0.002*e.deltaY);
+                e.preventDefault();
+            }else{
+                this.translate(new Vector2(-e.deltaX,-e.deltaY));
+            }
+        }
     }
 
     private smoothScroll(amount:number){
