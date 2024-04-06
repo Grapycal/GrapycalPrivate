@@ -66,7 +66,7 @@ export class Node extends CompSObject implements IControlHost {
             <div class="node-selection"></div>
             <div class="node-label full-width">
                 <div class="node-label-underlay"></div>
-                <div id="label"></div>
+                <div ref="labelDiv"></div>
             </div>
 
             <div class="node-border-container">
@@ -93,7 +93,7 @@ export class Node extends CompSObject implements IControlHost {
                 <div class="full-width flex-vert space-evenly">
                     <div class="node-label full-width flex-horiz">
                         <div class="node-label-underlay"></div>
-                        <div id="label"></div>
+                        <div ref="labelDiv"></div>
                     </div>
                     <div slot="control"  class="slot-control main-section"></div>
                 </div>
@@ -112,7 +112,7 @@ export class Node extends CompSObject implements IControlHost {
                 <div slot="input_port" class=" flex-vert space-evenly slot-input-port"></div>
                 <div class="full-width flex-vert space-evenly node-label"> 
                     <div class="node-label-underlay"></div>
-                    <div id="label" class="center-align"></div>
+                    <div ref="labelDiv" class="center-align"></div>
                 </div>
                 <div slot="control" style="display:none"></div>
                 
@@ -120,6 +120,8 @@ export class Node extends CompSObject implements IControlHost {
             </div>
         </div>`,
     }
+
+    private readonly labelDiv: HTMLDivElement
 
     constructor(objectsync: ObjectSyncClient, id: string) {
         super(objectsync, id)
@@ -145,11 +147,11 @@ export class Node extends CompSObject implements IControlHost {
         this.link(this.shape.onSet,this.reshape)
 
         this.link(this.label.onSet, (label: string) => {
-            this.htmlItem.getHtmlEl('label').innerText = label
+            this.labelDiv.innerText = label
         })
 
         this.link(this.label_offset.onSet, (offset: number) => {
-            let label_el = this.htmlItem.getHtmlEl('label')
+            let label_el = this.labelDiv
             label_el.style.marginTop = offset + 'em'
         })
 
@@ -423,18 +425,17 @@ export class Node extends CompSObject implements IControlHost {
     }
 
     reshape(shape: string) {
-        this.htmlItem.applyTemplate(this.templates[shape])
+        this.applyTemplate(this.templates[shape])
         this.eventDispatcher.setEventElement(as(this.htmlItem.baseElement, HTMLElement))
         this.mouseOverDetector.eventElement = this.htmlItem.baseElement
         
-        this.htmlItem.getHtmlEl('label').innerText = this.label.getValue()
+        this.labelDiv.innerText = this.label.getValue()
         
         this.link2(this.htmlItem.baseElement,'mousedown', () => {
             soundManager.playClick()
         })
         
-        let label_el = this.htmlItem.getHtmlEl('label')
-        label_el.style.marginTop = this.label_offset.getValue() + 'em'
+        this.labelDiv.style.marginTop = this.label_offset.getValue() + 'em'
 
         if(this._isPreview){
             this.htmlItem.baseElement.classList.add('node-preview')

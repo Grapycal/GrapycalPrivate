@@ -80,9 +80,9 @@ export class Edge extends CompSObject {
     protected onStart(): void {
         super.onStart()
 
+        this.eventDispatcher.setEventElement(this.path_hit_box)
         this.selectable.selectionManager = Workspace.instance.selection
 
-        this.eventDispatcher.setEventElement(this.path_hit_box)
         
         this.transform.pivot = Vector2.zero
         this.transform.translation = Vector2.zero
@@ -198,8 +198,8 @@ export class Edge extends CompSObject {
     private onDragStart(event: MouseEvent, mousePos: Vector2) {
         if(event.ctrlKey || event.shiftKey || event.buttons != 1) { return }
         let maxR = 200
-        let distToTail = this.tail.getValue().getComponent(Transform).worldCenter.distanceTo(mousePos)
-        let distToHead = this.head.getValue().getComponent(Transform).worldCenter.distanceTo(mousePos)
+        let distToTail = this.tail.getValue().transform.worldCenter.distanceTo(mousePos)
+        let distToHead = this.head.getValue().transform.worldCenter.distanceTo(mousePos)
         //if(distToTail > maxR && distToHead > maxR)return;
         if(distToTail < distToHead) {
             this.state = EdgeState.DraggingTail
@@ -238,7 +238,7 @@ export class Edge extends CompSObject {
         let nearestPort: Port | null = null
         let nearestPortDist = Infinity
         for(let port of candidatePorts){
-            let dist = port.getComponent(Transform).worldCenter.distanceTo(mousePos)
+            let dist = port.transform.worldCenter.distanceTo(mousePos)
             if(dist < nearestPortDist){
                 nearestPort = port
                 nearestPortDist = dist
@@ -373,7 +373,7 @@ export class Edge extends CompSObject {
             this.head.getValue() != null &&
             (this.tail.getValue() == null || !MouseOverDetector.objectsUnderMouse.includes(this.tail.getValue()))){
             tail = this.transform.worldToLocal(this.eventDispatcher.mousePos)
-            head = this.transform.worldToLocal(this.head.getValue().getComponent(Transform).worldCenter)
+            head = this.transform.worldToLocal(this.head.getValue().transform.worldCenter)
             //tail_orientation = Math.atan2(head.y - tail.y, head.x - tail.x)
             tail_orientation = 0
             head_orientation = this.head.getValue().orientation
@@ -382,15 +382,15 @@ export class Edge extends CompSObject {
             this.state == EdgeState.DraggingHead &&
             this.tail.getValue() != null &&
             (this.head.getValue() == null || !MouseOverDetector.objectsUnderMouse.includes(this.head.getValue()))) {
-            tail = this.transform.worldToLocal(this.tail.getValue().getComponent(Transform).worldCenter)
+            tail = this.transform.worldToLocal(this.tail.getValue().transform.worldCenter)
             head = this.transform.worldToLocal(this.eventDispatcher.mousePos)
             tail_orientation = this.tail.getValue().orientation
             //head_orientation = Math.atan2(tail.y - head.y, tail.x - head.x)
             head_orientation = Math.PI
         }else {
             if(!this.tail.getValue() || !this.head.getValue()) {throw Error;return null}
-            tail = this.transform.worldToLocal(this.tail.getValue().getComponent(Transform).worldCenter)
-            head = this.transform.worldToLocal(this.head.getValue().getComponent(Transform).worldCenter)
+            tail = this.transform.worldToLocal(this.tail.getValue().transform.worldCenter)
+            head = this.transform.worldToLocal(this.head.getValue().transform.worldCenter)
             tail_orientation = this.tail.getValue().orientation
             head_orientation = this.head.getValue().orientation
         }

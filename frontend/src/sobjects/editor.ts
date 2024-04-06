@@ -47,12 +47,13 @@ export class Editor extends CompSObject{
             
         </div>
 
-        <div id="box_selection" class="box-selection" style="position:absolute;width:0px;height:0px; display:none;"></div>
+        <div ref="boxSelection" class="box-selection" style="position:absolute;width:0px;height:0px; display:none;"></div>
     </div>
     `}
 
     editor: HTMLDivElement
     viewport: HTMLDivElement
+    boxSelection: HTMLDivElement
 
     running_nodes: ObjSetTopic = this.getAttribute('running_nodes',ObjSetTopic);
     runningChanged = new ActionDict<SObject,[boolean]>();
@@ -152,7 +153,7 @@ export class Editor extends CompSObject{
             this.transform.draggable = false;
             this.boxSelectionStart = this.transform.WroldToEl(mousePos,this.htmlItem.baseElement as HTMLElement,false)
             this.boxSelectionStartClient = mousePos
-            this.htmlItem.getHtmlEl('box_selection').style.display = 'block'
+            this.boxSelection.style.display = 'block'
         }
     }
 
@@ -163,15 +164,15 @@ export class Editor extends CompSObject{
         let boxSelection = new Vector2(mousePos.x-this.boxSelectionStart.x,mousePos.y-this.boxSelectionStart.y)
         let boxSelectionSize = new Vector2(Math.abs(boxSelection.x),Math.abs(boxSelection.y))
         let boxSelectionPos = new Vector2(Math.min(this.boxSelectionStart.x,mousePos.x),Math.min(this.boxSelectionStart.y,mousePos.y))
-        this.htmlItem.getHtmlEl('box_selection').style.width = boxSelectionSize.x+'px'
-        this.htmlItem.getHtmlEl('box_selection').style.height = boxSelectionSize.y+'px'
-        this.htmlItem.getHtmlEl('box_selection').style.left = boxSelectionPos.x+'px'
-        this.htmlItem.getHtmlEl('box_selection').style.top = boxSelectionPos.y+'px'
+        this.boxSelection.style.width = boxSelectionSize.x+'px'
+        this.boxSelection.style.height = boxSelectionSize.y+'px'
+        this.boxSelection.style.left = boxSelectionPos.x+'px'
+        this.boxSelection.style.top = boxSelectionPos.y+'px'
     }
 
     private onDragEnd(e: MouseEvent, mousePos: Vector2){
         if(!this.boxSelectionStart) return;
-        this.htmlItem.getHtmlEl('box_selection').style.display = 'none'
+        this.boxSelection.style.display = 'none'
         this.transform.draggable = true;
         let boxSelectionEnd = mousePos
         let boxSelectionStart = this.boxSelectionStartClient

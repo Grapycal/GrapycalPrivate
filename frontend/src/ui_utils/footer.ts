@@ -78,7 +78,6 @@ export class Footer extends Componentable{
     status: HTMLSpanElement
     bar: HTMLDivElement
     extendArea: HTMLDivElement
-    eventDispatcher: EventDispatcher = new EventDispatcher(this);
     displacement: number = 0;
     constructor(){
         super();

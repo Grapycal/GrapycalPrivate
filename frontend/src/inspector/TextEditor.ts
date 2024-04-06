@@ -8,8 +8,8 @@ export class TextEditor extends Editor<StringTopic> {
 
     protected get template(): string { return `
     <div class="attribute-editor flex-horiz stretch">
-        <div id="attribute-name" class="attribute-name"></div>
-        <input id="input" type="text" class="text-editor"></input>
+        <div ref="attributeName" class="attribute-name"></div>
+        <input ref="input" type="text" class="text-editor"></input>
     </div>
     `;
     }
@@ -17,11 +17,12 @@ export class TextEditor extends Editor<StringTopic> {
     readonly input: HTMLTextAreaElement|HTMLInputElement
     readonly connectedAttributes: StringTopic[]
 
+    private readonly attributeName: HTMLDivElement
+
     constructor(displayName: string, editorArgs: any, connectedAttributes: StringTopic[]) {
         super()
         this.connectedAttributes = connectedAttributes
-        this.input = this.htmlItem.getHtmlEl('input') as HTMLTextAreaElement|HTMLInputElement
-        this.htmlItem.getHtmlEl('attribute-name').innerText = displayName
+        this.attributeName.innerText = displayName
         new BindInputBoxAndTopic(this,this.input, this.connectedAttributes,Workspace.instance.objectsync)
     }
 

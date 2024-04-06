@@ -34,14 +34,6 @@ export class CompSObject extends SObject implements IComponentable {
         return this._transform;
     }
 
-    private _linker: Linker = null;
-    get linker(): Linker {
-        if (this._linker == null) {
-            this._linker = new Linker(this);
-        }
-        return this._linker;
-    }
-
     private _eventDispatcher: EventDispatcher = null;
     get eventDispatcher(): EventDispatcher {
         if (this._eventDispatcher == null) {
@@ -104,5 +96,12 @@ export class CompSObject extends SObject implements IComponentable {
     public onDestroy(): void {
         super.onDestroy();
         this.componentManager.destroy();
+    }
+
+    protected applyTemplate(template: string): void {
+        this.htmlItem.applyTemplate(template);
+        for (let [name,el] of this._htmlItem.getRefs()) {
+            (this as any)[name] = el;
+        }
     }
 }

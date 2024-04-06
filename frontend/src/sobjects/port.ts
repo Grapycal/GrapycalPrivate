@@ -30,9 +30,9 @@ export class Port extends CompSObject implements IControlHost {
 
     set displayLabel(value: boolean) {
         if (value) {
-            this.htmlItem.getHtmlEl('label').style.display = 'block'
+            this.labelDiv.style.display = 'block'
         } else {
-            this.htmlItem.getHtmlEl('label').style.display = 'none'
+            this.labelDiv.style.display = 'none'
         }
     }
 
@@ -54,7 +54,7 @@ export class Port extends CompSObject implements IControlHost {
     protected get template(): string { return `
     <div class="port">
 
-        <div class="port-label" id="label"></div>
+        <div ref="labelDiv" class="port-label" ></div>
         <div class="slot-control" slot="control"></div>
         <div ref="knob" class="port-knob" id="Knob">
             <div ref="hitbox" class="port-knob-hitbox" id="Hitbox"></div>
@@ -65,6 +65,7 @@ export class Port extends CompSObject implements IControlHost {
 
     knob: HTMLDivElement
     hitbox: HTMLDivElement
+    labelDiv: HTMLDivElement
 
     protected onStart(): void {
         super.onStart()
@@ -83,7 +84,7 @@ export class Port extends CompSObject implements IControlHost {
         this.htmlItem.baseElement.classList.add('has-edge')
 
         this.link(this.display_name.onSet,(label: string) => {
-            this.htmlItem.getHtmlEl('label').innerText = label
+            this.labelDiv.innerText = label
         })
         this.link(this.is_input.onSet,(is_input: number) => {
             if(is_input) {
@@ -132,7 +133,6 @@ export class Port extends CompSObject implements IControlHost {
         this.node = as(newValue, Node);
         if(this.node.hasComponent(Transform))
             this.node.moved.add(this.moved.invoke)
-        //this.node.setMinWidth( this.htmlItem.getHtmlEl('label').offsetWidth + 18)
         this.moved.invoke()
     }
 
@@ -147,12 +147,12 @@ export class Port extends CompSObject implements IControlHost {
     private isInputChanged(is_input: number): void {
         if(is_input) {
             this.htmlItem.setParent(this.getComponentInAncestors(HtmlItem)!, 'input_port')
-            this.htmlItem.getHtmlEl('Knob').classList.remove('out-port')
-            this.htmlItem.getHtmlEl('Knob').classList.add('in-port')
+            this.knob.classList.remove('out-port')
+            this.knob.classList.add('in-port')
         } else {
             this.htmlItem.setParent(this.getComponentInAncestors(HtmlItem)!, 'output_port')
-            this.htmlItem.getHtmlEl('Knob').classList.remove('in-port')
-            this.htmlItem.getHtmlEl('Knob').classList.add('out-port')
+            this.knob.classList.remove('in-port')
+            this.knob.classList.add('out-port')
         }
         this.moved.invoke()
     }
