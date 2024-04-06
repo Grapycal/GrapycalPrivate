@@ -876,7 +876,7 @@ class Node(SObject, metaclass=NodeMeta):
                 },
             )
 
-    def print(self, *args, **kwargs):
+    def print(self, *objs,sep=' ',end='\n', **kwargs):
         """
         Print to the node's output.
         """
@@ -884,8 +884,15 @@ class Node(SObject, metaclass=NodeMeta):
         # self._output_stream.flush()
 
         # maybe the self._output_stream can be abandoned
-        output = io.StringIO()
-        pprint(*args, stream=output, **kwargs)
+        output = io.StringIO(newline="")
+        for obj in objs[:-1]:
+            if isinstance(obj,str):
+                output.write(obj)
+            else:
+                pprint(obj, stream=output, **kwargs)
+            output.write(sep)
+        pprint(objs[-1], stream=output, **kwargs)
+        output.write(end)
         contents = output.getvalue()
         output.close()
 

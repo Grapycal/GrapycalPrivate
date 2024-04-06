@@ -27,6 +27,9 @@ class SliderControl(ValuedControl[None]):
             return int(self.value.get())
         return self.value.get()
     
+    def get_int(self) -> int:
+        return int(self.value.get())
+    
     def set(self, value: float):
         if self.config['int_mode']:
             value = int(value)

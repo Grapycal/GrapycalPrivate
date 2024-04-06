@@ -92,6 +92,10 @@ export class SliderControl extends Control {
             this.numberInput.select()
         })
 
+        this.link2(this.htmlItem.baseElement,'dblclick', (e) => {
+            e.stopPropagation()
+        })
+
         this.link2(this.numberInput,'blur', (e) => {
             this.numberInput.style.pointerEvents = 'none'
             this.input(this.numberInput.valueAsNumber)
@@ -102,6 +106,7 @@ export class SliderControl extends Control {
                 this.numberInput.blur()
                 this.input(this.numberInput.valueAsNumber)
             }
+            e.stopPropagation()
         })
         this.numberInput.style.pointerEvents = 'none'
     }

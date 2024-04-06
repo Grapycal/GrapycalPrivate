@@ -289,15 +289,9 @@ class MnistDatasetNode(SourceNode):
         self.label.set("MNIST Dataset")
         self.out = self.add_out_port("MNIST Dataset")
         self.include_labels = self.add_option_control(name='include_labels',options=['True','False'], value= 'True',label='Include labels')
-        self.max_size = self.add_text_control("0", "max_size", name="max_size")
-    def task(self):
+        self.size = self.add_slider_control(label="size",min=1,max=60000,int_mode=True,name="size")
 
-        try:
-            max_size = int(self.max_size.get())
-        except ValueError:
-            max_size = 0
-            self.max_size.set("0")
-        
+    def task(self):
         transform = transforms.Compose(
             [
                 transforms.ToTensor(),
@@ -311,11 +305,10 @@ class MnistDatasetNode(SourceNode):
                 transform=transform,
             )
 
-        if max_size == 0:
-            max_size = len(raw_ds)
+        size = self.size.get_int()
             
         ds = []
-        for i in range(max_size):
+        for i in range(size):
             ds.append(raw_ds[i])
 
         if self.include_labels.get() == 'False':
