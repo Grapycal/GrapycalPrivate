@@ -13,9 +13,9 @@ export class ListEditor extends Editor<ListTopic<any>> {
         <div class="attribute-editor flex-horiz stretch">
             <div ref="attributeName" class="attribute-name"></div>
             <div class="container">
-                <div ref="contrainer" class="container" slot="container" id="container"></div>
+                <div ref="container" class="container" slot="container" id="container"></div>
                 <div class="container horiz">
-                    <input ref="input" type="text" class="grow">
+                    <input ref="addInput" type="text" class="grow">
                     <button ref="addButton" class="button center-align">+</button>
                 </div>
             </div>
@@ -47,10 +47,10 @@ export class ListEditor extends Editor<ListTopic<any>> {
     private readonly container: HTMLDivElement
     private readonly addButton: HTMLButtonElement
     private readonly addInput: HTMLInputElement
+    private readonly attributeName: HTMLDivElement
     private readonly items: Set<ListEditorItem> = new Set();
     private locked = false;
 
-    private readonly attributeName: HTMLDivElement
 
     constructor(displayName: string, editorArgs: any, connectedAttributes: Topic<any>[]) {
         super()

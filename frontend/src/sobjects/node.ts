@@ -248,7 +248,6 @@ export class Node extends CompSObject implements IControlHost {
             })
 
             this.link(this.eventDispatcher.onDrag,(e: MouseEvent,newPos: Vector2,oldPos: Vector2) => {
-                debugger
                 if (e.buttons != 1) return this.eventDispatcher.forwardEvent()
                 // pass the event to the editor to box select
                 if(e.ctrlKey){

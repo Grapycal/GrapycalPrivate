@@ -218,7 +218,6 @@ export class EventDispatcher extends Component{
     }
 
     private _onMouseUp(event: MouseEvent){
-        debugger
         this.fowardCalled = false;
         if (this._isDragging)
             this.onDragEnd.invoke(event, new Vector2(event.clientX, event.clientY));

@@ -306,7 +306,6 @@ export class Transform extends Component{
     }
 
     private onDrag(e:MouseEvent,mousePos:Vector2,prevMousePos:Vector2){
-        debugger
         if((e.buttons & this.dragButton) == 0)
             return;
         e.preventDefault(); // prevents selecting text
