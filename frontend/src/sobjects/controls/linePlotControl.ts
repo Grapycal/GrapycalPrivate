@@ -11,11 +11,11 @@ enum YAxisType {
 }
 
 export class LinePlotControl extends Control{
-    protected template = `
+    protected get template (){return `
         <div class="control">
             <div class="label-container"></div>
         </div>
-    `
+    `}
     protected css = `
     .control{
         position:relative;
@@ -45,7 +45,6 @@ export class LinePlotControl extends Control{
     private linesTopic = this.getAttribute('lines', ListTopic<string>)
     disc: THREE.Texture
 
-    private eventDispatcher: EventDispatcher;
     pointCloud: THREE.Points<THREE.BufferGeometry<THREE.NormalBufferAttributes>, THREE.PointsMaterial>
     lines: Map<string,THREE.Line<THREE.BufferGeometry<THREE.NormalBufferAttributes>, THREE.LineBasicMaterial>> = new Map()
     grid: THREE.LineSegments<THREE.BufferGeometry<THREE.NormalBufferAttributes>, THREE.LineBasicMaterial>
@@ -63,7 +62,6 @@ export class LinePlotControl extends Control{
     protected onStart(): void {
         super.onStart();
         if(this.node.isPreview) return;
-        this.eventDispatcher = new EventDispatcher(this, this.htmlItem.baseElement as HTMLDivElement);
         this.labelContainer = this.htmlItem.getHtmlElByClass('label-container') as HTMLDivElement;
 
         this.disc = new THREE.TextureLoader().load( 'disc.png' );

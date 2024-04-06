@@ -10,12 +10,12 @@ export class KeyboardControl extends Control {
     private _enabled = false
     private _pressedKeys = new Set<string>()
 
-    protected template = `
+    protected get template (){return `
     <div class="control flex-horiz">
         <div class="control-label" id="label"></div>
         <button class="control-button full-width" id="button"></button>
     </div>
-    `
+    `}
 
     protected onStart(): void {
         super.onStart()

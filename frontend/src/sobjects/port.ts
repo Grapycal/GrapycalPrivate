@@ -22,11 +22,9 @@ export class Port extends CompSObject implements IControlHost {
     
     element = document.createElement('div')
 
-    htmlItem: HtmlItem;
     get ancestorNode(): Node {
         return this.node;
     }
-    eventDispatcher: EventDispatcher;
 
     moved: Action<[]> = new Action();
 
@@ -53,34 +51,30 @@ export class Port extends CompSObject implements IControlHost {
         this.updateAcceptsEdgeClass()
     }
 
-    readonly template: string = `
+    protected get template(): string { return `
     <div class="port">
 
         <div class="port-label" id="label"></div>
         <div class="slot-control" slot="control"></div>
-        <div class="port-knob" id="Knob">
-            <div class="port-knob-hitbox" id="Hitbox"></div>
+        <div ref="knob" class="port-knob" id="Knob">
+            <div ref="hitbox" class="port-knob-hitbox" id="Hitbox"></div>
         </div>
 
     </div>
-    `
+    `}
 
-    constructor(objectsync: ObjectSyncClient, id: string) {
-        super(objectsync, id)
+    knob: HTMLDivElement
+    hitbox: HTMLDivElement
 
-        // Add Components
-        this.htmlItem = new HtmlItem(this)
-        this.htmlItem.applyTemplate(this.template)
+    protected onStart(): void {
+        super.onStart()
+        this.transform.targetElement = this.knob
+        this.transform.pivot = new Vector2(0,0)
 
-        let transform = new Transform(this,this.htmlItem.getHtmlEl('Knob'))
-        transform.pivot = new Vector2(0,0)
-
-        this.eventDispatcher = new EventDispatcher(this,this.htmlItem.getHtmlEl('Hitbox'))
+        this.eventDispatcher.setEventElement(this.hitbox)
         this.link(this.eventDispatcher.onDragStart,this.generateEdge)
 
-        new MouseOverDetector(this,this.htmlItem.getHtmlEl('Hitbox'))
-
-        // Bind attributes to UI
+        this.mouseOverDetector.eventElement = this.hitbox
 
         this.displayLabel = true
         
@@ -90,14 +84,7 @@ export class Port extends CompSObject implements IControlHost {
 
         this.link(this.display_name.onSet,(label: string) => {
             this.htmlItem.getHtmlEl('label').innerText = label
-            //if(this.node)
-                //this.node.setMinWidth( this.htmlItem.getHtmlEl('label').offsetWidth + 18) 
         })
-
-    }
-
-    protected onStart(): void {
-        super.onStart()
         this.link(this.is_input.onSet,(is_input: number) => {
             if(is_input) {
                 this.orientation = Math.PI
@@ -187,10 +174,10 @@ export class Port extends CompSObject implements IControlHost {
 
     private updateAcceptsEdgeClass(): void {
         if(this.acceptsEdge()){
-            this.htmlItem.getHtmlEl('Knob').classList.add('accepts-edge')
+            this.knob.classList.add('accepts-edge')
         }
         else{
-            this.htmlItem.getHtmlEl('Knob').classList.remove('accepts-edge')
+            this.knob.classList.remove('accepts-edge')
         }
     }
 }

@@ -13,11 +13,11 @@ export class TextControl extends Control {
     editable = this.getAttribute("editable", IntTopic)
     placeholder = this.getAttribute("placeholder", StringTopic)
 
-    protected template = `
+    protected get template (){return `
     <div class="control flex-horiz">
         <div class="label" id="label">Text</div>
     </div>
-    `
+    `}
 
     protected css: string = `
         .label{

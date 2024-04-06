@@ -79,13 +79,25 @@ export class Transform extends Component{
     _targetElement: HTMLElement = null;
     get targetElement(){return this._targetElement;}
     set targetElement(targetElement: HTMLElement){
+        if(this.targetElement != null && this.positionAbsolute){
+            this.targetElement.style.position = 'relative'
+            this.targetElement.style.left = 'auto'
+            this.targetElement.style.top = 'auto'
+        }
+        if(this.targetElement != null){
+            this.targetElement.style.transform = 'none';
+        }
+        let oldDraggable = this.draggable;
+        this.draggable = false;
+
         this._targetElement = targetElement;
         if(targetElement != null && this.positionAbsolute){
             this.targetElement.style.position = 'absolute'
             this.targetElement.style.left = '0px'
             this.targetElement.style.top = '0px'
-                
+            this.requestUpdateUI()
         }
+        this.draggable = oldDraggable;
     }
     specifiedTargetElement: HTMLElement = null;
 
@@ -95,7 +107,17 @@ export class Transform extends Component{
     private _pivot: Vector2 = new Vector2(0.5, 0.5);
     private _scale: number = 1;
     private _translation: Vector2 = Vector2.zero;
-    private positionAbsolute: boolean = false;
+    private _positionAbsolute: boolean = false;
+    get positionAbsolute(){return this._positionAbsolute;}
+    set positionAbsolute(positionAbsolute: boolean){
+        this._positionAbsolute = positionAbsolute;
+        if(this.targetElement != null && positionAbsolute){
+            this.targetElement.style.position = 'absolute'
+            this.targetElement.style.left = '0px'
+            this.targetElement.style.top = '0px'
+            this.requestUpdateUI()
+        }
+    }
 
     public scrollSmoothness: number = 0;
 
@@ -158,7 +180,6 @@ export class Transform extends Component{
     private set actuallyDraggable(actuallyDraggable: boolean){
         if(this._actuallyDraggable == actuallyDraggable) return;
         this._actuallyDraggable = actuallyDraggable;
-
         if (actuallyDraggable){
             this.linker.link(this.getComponent(EventDispatcher).onDrag,this.onDrag);
         }
@@ -260,13 +281,6 @@ export class Transform extends Component{
             this.targetElement.offsetHeight
         );
     }
-
-    // get worldCenter(){
-    //     return {
-    //         x: this.worldPosition.x + this.targetElement.clientWidth*(0.5-this.pivot.x),
-    //         y: this.worldPosition.y + this.targetElement.clientHeight*(0.5-this.pivot.y)
-    //     }
-    // }
     
     constructor(object:IComponentable, targetElement:HTMLElement=null, positionAbsolute:boolean=false){
         super(object);
@@ -292,6 +306,7 @@ export class Transform extends Component{
     }
 
     private onDrag(e:MouseEvent,mousePos:Vector2,prevMousePos:Vector2){
+        debugger
         if((e.buttons & this.dragButton) == 0)
             return;
         e.preventDefault(); // prevents selecting text

@@ -15,11 +15,11 @@ export class CodeControl extends Control {
     placeholder = this.getAttribute("placeholder", StringTopic)
 
     private lock = false
-    protected template = `
+    protected get template (){return `
     <div class="control code-control flex-horiz" id="codecontrol" tabindex="0">
         <div class="label" id="label"></div>
     </div>    
-    `
+    `}
 
     protected css: string = `
         #codecontrol {

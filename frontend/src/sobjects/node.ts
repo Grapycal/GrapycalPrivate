@@ -52,15 +52,8 @@ export class Node extends CompSObject implements IControlHost {
 
     editor: Editor;
     ancestorNode: Node = this;
-    htmlItem: HtmlItem = new HtmlItem(this);
-    eventDispatcher: EventDispatcher = new EventDispatcher(this)
-    transform: Transform = null
-    selectable: Selectable;
-    functionalSelectable: Selectable;
-    mouseOverDetector: MouseOverDetector
 
     dragEndCorrection: Vector2 = new Vector2(0,0)
-
     private draggingTargetPos: Vector2 = new Vector2(0,0)
     
     public moved: Action<[]> = new Action();
@@ -130,25 +123,24 @@ export class Node extends CompSObject implements IControlHost {
 
     constructor(objectsync: ObjectSyncClient, id: string) {
         super(objectsync, id)
-
-        this.mouseOverDetector = new MouseOverDetector(this)
-
-        this.link(this.eventDispatcher.onDoubleClick, () => {
-            this.emit('double_click')
-        })
         this.errorPopup = new ErrorPopup(this)
-
+        this.htmlItem// Ensure htmlItem is created
     }
 
     protected onStart(): void {
         super.onStart()
-        this.selectable = new Selectable(this, Workspace.instance.selection)
-        this.functionalSelectable = new Selectable(this, Workspace.instance.functionalSelection)
-        this._isPreview = this.parent instanceof Sidebar
 
+        this._isPreview = this.parent instanceof Sidebar
         this.editor = this.isPreview? null : this.parent as Editor
-        
+        this.selectable.selectionManager = Workspace.instance.selection
+        if (!this.isPreview)
+            this.transform.positionAbsolute = true
+
         // Bind attributes to UI
+        
+        this.link(this.eventDispatcher.onDoubleClick, () => {
+            this.emit('double_click')
+        })
 
         this.link(this.shape.onSet,this.reshape)
 
@@ -222,9 +214,7 @@ export class Node extends CompSObject implements IControlHost {
         }
         
         // Setup the transform
-
         if (!this.isPreview){
-            this.transform = new Transform(this,null,true)
             this.transform.updateUI()
             this.transform.pivot = new Vector2(0,0)
         
@@ -256,6 +246,7 @@ export class Node extends CompSObject implements IControlHost {
             })
 
             this.link(this.eventDispatcher.onDrag,(e: MouseEvent,newPos: Vector2,oldPos: Vector2) => {
+                debugger
                 if (e.buttons != 1) return this.eventDispatcher.forwardEvent()
                 // pass the event to the editor to box select
                 if(e.ctrlKey){
@@ -306,6 +297,7 @@ export class Node extends CompSObject implements IControlHost {
                 //create a new node
                 this.emit('spawn',{client_id:this.objectsync.clientId}) 
             })
+            this.selectable.enabled = false
         }
         
         this.link(this.selectable.onSelected, () => {
@@ -316,19 +308,6 @@ export class Node extends CompSObject implements IControlHost {
             this.htmlItem.baseElement.classList.remove('selected')
         })  
 
-        this.link(this.functionalSelectable.onSelected, () => {
-            this.htmlItem.baseElement.classList.add('functional-selected')
-        })
-
-        this.link(this.functionalSelectable.onDeselected, () => {
-            this.htmlItem.baseElement.classList.remove('functional-selected')
-        })
-
-
-        if(this.isPreview){
-            this.selectable.enabled = false
-            this.functionalSelectable.enabled = false
-        }
 
         this.link(this.eventDispatcher.onMouseOver, () => {
             this.htmlItem.baseElement.classList.add('hover')

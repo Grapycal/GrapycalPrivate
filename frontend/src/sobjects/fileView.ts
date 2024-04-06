@@ -67,7 +67,6 @@ export class FileView extends CompSObject{
     metadataCache: Map<string,any> = new Map()
     infoPopup: InfoPopup
     lastMouseOver: FileViewItem
-    htmlItem: HtmlItem
     currentPath: string = '.'
 
     // used to check if installed extensions are sufficent to open the selected workspace
@@ -120,6 +119,7 @@ export class FileView extends CompSObject{
             background-color: var(--z3);
         }
     `}
+    
 
     get installedExtensions (){return new Map([
             ...this.importedExtensionsTopic.getValue().entries(), 
@@ -132,7 +132,7 @@ export class FileView extends CompSObject{
         this.avaliableExtensionsTopic = this.objectsync.getTopic('avaliable_extensions',DictTopic<string,any>)
 
 
-        this.htmlItem = new HtmlItem(this,document.getElementById('tab-file-view'),null,this.style)
+        this.htmlItem.setParentElement(document.getElementById('tab-file-view'))
         this.htmlItem.applyTemplate(this.template,"append")
         this.getAttribute('name').onSet.add((value)=>{this.htmlItem.getHtmlElByClass('tab-title').innerText = value})
         this.hierarchy = new HierarchyNode('','',true)

@@ -12,7 +12,7 @@ export class SliderControl extends Control {
     value = this.getAttribute("value", FloatTopic)
     config = this.getAttribute("config", DictTopic<string, any>)
 
-    protected template = `
+    protected get template (){return `
     <div class="control flex-horiz">
         <div class="control-label" id="label"></div>
         <div class="control-slider-container">
@@ -20,7 +20,7 @@ export class SliderControl extends Control {
             <input type="number" class="control-input" id="input" />
         </div>
     </div>
-    `
+    `}
 
     protected css = `
     .control-slider-container{

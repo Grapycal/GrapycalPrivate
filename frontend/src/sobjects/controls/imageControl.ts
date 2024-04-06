@@ -7,11 +7,11 @@ import { Workspace } from "../workspace"
 
 export class ImageControl extends Control {
     
-    protected template = `
+    protected get template (){return `
     <div class="control" tabindex=0>
         <img class="control-image full-height full-width" id="image">
     </div>
-    `
+    `}
 
     protected css = `
     .focused{

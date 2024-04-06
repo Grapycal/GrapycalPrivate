@@ -6,7 +6,7 @@ import { EventDispatcher } from '../../component/eventDispatcher'
 import { Vector2 } from '../../utils'
 
 export class ThreeControl extends Control{
-    protected template = `<div class="control"></div>`
+    protected get template(){return `<div class="control"></div>`}
     private scene: THREE.Scene
     private camera: THREE.PerspectiveCamera
     private renderer: THREE.WebGLRenderer
@@ -18,14 +18,12 @@ export class ThreeControl extends Control{
     private lines = this.getAttribute('lines', ListTopic<[number,number,number,number,number,number]>)
     disc: THREE.Texture
 
-    private eventDispatcher: EventDispatcher;
     pointCloud: THREE.Points<THREE.BufferGeometry<THREE.NormalBufferAttributes>, THREE.PointsMaterial>
     line: THREE.LineSegments<THREE.BufferGeometry<THREE.NormalBufferAttributes>, THREE.LineBasicMaterial>
 
     protected onStart(): void {
         super.onStart();
         if(this.node.isPreview) return;
-        this.eventDispatcher = new EventDispatcher(this, this.htmlItem.baseElement as HTMLDivElement);
         
         this.points.onSet.add(()=>this.setObjectsDirty())
         this.lines.onSet.add(()=>this.setObjectsDirty())

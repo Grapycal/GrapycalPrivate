@@ -12,12 +12,12 @@ export class OptionControl extends Control {
     label = this.getAttribute('label',StringTopic)
     private locked = false
 
-    protected template = `
+    protected get template (){return `
     <div class="control flex-horiz">
         <div class="label" id="label">Text</div>
         <div slot="menu"></div>
     </div>
-    `
+    `}
 
     protected css: string = `
         .label{

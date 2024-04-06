@@ -13,14 +13,6 @@ export class Settings extends CompSObject{
         this.inspector.htmlItem.setParentElement(document.getElementById('tab-settings'))
         this.addFrontendSettings()
         this.entries = this.getAttribute('entries')
-        // this.entries.onAdd.add((key,value)=>{
-        //     const category = value.display_name.split('/')
-        //     const name = category.pop()
-        //     this.inspector.addEditor(new OptionsEditor(name,value.editor_args),category,key)
-        // })
-        // this.entries.onPop.add((key)=>{
-        //     this.inspector.removeEditorById(key)
-        // })
         this.link(this.entries.onSet,this.udpateEntries)
         this.udpateEntries()
     }

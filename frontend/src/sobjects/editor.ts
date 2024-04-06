@@ -15,12 +15,12 @@ import { Workspace } from "./workspace"
 import { Edge } from "./edge"
 
 export class Editor extends CompSObject{
-    readonly template: string = `
+    protected get template(): string { return `
     <div style="width:100%;height:100%; position:relative;">
-        <div class="viewport" id="Viewport" style="width:100%;height:100%;top:0;left:0;">
+        <div ref="viewport" class="viewport" id="Viewport" style="width:100%;height:100%;top:0;left:0;">
             <div style="position:absolute;top:50%;left:50%">
                 
-                <div slot="default" class="editor" id="editor" style="position:absolute;top:50%;left:50%;width:1px;height:1px;">
+                <div ref="editor" slot="default" class="editor" id="editor" style="position:absolute;top:50%;left:50%;width:1px;height:1px;">
                 <svg class="bg" id="bg"
                     
                     <defs>
@@ -49,49 +49,36 @@ export class Editor extends CompSObject{
 
         <div id="box_selection" class="box-selection" style="position:absolute;width:0px;height:0px; display:none;"></div>
     </div>
-    `;
+    `}
 
-    componentManager = new ComponentManager();
-    linker = new Linker(this);
-    eventDispatcher: EventDispatcher;
-    htmlItem: HtmlItem;
-    transform: Transform;
-    mouseOverDetector: MouseOverDetector;
+    editor: HTMLDivElement
+    viewport: HTMLDivElement
 
     running_nodes: ObjSetTopic = this.getAttribute('running_nodes',ObjSetTopic);
     runningChanged = new ActionDict<SObject,[boolean]>();
-    
-    constructor(objectsync: ObjectSyncClient, id: string){
-        super(objectsync,id);
-        this.htmlItem = new HtmlItem(this, document.body.getElementsByClassName('main')[0] as HTMLElement);
-        this.htmlItem.applyTemplate(this.template);
-        let viewport = this.htmlItem.getHtmlEl('Viewport')
-        let editor = this.htmlItem.getHtmlEl('editor')
-        
-        this.transform = new Transform(this,editor);
 
-        this.eventDispatcher = new EventDispatcher(this, viewport);
-        this.linker.link(this.eventDispatcher.onMoveGlobal,this.mouseMove)
-        this.mouseOverDetector = new MouseOverDetector(this, viewport);
+    protected onStart(): void {
+        new SlashCommandMenu(this)
+        this.htmlItem.setParentElement(document.body.getElementsByClassName('main')[0] as HTMLElement)
         
+        this.transform.targetElement = this.editor
+        this.transform.positionAbsolute = true
         this.transform.scale = 1
         this.transform.maxScale = 8
         this.transform.minScale = 0.1
         this.transform.draggable = true;
         this.transform.scroll_behavior = ScrollBehavior.TranslateOrScale
 
+        this.eventDispatcher.setEventElement(this.viewport)
+        this.mouseOverDetector.eventElement = this.viewport
+        
+        this.link(this.eventDispatcher.onMoveGlobal,this.mouseMove)
         this.link(this.eventDispatcher.onDragStart,this.onDragStart)
         this.link(this.eventDispatcher.onDrag,this.onDrag)
         this.link(this.eventDispatcher.onDragEnd,this.onDragEnd)
         this.link(this.running_nodes.onAppend, (node:Node)=>this.runningChanged.invoke(node,true))
         this.link(this.running_nodes.onRemove, (node:Node)=>this.runningChanged.invoke(node,false))
-    }
-
-    protected onStart(): void {
-        new SlashCommandMenu(this)
-        //new AddNodeMenu(this)
         this.link(GlobalEventDispatcher.instance.onKeyDown.slice('ctrl c'),this.copy)
-        this.link2(document, "paste", this.paste)
         this.link(GlobalEventDispatcher.instance.onKeyDown.slice('ctrl x'),this.cut)
         this.link(GlobalEventDispatcher.instance.onKeyDown.slice('Delete'),this.delete)
         this.link(GlobalEventDispatcher.instance.onKeyDown.slice('Backspace'),this.delete)
@@ -99,6 +86,7 @@ export class Editor extends CompSObject{
         this.link(GlobalEventDispatcher.instance.onKeyDown.slice('ctrl z'),this.preventDefault)
         this.link(GlobalEventDispatcher.instance.onKeyDown.slice('ctrl a'),this.selectAll)
         this.link2(document, "keydown", (e: KeyboardEvent) => { if (e.key == "Enter") this.createExecNode() })
+        this.link2(document, "paste", this.paste)
     }
 
     private preventDefault(e: KeyboardEvent){
@@ -211,25 +199,20 @@ export class Editor extends CompSObject{
         if (!e.ctrlKey && !e.shiftKey){ 
             // select only the nodes and edges in the box
             Workspace.instance.selection.clearSelection()
-            Workspace.instance.functionalSelection.clearSelection()
             for(let node of nodes){
                 node.selectable.select()
-                node.functionalSelectable.select()
             }
             for(let edge of edges){
                 edge.selectable.select()
-                edge.functionalSelectable.select()
             }
         }
         else{ 
             // use semantics of ctrl and shift
             for(let node of nodes){
                 node.selectable.click()
-                node.functionalSelectable.click()
             }
             for(let edge of edges){
                 edge.selectable.click()
-                edge.functionalSelectable.click()
             }
         }
 

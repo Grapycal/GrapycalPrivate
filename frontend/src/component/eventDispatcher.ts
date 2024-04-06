@@ -1,4 +1,5 @@
 import { print } from "../devUtils"
+import { Editor } from "../sobjects/editor"
 import { Action,ActionDict, Vector2 } from "../utils"
 import { Component, IComponentable } from "./component"
 import { HtmlItem } from "./htmlItem"
@@ -158,7 +159,7 @@ export class EventDispatcher extends Component{
     private _isDragging: boolean = false;
     get isDragging(){return this._isDragging;}
 
-    public setEventElement(eventElement: ICanReceiveMouseEvent){
+    public setEventElement(eventElement: ICanReceiveMouseEvent){ //TODO: rename to set targetElement
         this.eventElement?.removeEventListener('mousedown', this._onMouseDown);
         this.eventElement?.removeEventListener('wheel', this.onScroll.invoke);
         this.eventElement?.removeEventListener('dblclick', this._onDoubleClick);
@@ -217,6 +218,7 @@ export class EventDispatcher extends Component{
     }
 
     private _onMouseUp(event: MouseEvent){
+        debugger
         this.fowardCalled = false;
         if (this._isDragging)
             this.onDragEnd.invoke(event, new Vector2(event.clientX, event.clientY));
