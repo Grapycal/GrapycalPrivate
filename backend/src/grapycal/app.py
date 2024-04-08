@@ -87,7 +87,7 @@ class GrapycalApp:
                 conf.get_default().auth_token = self._config.get("tunnel_auth_token")
 
             # Open a TCP ngrok tunnel to the SSH server
-            connection_string = ngrok.connect(self._config.get("http_port"), "tcp").public_url
+            connection_string = ngrok.connect(self._config.get("port"), "tcp").public_url
 
             ssh_url, port = connection_string.strip("tcp://").split(":")
             print(f" * ngrok tunnel available, access with `ssh root@{ssh_url} -p{port}`")
