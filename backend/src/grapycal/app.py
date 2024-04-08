@@ -4,6 +4,10 @@ import signal
 import sys
 import subprocess
 
+from pyngrok import ngrok, conf
+# import logging, ngrok
+
+import getpass
 import grapycal
 import termcolor
 import time
@@ -73,6 +77,21 @@ class GrapycalApp:
                 ),
             ).start()
             print(f'Start browser at URL: http://localhost:{self._config["http_port"]}')
+
+        print(self._config)
+        if self._config.get("tunnel") == "ngrok":
+            if not self._config.get("tunnel_auth_token"):
+                print("Enter your authtoken, which can be copied from https://dashboard.ngrok.com/auth")
+                conf.get_default().auth_token = getpass.getpass()
+            else:
+                conf.get_default().auth_token = self._config.get("tunnel_auth_token")
+
+            # Open a TCP ngrok tunnel to the SSH server
+            connection_string = ngrok.connect(self._config.get("http_port"), "tcp").public_url
+
+            ssh_url, port = connection_string.strip("tcp://").split(":")
+            print(f" * ngrok tunnel available, access with `ssh root@{ssh_url} -p{port}`")
+
 
         while True:  # Restart workspace when it exits. Convenient for development
             

@@ -17,6 +17,8 @@ def main():
     parser.add_argument('--port', type=int, help='port to listen on')
     parser.add_argument('--http-port', type=int, help='http port to listen on (to serve webpage)')
     parser.add_argument('--host', type=str, help='host to listen on')
+    parser.add_argument('--tunnel', type=str, default='ngrok', help='tunnel service to use')
+    parser.add_argument('--tunnel-auth-token', type=str, help='tunnel service auth token')
     parser.add_argument('--no-http', action='store_true', help='if set, the server does not serve the webpage')
     parser.add_argument('--restart', action='store_true',
                         help='if set, the workspace restarts when it exits. Convenient for development')
@@ -26,6 +28,8 @@ def main():
     s.add_setting("http_port", int, default=9001)  # type: ignore
     s.add_setting("host", str, default="localhost")  # type: ignore
     s.add_setting("path", str, default=os.path.join(here, "Welcome.grapycal"))  # type: ignore
+    s.add_setting("tunnel", str, default="ngrok")  # type: ignore
+    s.add_setting("tunnel_auth_token", str, default=None)  # type: ignore
     s.load_settings()
     if args.port:
         s['port'] = args.port
@@ -35,6 +39,10 @@ def main():
         s['path'] = args.path
     if args.http_port:
         s['http_port'] = args.http_port
+    if args.tunnel:
+        s['tunnel'] = args.tunnel
+    if args.tunnel_auth_token:
+        s['tunnel_auth_token'] = args.tunnel_auth_token
     s.save_settings()
     s['no_http'] = args.no_http
     s['restart'] = args.restart
