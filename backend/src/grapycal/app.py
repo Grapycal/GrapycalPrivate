@@ -90,22 +90,21 @@ class GrapycalApp:
             connection_string = ngrok.connect(self._config.get("port"), "tcp").public_url
 
             ssh_url, port = connection_string.strip("tcp://").split(":")
-            print(f" * ngrok tunnel available, access with `ssh root@{ssh_url} -p{port}`")
-
+            print(f" * ngrok tunnel available, access with `ws://{ssh_url}:{port}`")
 
         while True:  # Restart workspace when it exits. Convenient for development
-            
+
             # turn on sigint handler
             signal.signal(signal.SIGINT, signal.default_int_handler)
-            
+
             import random
-            workspace_id = random.randint(0, 1000000) # used for exit message file
+            workspace_id = random.randint(0, 1000000)  # used for exit message file
             with self._run_workspace(workspace_id) as workspace:
                 self._waitForWorkspace(workspace)
 
             # turn off sigint handler to avoid the third sigint
             signal.signal(signal.SIGINT, lambda sig, frame: None)
-            
+
             restart = self._config["restart"] and workspace.poll() == 0
 
             exit_message_file = f"grapycal_exit_message_{workspace_id}"
@@ -135,7 +134,7 @@ class GrapycalApp:
         return
 
     @contextlib.contextmanager
-    def _run_workspace(self,workspace_id: int):
+    def _run_workspace(self, workspace_id: int):
         """
         Run a workspace. Ensure that the workspace is terminated when the context is exited.
         """
