@@ -78,14 +78,13 @@ class GrapycalApp:
             ).start()
             print(f'Start browser at URL: http://localhost:{self._config["http_port"]}')
 
-        print(self._config)
         if self._config.get("tunnel") == "ngrok":
             if not self._config.get("tunnel_auth_token"):
                 print("Enter your authtoken, which can be copied from https://dashboard.ngrok.com/auth")
                 conf.get_default().auth_token = getpass.getpass()
             else:
                 conf.get_default().auth_token = self._config.get("tunnel_auth_token")
-
+            conf.get_default().region = "jp"
             # Open a TCP ngrok tunnel to the SSH server
             connection_string = ngrok.connect(self._config.get("port"), "tcp").public_url
 
