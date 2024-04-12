@@ -253,8 +253,7 @@ footer{
 }
 
 .node.hover .node-selection{
-    /* blue border */
-    filter: opacity(0.3);
+    filter: opacity(0.2);
 }
 
 .node.selected .node-selection{
@@ -367,13 +366,14 @@ footer{
     transform: translate(-50%, -50%);
     top: 50%;
     left: 50%;
+    z-index: -10;
 }
 
-.round-node .port-knob-hitbox{
-    /* reduce the hitbox size so that it is easier to select the node */
-    width: 15px;
-    height: 15px;
+.port-knob-hitbox.accepts-edge:hover{
+    background-color : #88888830;
 }
+
+
 
 .port-label{
     position: relative;
@@ -593,6 +593,10 @@ input:enabled, textarea:enabled{
     pointer-events: all;
     stroke: transparent;
     stroke-width: 12;
+}
+
+.edge-path-hit-box:hover{
+    stroke: #88888830;
 }
 
 .edge-label{

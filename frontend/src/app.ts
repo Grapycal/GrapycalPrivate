@@ -47,71 +47,13 @@ function tryReconnect(): void{
     });
 }
 
-function configureHtml(){
-
-    document.addEventListener('contextmenu', function(event) {
-        event.preventDefault();
-    });
-
-    function documentReady(callback: Function): void {
-        if (document.readyState === "complete" || document.readyState === "interactive")
+function documentReady(callback: Function): void {
+    if (document.readyState === "complete" || document.readyState === "interactive")
+        callback()
+    else
+        document.addEventListener("DOMContentLoaded", (event: Event) => {
             callback()
-        else
-            document.addEventListener("DOMContentLoaded", (event: Event) => {
-                callback()
-            })
-
-      }
-
-    let desiredWidth: number = null;
-    let prevX: number = null;
-    let sidebarRight = document.getElementById('sidebar-right');
-
-    const MIN_WIDTH = 10; // 最小寬度
-    const MAX_WIDTH = 500; // 最大寬度
-    function resizeSidebar(event: MouseEvent): void {
-        event.preventDefault(); // prevents selecting text
-        if (desiredWidth != null && sidebarRight) {
-            desiredWidth -= event.x - prevX;
-            prevX = event.x;
-            let newWidth = desiredWidth;
-            // 檢查是否超出最小寬度和最大寬度的範圍
-            if (newWidth < MIN_WIDTH) {
-              newWidth = MIN_WIDTH;
-            } else if (newWidth > MAX_WIDTH) {
-              newWidth = MAX_WIDTH;
-            }
-            sidebarRight.style.width = newWidth + 'px';
-        }
-      }
-
-    if (sidebarRight){
-        document.getElementById('sidebar-resize-handle').addEventListener('mousedown', function(event: MouseEvent) {
-            desiredWidth = sidebarRight.offsetWidth;
-            prevX = event.x;
-            document.addEventListener('mousemove', resizeSidebar, false);
-        }, false)
-
-        document.addEventListener('mouseup', function(event: MouseEvent) {
-            desiredWidth = undefined;
-            document.removeEventListener('mousemove', resizeSidebar, false);
-        }, false);
-    }
-
-    documentReady(function(event: Event) {
-        document.getElementById('sidebar-collapse-right').addEventListener('click', function(event) {
-            let sidebar = document.getElementById('sidebar-collapse-right').parentElement;
-            if (sidebar.classList.contains('collapsed')) {
-                sidebar.classList.remove('collapsed');
-                document.getElementById('sidebar-collapse-right').innerText = '>'
-            } else {
-                sidebar.classList.add('collapsed');
-                document.getElementById('sidebar-collapse-right').innerText = '<'
-            }
-        });
-    })
-
-
+        })
 
 }
 
@@ -139,10 +81,6 @@ function startObjectSync(wsUrl:string){
     objectsync.register(CodeControl)
 
     objectsync.register(WebcamStream)
-
-    setTimeout(() => { // fix this
-        new ExtensionsSetting(objectsync);
-    }, 200);
 
 
     document.addEventListener('keydown', function(event) {
@@ -176,30 +114,22 @@ function startObjectSync(wsUrl:string){
 const fetchWithCache = new FetchWithCache().fetch
 export {fetchWithCache}
 
-configureHtml();
-
 // from webpack config files
 declare var __BUILD_CONFIG__: {
     isService: boolean,
     wsPort: number
 }
 
-// webpack define plugin will replace __BUILD_CONFIG__ with the injected value
-const buildConfig = __BUILD_CONFIG__
+documentReady(() => {
+    // webpack define plugin will replace __BUILD_CONFIG__ with the injected value
+    const buildConfig = __BUILD_CONFIG__
 
-if (buildConfig.isService){
-    // // let loginApi handle login and start ObjectSync
+    if (buildConfig.isService){
+        // We have not made the api yet, so we will just use the ws url directly
+        startObjectSync(`wss://workspace.grapycal.org`)
 
-    // const loginApi = new LoginApiClient();
-    // loginApi.interact().then((wsUrl: string) => {
-    //     print('got ws url from login api', wsUrl);
-    //     startObjectSync(wsUrl);
-    // });
-
-    // We have not made the api yet, so we will just use the ws url directly
-    startObjectSync(`wss://workspace.grapycal.org`)
-
-}else{
-    // every thing else will be handled by ObjectSync.
-    startObjectSync(`ws://${location.hostname}:${buildConfig.wsPort}`)
-}
+    }else{
+        // every thing else will be handled by ObjectSync.
+        startObjectSync(`ws://${location.hostname}:${buildConfig.wsPort}`)
+    }
+})

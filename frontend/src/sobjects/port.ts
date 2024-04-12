@@ -175,9 +175,11 @@ export class Port extends CompSObject implements IControlHost {
     private updateAcceptsEdgeClass(): void {
         if(this.acceptsEdge()){
             this.knob.classList.add('accepts-edge')
+            this.hitbox.classList.add('accepts-edge')
         }
         else{
             this.knob.classList.remove('accepts-edge')
+            this.hitbox.classList.remove('accepts-edge')
         }
     }
 }

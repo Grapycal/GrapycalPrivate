@@ -199,7 +199,9 @@ export class Node extends CompSObject implements IControlHost {
 
         // Configure components
         
-        this.htmlItem.setParent(this.getComponentInAncestors(HtmlItem))
+        if (!this.isPreview){ 
+            this.htmlItem.setParent(this.editor.htmlItem)
+        }
 
         // Before setting up the transform, we need to add classes to the element so the shape is correct
         

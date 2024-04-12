@@ -12,53 +12,93 @@ import { NodeInspector } from "../ui_utils/nodeInspector"
 import { PopupMenu } from "../ui_utils/popupMenu/popupMenu"
 import { AppNotification } from "../ui_utils/appNotification"
 import { ControlPanel } from "../ui_utils/controlPanel"
+import { ExtensionsSetting } from "../ui_utils/extensionsSettings"
+import { RightSideBar } from "../base/rightSidebar"
 
 export class Workspace extends CompSObject{
     public static instance: Workspace
+
     readonly main_editor = this.getAttribute('main_editor', ObjectTopic<Editor>)
-    readonly selection = new SelectionManager(this)
-    readonly inspector = new NodeInspector()
-    readonly record: ObjectSyncClient['record']
     readonly nodeTypesTopic = this.objectsync.getTopic('node_types',DictTopic<string,any>)
     readonly slashCommandsTopic = this.objectsync.getTopic('slash_commands',DictTopic<string,any>)
-    readonly popupMenu = new PopupMenu()
+
+    protected get template(): string { return `
+        <div spellcheck="false" class="full-width full-height" style="display: flex; ">
+          <!-- <header></header> -->
+          <div class="main">
+            <div slot="Sidebar"></div>
+
+            <div slot="RightSideBar"></div>
+        
+            <div id="settings-page" class="settings-page">
+              <div class="settings-page-overlay" id="settings-page-overlay"></div>
+              <div class="settings-page-content">
+        
+              </div>
+            </div>
+          </div>
+          <footer slot="Footer"></footer>
+          <div slot="ControlPanel"></div>
+          <div slot="AppNotification"></div>
+        </div>
+    `}
+
+    /* ===== Element References ===== */
+
+    popupMenu: PopupMenu
     appNotif: AppNotification
+    selection: SelectionManager
+    rightSidebar: RightSideBar
+
+    /* ===== Other Properties ===== */
+    readonly record: ObjectSyncClient['record']
 
     get clientId(){
         return this.objectsync.clientId
     }
     constructor(objectsync: ObjectSyncClient, id: string) {
         super(objectsync, id);
-        (this.selection as any).name = 'selection';
-        this.popupMenu.hideWhenClosed = true
-
         Workspace.instance = this
+        this.record = objectsync.record
+    }
+    protected onStart(): void {   
+        this.mount(document.body)     
+        document.addEventListener('contextmenu', function(event) {
+            event.preventDefault();
+        });
+
+        this.rightSidebar = new RightSideBar().mount(this)
+        this.appNotif = new AppNotification().mount(this)
+        this.popupMenu = new PopupMenu()
+        this.selection = new SelectionManager(this)
+
+        new Footer().mount(this)
+        new ControlPanel().mount(this)
+
+        this.appNotif.add('Workspace loaded. Have fun!', 5000)
+
+        this.popupMenu.hideWhenClosed = true;
+        (this.selection as any).name = 'selection'
         this.selection.onSelect.add((selectable)=>{
             let obj = selectable.object
             if(obj instanceof Node){
-                this.inspector.addNode(obj)
+                NodeInspector.instance.addNode(obj)
             }
         })
         this.selection.onDeselect.add((selectable)=>{
             let obj = selectable.object
             if(obj instanceof Node){
-                this.inspector.removeNode(obj)
+                NodeInspector.instance.removeNode(obj)
             }
         })
-        this.record = objectsync.record
-    }
-    protected onStart(): void {
+
         this.main_editor.getValue().eventDispatcher.onClick.add(()=>{
             if(GlobalEventDispatcher.instance.isKeyDown('Control')) return;
             if(GlobalEventDispatcher.instance.isKeyDown('Shift')) return;
             this.selection.clearSelection()
         })
-
-        new Footer()
+        
         Footer.setStatus('Workspace loaded. Have fun!')
-        this.appNotif = new AppNotification()
-        this.appNotif.add('Workspace loaded. Have fun!', 5000)
-        new ControlPanel()
     }
 
     public openWorkspace(path:string){
@@ -71,7 +111,7 @@ export class Workspace extends CompSObject{
 }
 
 export class WebcamStream extends CompSObject{
-        image: StringTopic
+    image: StringTopic
     sourceClient: IntTopic
     stream: MediaStream = null
     interval:number = 200
@@ -143,29 +183,29 @@ const context = canvas.getContext('2d');
 //https://stackoverflow.com/questions/62446301/alternative-for-the-imagecapture-api-for-better-browser-support
 function getImageFromStream(stream: MediaStream) {
 
-  if (false && 'ImageCapture' in window) {
+    if (false && 'ImageCapture' in window) {
 
-    const videoTrack = stream.getVideoTracks()[0];
-    const imageCapture = new (window as any).ImageCapture(videoTrack);
-    return imageCapture.takePhoto({imageWidth: 48, imageHeight: 32});
+      const videoTrack = stream.getVideoTracks()[0];
+      const imageCapture = new (window as any).ImageCapture(videoTrack);
+      return imageCapture.takePhoto({imageWidth: 48, imageHeight: 32});
 
-  } else {
+    } else {
 
 
 
-    return new Promise((resolve, reject) => {
-        //const { videoWidth, videoHeight } = video;
-        const { videoWidth, videoHeight } = {videoWidth: 480, videoHeight: 320};
-        canvas.width = videoWidth;
-        canvas.height = videoHeight;
+      return new Promise((resolve, reject) => {
+          //const { videoWidth, videoHeight } = video;
+          const { videoWidth, videoHeight } = {videoWidth: 480, videoHeight: 320};
+          canvas.width = videoWidth;
+          canvas.height = videoHeight;
 
-        try {
-          context.drawImage(video, 0, 0, videoWidth, videoHeight);
-          canvas.toBlob(resolve, 'image/jpg');
-        } catch (error) {
-          reject(error);
-        }
-      });
-  }
+          try {
+            context.drawImage(video, 0, 0, videoWidth, videoHeight);
+            canvas.toBlob(resolve, 'image/jpg');
+          } catch (error) {
+            reject(error);
+          }
+        });
+    }
 
 }

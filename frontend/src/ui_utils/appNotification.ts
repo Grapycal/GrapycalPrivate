@@ -36,7 +36,6 @@ export class AppNotification extends Componentable{
     }
     constructor(){
         super()
-        this.htmlItem.setParentElement(document.body)
         Workspace.instance.objectsync.on(`status_message`, (msg:Message)=>{
             if(msg.type==ClientMsgTypes.NOTIFICATION)
                 this.add(msg.message);
