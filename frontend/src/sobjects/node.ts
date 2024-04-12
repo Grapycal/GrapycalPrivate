@@ -9,7 +9,7 @@ import { bloomDiv as bloomDiv, glowText } from '../ui_utils/effects'
 import { Vector2, as } from '../utils'
 import { EventDispatcher, GlobalEventDispatcher } from '../component/eventDispatcher'
 import { MouseOverDetector } from '../component/mouseOverDetector'
-import { Sidebar } from './sidebar'
+import { NodeLibrary } from './nodeLibrary'
 import { Editor } from './editor'
 import { Selectable } from '../component/selectable'
 import { Workspace } from './workspace'
@@ -132,7 +132,7 @@ export class Node extends CompSObject implements IControlHost {
     protected onStart(): void {
         super.onStart()
 
-        this._isPreview = this.parent instanceof Sidebar
+        this._isPreview = this.parent instanceof NodeLibrary
         this.editor = this.isPreview? null : this.parent as Editor
         this.selectable.selectionManager = Workspace.instance.selection
         if (!this.isPreview)
@@ -160,7 +160,7 @@ export class Node extends CompSObject implements IControlHost {
         }
 
         this.link(this.category.onSet2, (oldCategory: string, newCategory: string) => {
-            if(this.parent instanceof Sidebar){
+            if(this.parent instanceof NodeLibrary){
                 if(this.parent.hasItem(this.htmlItem))
                     this.parent.removeItem(this.htmlItem, oldCategory)
                 this.parent.addItem(this.htmlItem, newCategory)
@@ -409,7 +409,7 @@ export class Node extends CompSObject implements IControlHost {
 
     onParentChangedTo(newParent: SObject): void {
         super.onParentChangedTo(newParent)
-        if(newParent instanceof Sidebar){
+        if(newParent instanceof NodeLibrary){
             newParent.addItem(this.htmlItem, this.category.getValue())
             if(!this.isPreview)
                 this.transform.enabled = false
@@ -465,7 +465,7 @@ export class Node extends CompSObject implements IControlHost {
 
     public onDestroy(): void {
         super.onDestroy()
-        if(this.parent instanceof Sidebar){
+        if(this.parent instanceof NodeLibrary){
             this.parent.removeItem(this.htmlItem, this.category.getValue())
         }
         this.errorPopup.destroy()

@@ -6,7 +6,7 @@ import { print } from '../devUtils'
 import { ExtensionsSetting } from '../ui_utils/extensionsSettings'
 import { Workspace } from './workspace'
 
-export class Sidebar extends CompSObject {
+export class NodeLibrary extends CompSObject {
     /**
     * The left sidebar is a tabbed interface with the following tabs:
     * - File View

@@ -26,7 +26,7 @@ export class Workspace extends CompSObject{
         <div spellcheck="false" class="full-width full-height" style="display: flex; ">
           <!-- <header></header> -->
           <div class="main">
-            <div slot="Sidebar"></div>
+            <div slot="NodeLibrary"></div>
 
             <div slot="RightSideBar"></div>
         

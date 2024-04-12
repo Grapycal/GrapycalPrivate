@@ -10,7 +10,7 @@ export class Settings extends CompSObject{
     entries: DictTopic<string,any>
 
     protected onStart(): void {
-        this.inspector.htmlItem.setParentElement(document.getElementById('tab-settings'))
+        // this.inspector.mount(document.getElementById('tab-settings'))
         this.addFrontendSettings()
         this.entries = this.getAttribute('entries')
         this.link(this.entries.onSet,this.udpateEntries)

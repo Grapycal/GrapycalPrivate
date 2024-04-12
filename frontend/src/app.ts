@@ -7,7 +7,7 @@ import { expose, print } from './devUtils'
 import { Port } from './sobjects/port'
 import { Edge } from './sobjects/edge'
 import { SoundManager } from './ui_utils/soundManager';
-import { Sidebar } from './sobjects/sidebar'
+import { NodeLibrary } from './sobjects/nodeLibrary'
 import { WebcamStream, Workspace } from './sobjects/workspace'
 import { ExtensionsSetting } from './ui_utils/extensionsSettings'
 import { TextControl } from './sobjects/controls/textControl'
@@ -68,7 +68,7 @@ function startObjectSync(wsUrl:string){
     objectsync.register(Node);
     objectsync.register(Port);
     objectsync.register(Edge);
-    objectsync.register(Sidebar);
+    objectsync.register(NodeLibrary);
 
     objectsync.register(TextControl)
     objectsync.register(ButtonControl)
