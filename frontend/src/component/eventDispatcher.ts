@@ -181,20 +181,16 @@ export class EventDispatcher extends Component{
      * Usefull when creating a node with mouse
      */
     public fakeOnMouseDown(){
-        let event = new MouseEvent('mousedown');
+        let event = new MouseEvent('mousedown',{button: 0,buttons: 1});
         this._onMouseDown(event);
     }
 
     private _onMouseDown(event: MouseEvent){
         this.fowardCalled = false;
         this.onMouseDown.invoke(event);
-        if(!this._isDraggable(event)){
-            if (!this.fowardCalled && this.onMouseDown.numCallbacks > 0){
-                event.stopPropagation();
-            }
-            return;
+        if(this._isDraggable(event)){
+            document.addEventListener('mousemove', this._onMouseMove);
         }
-        document.addEventListener('mousemove', this._onMouseMove);
         document.addEventListener('mouseup', this._onMouseUp);
         this.prevMousePos = new Vector2(this.mousePos.x, this.mousePos.y);
         if (!this.fowardCalled && (this.onDragStart.numCallbacks > 0 || this.onDrag.numCallbacks > 0 || this.onDragEnd.numCallbacks > 0)){

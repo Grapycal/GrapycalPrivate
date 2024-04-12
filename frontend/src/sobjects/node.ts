@@ -242,19 +242,20 @@ export class Node extends CompSObject implements IControlHost {
                 // pass the event to the editor
                 if(e.buttons != 1) this.eventDispatcher.forwardEvent()
             })
+            
+            // the node is only draggable when the left mouse button is pressed
+            this.eventDispatcher.isDraggable = (e)=> {
+                if (e.buttons != 1) return false
+                if(e.ctrlKey) return false
+                return true
+            }
 
             this.link(this.eventDispatcher.onDragStart,(e: MouseEvent,pos: Vector2) => {
-                if(e.buttons != 1) return this.eventDispatcher.forwardEvent()
                 this.draggingTargetPos = this.transform.translation
                 this.htmlItem.baseElement.classList.add('dragging')
             })
 
             this.link(this.eventDispatcher.onDrag,(e: MouseEvent,newPos: Vector2,oldPos: Vector2) => {
-                if (e.buttons != 1) return this.eventDispatcher.forwardEvent()
-                // pass the event to the editor to box select
-                if(e.ctrlKey){
-                    return this.eventDispatcher.forwardEvent()
-                }
                 if(!this.selectable.selectionManager.enabled && !this.selectable.selected) return;
                 if(!this.selectable.selected) this.selectable.click()
 
