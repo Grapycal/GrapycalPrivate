@@ -1,4 +1,5 @@
 import { ComponentManager, IComponentable } from "../component/component"
+import { Componentable } from "../component/componentable"
 import { HtmlItem } from "../component/htmlItem"
 import { Linker } from "../component/linker"
 import { print } from "../devUtils"
@@ -47,8 +48,8 @@ class TwoWayMap<K,V>{
     }
 }
 
-export class HierarchyNode implements IComponentable{
-    readonly template: string = `
+export class HierarchyNode extends Componentable{
+    protected get template(): string { return `
     <div class="hierarchy-node full-width">
         <span id="name" class="hierarchy-name"></span>
         <div id="indent" class="hierarchy-indent">
@@ -60,23 +61,20 @@ export class HierarchyNode implements IComponentable{
             </div>
         </div>
     </div>
-    `;
+    `}
 
-    readonly componentManager = new ComponentManager();
     private readonly children = new Map<string,HierarchyNode>();
     private readonly leafs: HtmlItem[] = [];
-    private readonly linker = new Linker(this);
     private expanded = true;
     private readonly itemIdMap = new TwoWayMap<string,HtmlItem>();
 
     readonly name: string;
     readonly path: string;
-    readonly htmlItem: HtmlItem;
     
     constructor(name:string,path:string='',isRoot: boolean = false){
+        super();
         this.name = name;
         this.path = path;
-        this.htmlItem = new HtmlItem(this, document.body);
         this.htmlItem.applyTemplate(this.template);
         if(isRoot){
             this.htmlItem.getHtmlEl('name').remove();

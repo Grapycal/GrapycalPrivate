@@ -1,6 +1,7 @@
 import { Componentable } from "../component/componentable"
 import { Workspace } from "../sobjects/workspace"
 import { as } from "../utils"
+import { About } from "./about"
 import { ExtensionsSetting } from "./extensionsSettings"
 
 
@@ -21,72 +22,26 @@ export class LeftSidebar extends Componentable {
             <div class="sidebar-tab-selector">
             <button class="sidebar-tab-btn" id="tab-btn-file-view"><div class="sidebar-tab-btn-icon">📁</div></button>
             <button class="sidebar-tab-btn" id="tab-btn-node-list"><div class="sidebar-tab-btn-icon" title="nodes">📜</div></button>
-            <button class="sidebar-tab-btn" id="tab-btn-3"><div class="sidebar-tab-btn-icon">🚀</div></button>
+            <button class="sidebar-tab-btn" id="tab-btn-extensions-setting"><div class="sidebar-tab-btn-icon">🚀</div></button>
             <button class="sidebar-tab-btn" id="tab-btn-settings"><div class="sidebar-tab-btn-icon">🛠️</div></button>
-            <button class="sidebar-tab-btn" id="tab-btn-1" title="about">
+            <button class="sidebar-tab-btn" id="tab-btn-about" title="about">
                 <img src="icon.png" alt="icon" width="27" height="27"></img>
             </button>
             </div>
             <div ref="sidebarContainer" class = "sidebar-container">
-            <div class="sidebar-tab" id="tab-1" style="display: none;">
-    
-                <img src="https://i.imgur.com/hEnU3MI.png" alt="banner" width="100%" style="margin-top: 10px;"></img>
-                <div class="sidebar-tab-title">
-    
-                <h1>About</h1>
-                </div>
-                <hr>
-    
-    
-                Grapycal is an open source project <a href="https://github.com/eri24816/Grapycal">[Github]</a>.
-                Welcome to join and contribute!
-                <br></br>
-                Grapycal is designed with the goal to align with human perception at best, while being powerful with the help of Python, its backend.
-    
-                <br><br>
-    
-                If you're new, you may be unfamiliar with the syntax, but you'll soon find it easy to use! These may help you get started:
-                <ul>
-                <li><a href="https://wiki.grapycal.org/index.php?title=Grapycal_Wiki_ouO">wiki.grapycal.org</a></li>
-                <li>📁 Files > 💡Example workspaces</li>
+            <div slot="About" class="sidebar-tab" id="tab-about" style="display: none;">
             </div>
     
-            <div class="sidebar-tab" id="tab-file-view" style="display: none;">
-                <div class="sidebar-tab-title">
-                <h1>Files</h1>
-    
-                <hr>
-                </div>
+            <div slot="FileView" class="sidebar-tab" id="tab-file-view" style="display: none;">
             </div>
     
-            <div class="sidebar-tab" id="tab-node-list" style="display: none;">
-                <div class="sidebar-tab-title">
-                <h1>Node Library</h1>
-                <hr>
-                </div>
-                Want more nodes? Extend the list at 🚀Extensions tab.
-                <br></br>
-                <div slot="NodeLibrary"></div>
-    
+            <div slot="NodeLibrary" class="sidebar-tab" id="tab-node-list" style="display: none;">
             </div>
-            <div class="sidebar-tab" id="tab-3" style="display: none;">
-                <div class="sidebar-tab-title">
-                <h1>Extensions</h1>
-                <hr>
-                </div>
-                <h2>In Use</h2>
-                <div class="card-gallery" id="imported-extensions"></div>
-                <h2>Avaliable</h2>
-                <div class="card-gallery"  id="avaliable-extensions"></div>
-                <h2>Not Installed</h2>
-                <div class="card-gallery"  id="not-installed-extensions"></div>
-                <button id="refresh-extensions">Refresh</button>
+
+            <div slot="ExtensionsSetting" class="sidebar-tab" id="tab-extensions-setting" style="display: none;">
             </div>
+
             <div slot="Settings" class="sidebar-tab" id="tab-settings" style="display: none;">
-                <div class="sidebar-tab-title">
-                <h1>Settings</h1>
-                <hr>
-                </div>
             </div>
     
             </div>
@@ -99,13 +54,14 @@ export class LeftSidebar extends Componentable {
     constructor() {
         super();
         this.mount(Workspace.instance)
-        new ExtensionsSetting(Workspace.instance.objectsync); //TODO: do not steal the objectsync from the workspace
-        let root = document;
+        new ExtensionsSetting().mount(this);
+        new About().mount(this);
+
         // buttons are #tab-btn-<name>
         // tabs are #tab-<name>
         for (let button of this.htmlItem.baseElement.getElementsByClassName('sidebar-tab-btn')) {
             let name = button.id.split('tab-btn-')[1];
-            let tab = root.getElementById('tab-' + name);
+            let tab = this.htmlItem.getHtmlEl('tab-' + name);
             this.tabs.set(as(button, HTMLButtonElement), as(tab, HTMLDivElement));
             
             this.link2(button, 'click', ()=>this.switchTab(as(button, HTMLButtonElement)));

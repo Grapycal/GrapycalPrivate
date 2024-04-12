@@ -7,11 +7,21 @@ import { print } from "../devUtils"
 import { Workspace } from "./workspace"
 
 export class Settings extends CompSObject{
-    inspector: Inspector = new Inspector()
+    protected get template(): string { return `
+    <div>
+        <div class="sidebar-tab-title">
+        <h1>Settings</h1>
+        <hr>
+        </div>
+        <div slot="Inspector"></div>
+    </div>
+    `}
     entries: DictTopic<string,any>
+    inspector: Inspector
 
     protected onStart(): void {
-        this.inspector.mount(Workspace.instance.leftSidebar,'Settings')
+        this.mount(Workspace.instance.leftSidebar)
+        this.inspector = new Inspector().mount(this)
         this.addFrontendSettings()
         this.entries = this.getAttribute('entries')
         this.link(this.entries.onSet,this.udpateEntries)

@@ -7,28 +7,29 @@ import { ExtensionsSetting } from '../ui_utils/extensionsSettings'
 import { Workspace } from './workspace'
 
 export class NodeLibrary extends CompSObject {
-    /**
-    * The left sidebar is a tabbed interface with the following tabs:
-    * - File View
-    * - Node List
-    * - Extensions
-    * - Settings
-    * - Examples
-    * - About
-    */
+    protected get template(): string {return`
+    <div>
+        <div class="sidebar-tab-title">
+        <h1>Node Library</h1>
+        <hr>
+        </div>
+        Want more nodes? Extend the list at 🚀Extensions tab.
+        <br></br>
+        <div slot="HierarchyNode"></div>
+    </div>
+    `}
 
     private items: HtmlItem[] = []
-    nodeLibrary: HierarchyNode = new HierarchyNode('', '',true);
+    hierarchy: HierarchyNode = new HierarchyNode('', '',true);
     tabs = new Map<HTMLButtonElement, HTMLDivElement>();
     sidebarContainer: HTMLDivElement;
     onStart() {
-        this.mount(Workspace.instance)
-        new ExtensionsSetting(this.objectsync);
-        this.nodeLibrary.htmlItem.setParentElement(Workspace.instance.leftSidebar.htmlItem.getSlot('NodeLibrary'))
+        this.mount(Workspace.instance.leftSidebar)
+        this.hierarchy.mount(this)
     }
 
     addItem(htmlItem: HtmlItem, path: string) {
-        this.nodeLibrary.addLeaf(htmlItem, path)
+        this.hierarchy.addLeaf(htmlItem, path)
         this.items.push(htmlItem)
     }
 
@@ -37,7 +38,7 @@ export class NodeLibrary extends CompSObject {
     }
 
     removeItem(htmlItem: HtmlItem, path: string) {
-        this.nodeLibrary.removeLeaf(htmlItem, path)
+        this.hierarchy.removeLeaf(htmlItem, path)
         this.items.splice(this.items.indexOf(htmlItem), 1)
     }
     
