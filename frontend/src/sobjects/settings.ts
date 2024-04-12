@@ -4,13 +4,14 @@ import { OptionsEditor } from "../inspector/OptionEditor"
 import { bindTopicCookie } from "../utils"
 import { DictTopic } from "objectsync-client"
 import { print } from "../devUtils"
+import { Workspace } from "./workspace"
 
 export class Settings extends CompSObject{
     inspector: Inspector = new Inspector()
     entries: DictTopic<string,any>
 
     protected onStart(): void {
-        // this.inspector.mount(document.getElementById('tab-settings'))
+        this.inspector.mount(Workspace.instance.leftSidebar,'Settings')
         this.addFrontendSettings()
         this.entries = this.getAttribute('entries')
         this.link(this.entries.onSet,this.udpateEntries)

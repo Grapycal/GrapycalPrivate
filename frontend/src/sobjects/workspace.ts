@@ -14,6 +14,7 @@ import { AppNotification } from "../ui_utils/appNotification"
 import { ControlPanel } from "../ui_utils/controlPanel"
 import { ExtensionsSetting } from "../ui_utils/extensionsSettings"
 import { RightSideBar } from "../base/rightSidebar"
+import { LeftSidebar } from "../ui_utils/leftSidebar"
 
 export class Workspace extends CompSObject{
     public static instance: Workspace
@@ -27,7 +28,7 @@ export class Workspace extends CompSObject{
           <!-- <header></header> -->
           <div class="main">
             <div slot="NodeLibrary"></div>
-
+            <div slot="LeftSidebar"></div>
             <div slot="RightSideBar"></div>
         
             <div id="settings-page" class="settings-page">
@@ -48,6 +49,7 @@ export class Workspace extends CompSObject{
     popupMenu: PopupMenu
     appNotif: AppNotification
     selection: SelectionManager
+    leftSidebar: LeftSidebar
     rightSidebar: RightSideBar
 
     /* ===== Other Properties ===== */
@@ -67,6 +69,7 @@ export class Workspace extends CompSObject{
             event.preventDefault();
         });
 
+        this.leftSidebar = new LeftSidebar().mount(this)
         this.rightSidebar = new RightSideBar().mount(this)
         this.appNotif = new AppNotification().mount(this)
         this.popupMenu = new PopupMenu()
