@@ -1,19 +1,7 @@
-import { ObjDictTopic, ObjListTopic, ObjSetTopic, ObjectTopic, Topic } from "objectsync-client"
-import { ComponentManager, IComponentable } from "../component/component"
 import { HtmlItem } from "../component/htmlItem"
 import { Node } from "../sobjects/node"
 import { ExposedAttributeInfo } from '../inspector/inspector'
-import { Constructor, as } from "../utils"
-import { HierarchyNode } from "./hierarchyNode"
-import { Linker } from "../component/linker"
 import { Workspace } from "../sobjects/workspace"
-import { TextEditor } from "../inspector/TextEditor"
-import { ListEditor } from "../inspector/ListEditor"
-import { IntEditor } from "../inspector/IntEditor"
-import { FloatEditor } from "../inspector/FloatEditor"
-import { print } from "../devUtils"
-import { ButtonEditor } from "../inspector/ButtonEditor"
-import { OptionsEditor as OptionsEditor } from "../inspector/OptionEditor"
 import { Inspector } from "../inspector/inspector"
 import { Componentable } from "../component/componentable"
 import { Marked } from '@ts-stack/markdown';
@@ -24,27 +12,27 @@ export function object_equal(a:any,b:any){
 }
 
 export class NodeInspector extends Componentable{
+    static instance: NodeInspector;
     private inspector: Inspector
     nodes: Node[] = []
     protected get template(): string {return `
-        <div class="full-height flex-vert">
+        <div ref="baseEl" class="full-height flex-vert">
             <div id="node_info">
-                <div id="node_type"></div>
-                <div id="extension_name"></div>
-                <div id="node_description"></div>
+                <div ref="nodeTypeDiv"></div>
+                <div ref="extensionNameDiv"></div>
+                <div ref="nodeDescriptionDiv"></div>
             </div>
             <hr>
-            <div slot="inspector"></div>
+            <div slot="Inspector"></div>
             <hr>
-            <div id="output_display"></div>
-            <button id="clear_output">Clear Output</button>
+            <div ref="outputDisplayDiv"></div>
+            <button ref="clearOutputButton">Clear Output</button>
         </div>
         `;
     }
 
     protected get style(): string {return `
         #extension_name{
-
             color: var(--text-low);
         }
         
@@ -59,18 +47,12 @@ export class NodeInspector extends Componentable{
     sidebarEl: HTMLElement;
     baseEl: HTMLElement;
 
-    constructor(){
+    constructor(parent: HtmlItem){
         super()
+        NodeInspector.instance = this;
         this.inspector = new Inspector()
-        this.inspector.htmlItem.setParent(this.htmlItem,'inspector')
-        this.htmlItem.setParentElement(document.getElementById('inspector-container'))
-        this.sidebarEl = document.getElementById('sidebar-right');
-        this.baseEl = this.htmlItem.baseElement as HTMLElement;
-        this.nodeTypeDiv = this.htmlItem.getHtmlEl('node_type');
-        this.extensionNameDiv = this.htmlItem.getHtmlEl('extension_name');
-        this.nodeDescriptionDiv = this.htmlItem.getHtmlEl('node_description');
-        this.outputDisplayDiv = this.htmlItem.getHtmlEl('output_display');
-        this.clearOutputButton = this.htmlItem.getHtmlEl('clear_output');
+        this.inspector.mount(this)
+        this.sidebarEl = parent.baseElement as HTMLElement;
         this.clearOutputButton.onclick = ()=>{
             if(this.nodes.length === 1){
                 this.nodes[0].output.set([])

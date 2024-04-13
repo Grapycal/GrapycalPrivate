@@ -35,7 +35,6 @@ export class ControlPanel extends Componentable{
     }
     constructor(){
         super()
-        this.htmlItem.setParentElement(document.body);
         this.link2(this.htmlItem.getEl("interrupt"),'click',()=>{
             Workspace.instance.objectsync.makeRequest('interrupt')
         })

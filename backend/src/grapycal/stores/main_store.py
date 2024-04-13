@@ -13,7 +13,7 @@ if TYPE_CHECKING:
     from grapycal.sobjects.settings import Settings
     from grapycal.sobjects.workspaceObject import WebcamStream
     from grapycal.utils.httpResource import HttpResource
-    from grapycal.sobjects.sidebar import Sidebar
+    from grapycal.sobjects.nodeLibrary import NodeLibrary
     from grapycal.core.workspace import ClientMsgTypes
 
     class SendMessageProtocol(Protocol):
@@ -47,7 +47,7 @@ class MainStore:
         self.main_editor: Editor
         self.settings: Settings
         self.webcam: WebcamStream
-        self.sidebar: Sidebar
+        self.node_library: NodeLibrary
     
     # set by Workspace
     def open_workspace(self, path, no_exist_ok=False):

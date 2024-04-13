@@ -9,7 +9,7 @@ import { bloomDiv as bloomDiv, glowText } from '../ui_utils/effects'
 import { Vector2, as } from '../utils'
 import { EventDispatcher, GlobalEventDispatcher } from '../component/eventDispatcher'
 import { MouseOverDetector } from '../component/mouseOverDetector'
-import { Sidebar } from './sidebar'
+import { NodeLibrary } from './nodeLibrary'
 import { Editor } from './editor'
 import { Selectable } from '../component/selectable'
 import { Workspace } from './workspace'
@@ -132,7 +132,7 @@ export class Node extends CompSObject implements IControlHost {
     protected onStart(): void {
         super.onStart()
 
-        this._isPreview = this.parent instanceof Sidebar
+        this._isPreview = this.parent instanceof NodeLibrary
         this.editor = this.isPreview? null : this.parent as Editor
         this.selectable.selectionManager = Workspace.instance.selection
         if (!this.isPreview)
@@ -160,7 +160,7 @@ export class Node extends CompSObject implements IControlHost {
         }
 
         this.link(this.category.onSet2, (oldCategory: string, newCategory: string) => {
-            if(this.parent instanceof Sidebar){
+            if(this.parent instanceof NodeLibrary){
                 if(this.parent.hasItem(this.htmlItem))
                     this.parent.removeItem(this.htmlItem, oldCategory)
                 this.parent.addItem(this.htmlItem, newCategory)
@@ -199,7 +199,9 @@ export class Node extends CompSObject implements IControlHost {
 
         // Configure components
         
-        this.htmlItem.setParent(this.getComponentInAncestors(HtmlItem))
+        if (!this.isPreview){ 
+            this.htmlItem.setParent(this.editor.htmlItem)
+        }
 
         // Before setting up the transform, we need to add classes to the element so the shape is correct
         
@@ -240,19 +242,20 @@ export class Node extends CompSObject implements IControlHost {
                 // pass the event to the editor
                 if(e.buttons != 1) this.eventDispatcher.forwardEvent()
             })
+            
+            // the node is only draggable when the left mouse button is pressed
+            this.eventDispatcher.isDraggable = (e)=> {
+                if (e.buttons != 1) return false
+                if(e.ctrlKey) return false
+                return true
+            }
 
             this.link(this.eventDispatcher.onDragStart,(e: MouseEvent,pos: Vector2) => {
-                if(e.buttons != 1) return this.eventDispatcher.forwardEvent()
                 this.draggingTargetPos = this.transform.translation
                 this.htmlItem.baseElement.classList.add('dragging')
             })
 
             this.link(this.eventDispatcher.onDrag,(e: MouseEvent,newPos: Vector2,oldPos: Vector2) => {
-                if (e.buttons != 1) return this.eventDispatcher.forwardEvent()
-                // pass the event to the editor to box select
-                if(e.ctrlKey){
-                    return this.eventDispatcher.forwardEvent()
-                }
                 if(!this.selectable.selectionManager.enabled && !this.selectable.selected) return;
                 if(!this.selectable.selected) this.selectable.click()
 
@@ -407,7 +410,7 @@ export class Node extends CompSObject implements IControlHost {
 
     onParentChangedTo(newParent: SObject): void {
         super.onParentChangedTo(newParent)
-        if(newParent instanceof Sidebar){
+        if(newParent instanceof NodeLibrary){
             newParent.addItem(this.htmlItem, this.category.getValue())
             if(!this.isPreview)
                 this.transform.enabled = false
@@ -463,7 +466,7 @@ export class Node extends CompSObject implements IControlHost {
 
     public onDestroy(): void {
         super.onDestroy()
-        if(this.parent instanceof Sidebar){
+        if(this.parent instanceof NodeLibrary){
             this.parent.removeItem(this.htmlItem, this.category.getValue())
         }
         this.errorPopup.destroy()

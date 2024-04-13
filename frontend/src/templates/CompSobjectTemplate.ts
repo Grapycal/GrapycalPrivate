@@ -20,12 +20,11 @@ export class CompSobjectTemplate extends CompSObject{
         </div>
     `}
 
-    /* ===== Style ===== */
-
     // The CSS style for the component. HTML classes are scoped to the component.
     protected get style(): string { return `
         /* Add your css here */
     `}
+
 
     /* ===== Element References ===== */
 
@@ -43,6 +42,9 @@ export class CompSobjectTemplate extends CompSObject{
     /* ===== onStart ===== */
 
     // The onStart method is called when the sobject is created and the attributes are initialized.
+    // What to do here is mostly linking the attributes to the HTML elements.
+    // For example:
+    //      this.link(this.display_name.onSet,(value)=>{this.ouo.innerText = value})
     protected onStart(): void {
         super.onStart()
         

@@ -46,7 +46,7 @@ from grapycal.sobjects.editor import Editor
 from grapycal.sobjects.workspaceObject import WebcamStream, WorkspaceObject
 from grapycal.sobjects.edge import Edge
 from grapycal.sobjects.port import InputPort, OutputPort
-from grapycal.sobjects.sidebar import Sidebar
+from grapycal.sobjects.nodeLibrary import NodeLibrary
 from grapycal.sobjects.node import Node
 
 
@@ -150,7 +150,7 @@ class Workspace:
         # Register all the sobject types to the objectsync server so they can be created dynamically.
         self._objectsync.register(WorkspaceObject)
         self._objectsync.register(Editor)
-        self._objectsync.register(Sidebar)
+        self._objectsync.register(NodeLibrary)
         self._objectsync.register(Settings)
         self._objectsync.register(LocalFileView)
         self._objectsync.register(RemoteFileView)

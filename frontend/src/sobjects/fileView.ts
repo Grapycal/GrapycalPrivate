@@ -76,6 +76,12 @@ export class FileView extends CompSObject{
     editable: IntTopic = this.getAttribute('editable',IntTopic)
 
     get template(): string {return `
+    <div>
+        <div class="sidebar-tab-title">
+        <h1>Files</h1>
+
+        <hr>
+        </div>
         <div class="base">
             <h2 class="title">
                 <span class="tab-title">File View Name</span>
@@ -89,6 +95,7 @@ export class FileView extends CompSObject{
             </div>
                     
         </div>
+    </div>
         `;
     }
 
@@ -128,11 +135,11 @@ export class FileView extends CompSObject{
     }
 
     protected onStart(): void {
+        this.mount(Workspace.instance.leftSidebar)
+
         this.importedExtensionsTopic = this.objectsync.getTopic('imported_extensions',DictTopic<string,any>)
         this.avaliableExtensionsTopic = this.objectsync.getTopic('avaliable_extensions',DictTopic<string,any>)
 
-
-        this.htmlItem.setParentElement(document.getElementById('tab-file-view'))
         this.htmlItem.applyTemplate(this.template,"append")
         this.getAttribute('name').onSet.add((value)=>{this.htmlItem.getHtmlElByClass('tab-title').innerText = value})
         this.hierarchy = new HierarchyNode('','',true)
