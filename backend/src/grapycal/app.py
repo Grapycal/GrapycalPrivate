@@ -57,8 +57,7 @@ class GrapycalApp:
                 f'Strating webpage server at localhost:{self._config["http_port"]} from {webpage_path}...'
             )
             http_server = subprocess.Popen(
-                [sys.executable, "-m", "http.server", str(self._config["http_port"])],
-                start_new_session=True,
+                ["python", "-m", "http.server", str(self._config["http_port"])],
                 cwd=webpage_path,
                 stdout=subprocess.DEVNULL,
             )
@@ -139,7 +138,6 @@ class GrapycalApp:
                 "--workspace_id",
                 str(workspace_id),
             ],
-            start_new_session=True,
         )
         try:
             yield workspace
