@@ -490,7 +490,6 @@ footer{
 .slot-control{
     display: flex;
     flex-direction: column;
-    /* overflow: hidden; */
     width: 100%;
     box-sizing: border-box;
     gap:2px;
@@ -498,7 +497,6 @@ footer{
     position: relative;
     padding-left: 10px;
     padding-right: 10px;
-    /* overflow: visible; */
 }
 
 .slot-control:empty{
@@ -509,7 +507,6 @@ footer{
     box-sizing: border-box;
     width: 100%;
     /* border-radius: 2px; */
-    overflow: hidden;
     font-size: 12px;
     min-height: 15px;
     gap: 4px;
