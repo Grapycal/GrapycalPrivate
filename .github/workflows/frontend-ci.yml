@@ -5,7 +5,12 @@ on:
         branches: [main, dev]
     pull_request:
         branches: [main, dev]
-
+    workflow_dispatch:
+        inputs:
+            tags:
+                description: 'Tags to build'
+                required: false
+                default: 'latest'
 jobs:
     docker:
         runs-on: ubuntu-latest
@@ -40,13 +45,13 @@ jobs:
                 context: .
                 file: ./Dockerfile.frontend
                 platforms: linux/amd64,linux/arm64
-                tags: docker.io/${{ secrets.DOCKER_USERNAME }}/grapycal-frontend:latest
+                tags: docker.io/${{ secrets.DOCKER_USERNAME }}/grapycal-frontend:{{ github.event.inputs.tags || 'latest' }}
                 outputs: type=oci,dest=/tmp/image.tar
                 build-args: |
                   NODE_VERSION=20
             - name: Import image in containerd
               run: |
-                sudo ctr i import --base-name docker.io/${{ secrets.DOCKER_USERNAME }}/grapycal-frontend:latest --digests --all-platforms /tmp/image.tar
+                sudo ctr i import --base-name docker.io/${{ secrets.DOCKER_USERNAME }}/grapycal-frontend:{{ github.event.inputs.tags || 'latest' }} --digests --all-platforms /tmp/image.tar
             - name: Push image to containerd
               run: |
-                sudo ctr i push --user "${{ secrets.DOCKER_USERNAME }}:${{ secrets.DOCKER_PASSWORD }}" docker.io/${{ secrets.DOCKER_USERNAME }}/grapycal-frontend:latest
+                sudo ctr i push --user "${{ secrets.DOCKER_USERNAME }}:${{ secrets.DOCKER_PASSWORD }}" docker.io/${{ secrets.DOCKER_USERNAME }}/grapycal-frontend:{{ github.event.inputs.tags || 'latest' }}
