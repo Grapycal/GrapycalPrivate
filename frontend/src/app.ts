@@ -130,6 +130,6 @@ documentReady(() => {
 
     }else{
         // every thing else will be handled by ObjectSync.
-        startObjectSync(`ws://${location.hostname}:${buildConfig.wsPort}`)
+        startObjectSync(`ws://${location.hostname}:${location.port}/ws`)
     }
 })

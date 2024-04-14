@@ -1,20 +1,15 @@
-# grapycal
-
-import os
-from grapycal import GrapycalApp
 import argparse
+import usersettings
+import os
 
 
-def main():
-    """
-    Entry function of backend server
-    """
-    here = os.path.dirname(os.path.abspath(__file__))
-    # parse arguments
+def parse_args():
     parser = argparse.ArgumentParser(description="Grapycal backend server")
     parser.add_argument(
         "path", type=str, help="path to workspace file", nargs="?", default=None
     )
+    parser.add_argument("--backend-path", type=str, help="path to backend code")
+    parser.add_argument("--frontend-path", type=str, help="path to frontend code")
     parser.add_argument("--port", type=int, help="port to listen on")
     parser.add_argument(
         "--http-port", type=int, help="http port to listen on (to serve webpage)"
@@ -35,23 +30,16 @@ def main():
     s.add_setting("port", int, default=8765)  # type: ignore
     s.add_setting("http_port", int, default=9001)  # type: ignore
     s.add_setting("host", str, default="localhost")  # type: ignore
-    s.add_setting("path", str, default=os.path.join(here, "Welcome.grapycal"))  # type: ignore
+    s.add_setting("path", str, default=os.path.join("workspace.grapycal"))  # type: ignore
+
     s.load_settings()
-    if args.port:
-        s["port"] = args.port
-    if args.host:
-        s["host"] = args.host
-    if args.path:
-        s["path"] = args.path
-    if args.http_port:
-        s["http_port"] = args.http_port
+    for name in ["port", "host", "path", "http_port"]:
+        if getattr(args, name):
+            s[name] = getattr(args, name)
     s.save_settings()
-    s["no_http"] = args.no_http
-    s["restart"] = args.restart
 
-    app = GrapycalApp(s)
-    app.run()
+    for name in ["backend_path", "frontend_path", "no_http", "restart"]:
+        if getattr(args, name):
+            s[name] = getattr(args, name)
 
-
-if __name__ == "__main__":
-    main()
+    return s

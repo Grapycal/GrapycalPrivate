@@ -77,10 +77,8 @@ class Workspace:
     ```
     """
 
-    def __init__(self, port, host, path, workspace_id) -> None:
+    def __init__(self, path, workspace_id) -> None:
         self.path = path
-        self.port = port
-        self.host = host
 
         self.workspace_id = workspace_id
         """used for exit message file"""
@@ -91,7 +89,7 @@ class Workspace:
         self.running_module = running_module
         """The module that the user's code runs in."""
 
-        self._objectsync = objectsync.Server(port, host)
+        self._objectsync = objectsync.Server()
         """ Grapycal uses objectsync to store stateful objects and communicate with the frontend."""
 
         # utilities
@@ -205,18 +203,7 @@ class Workspace:
     async def _async_communication_thread(self, event_loop_set_event: threading.Event):
         main_store.event_loop = asyncio.get_event_loop()
         event_loop_set_event.set()
-        try:
-            await self._objectsync.serve()
-        except OSError as e:
-            if e.errno == 10048:
-                logger.error(
-                    f"Port {self.port} is already in use. Maybe another instance of grapycal is running?"
-                )
-                main_store.event_loop.stop()
-                # send signal to the main thread to exit
-                os.kill(os.getpid(), signal.SIGTERM)
-            else:
-                raise e
+        await self._objectsync.serve()
 
     def _setup_store(self):
         """
@@ -425,17 +412,3 @@ class Workspace:
             self._objectsync.remove_topic(f"status_message_{client_id}")
         except:
             pass  # topic may have not been created successfully.
-
-
-import argparse
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--port", type=int, default=8765)
-    parser.add_argument("--host", type=str, default="localhost")
-    parser.add_argument("--path", type=str, default="workspace.grapycal")
-    parser.add_argument("--workspace_id", type=int, default=0)
-    args = parser.parse_args()
-
-    workspace = Workspace(args.port, args.host, args.path, args.workspace_id)
-    workspace.run()
