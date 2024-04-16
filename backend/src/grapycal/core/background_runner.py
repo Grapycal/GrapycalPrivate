@@ -10,6 +10,8 @@ from typing import Callable, Iterator, Tuple
 import signal
 from .stdout_helper import orig_print
 
+class RunnerInterrupt(Exception):
+    pass
 
 class TaskInfo:
     def __init__(self, task: Callable | Iterator, exception_callback: Callable[[Exception], None] | None = None):
@@ -30,6 +32,7 @@ class BackgroundRunner:
         self._queue: deque[TaskInfo] = deque()
         self._stack: deque[TaskInfo] = deque()
         self._exit_flag = False
+        signal.signal(signal.SIGUSR1, self.sigusr1_handler)
 
     def push(self, task: Callable, to_queue: bool = True,
              exception_callback: Callable[[Exception], None] | None = None):
@@ -42,7 +45,7 @@ class BackgroundRunner:
         self._inputs.put((TaskInfo(task, exception_callback), False))
 
     def interrupt(self):
-        signal.raise_signal(signal.SIGINT)
+        signal.raise_signal(signal.SIGUSR1)
 
     def clear_tasks(self):
         self._queue.clear()
@@ -52,17 +55,19 @@ class BackgroundRunner:
         self._exit_flag = True
         self.interrupt()
 
+    def sigusr1_handler(self, signum, frame):
+        raise RunnerInterrupt
+    
     @contextmanager
     def no_interrupt(self):
         def handler(signum, frame):
             logger.info("Cannot interrupt current task")
 
-        original_sigint_handler = signal.getsignal(signal.SIGINT)
         try:
-            signal.signal(signal.SIGINT, handler)
+            signal.signal(signal.SIGUSR1, handler)
             yield
         finally:
-            signal.signal(signal.SIGINT, original_sigint_handler)
+            signal.signal(signal.SIGUSR1, self.sigusr1_handler)
 
     def run(self):
         while True:
@@ -105,8 +110,11 @@ class BackgroundRunner:
                     if isinstance(ret, Iterator):
                         self._stack.append(TaskInfo(iter(ret), exception_callback))
 
-            except KeyboardInterrupt as e:
+            except RunnerInterrupt as e:
                 logger.info("Runner interrupted")
+            except KeyboardInterrupt as e:
+                logger.info("Keyboard interrupt")
+                raise
             except Exception as e:
                 self.clear_tasks()
                 orig_print('Runner error', e)

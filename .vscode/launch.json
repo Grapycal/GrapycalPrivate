@@ -4,15 +4,21 @@
     // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
+
         {
-            "name": "Python: Module",
+            //python entry/run.py --backend-path "backend/src" --frontend-path "frontend/dist"
+            "name": "Python debug",
             "type": "python",
             "request": "launch",
-            "module": "grapycal",
-            "args": ["--no-http"],
-            "justMyCode": false,
-            "cwd": "${workspaceFolder}/extensions"
-        }
+            "program": "${workspaceFolder}/entry/run.py",
+            "args": [
+                "--backend-path",
+                "${workspaceFolder}/backend/src",
+                "--frontend-path",
+                "${workspaceFolder}/frontend/dist"
+            ],
+            "console": "integratedTerminal"
+        },
     ],
     
 }

@@ -8,7 +8,7 @@ from fastapi import FastAPI, WebSocket
 from fastapi.responses import HTMLResponse
 import uvicorn
 import sys
-from topicsync.server.client_manager import ClientCommProtocol
+from topicsync.server.client_manager import ClientCommProtocol, ConnectionClosedException
 
 
 class Client(ClientCommProtocol):
@@ -21,11 +21,17 @@ class Client(ClientCommProtocol):
         self._send_text = send_text
 
     async def messages(self):
-        while True:
-            yield await self._recieve_text()
+        try:
+            while True:
+                yield await self._recieve_text()
+        except Exception as e:
+            raise ConnectionClosedException(e)
 
     async def send(self, message):
-        await self._send_text(message)
+        try:
+            await self._send_text(message)
+        except Exception as e:
+            raise ConnectionClosedException(e)
 
 
 def make_app(workspace, frontend_path):
@@ -60,9 +66,15 @@ def main():
     workspace = Workspace(args.path, "")
 
     app = make_app(workspace, args.frontend_path)
-    threading.Thread(target=lambda: run_uvicorn(app, args.host, args.port)).start()
+    uvicorn_thread = threading.Thread(target=lambda: run_uvicorn(app, args.host, args.port), daemon=True)
+    uvicorn_thread.start()
 
-    workspace.run()
+    try:
+        workspace.run()
+    except KeyboardInterrupt:
+        print("Exiting")
+        sys.exit(1)
+        
 
 
 if __name__ == "__main__":
