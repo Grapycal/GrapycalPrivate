@@ -34,7 +34,7 @@ class Client(ClientCommProtocol):
             raise ConnectionClosedException(e)
 
 
-def make_app(workspace, frontend_path):
+def make_app(workspace, frontend_path:str|None):
     app = FastAPI()
 
     @app.websocket("/ws")
@@ -43,11 +43,13 @@ def make_app(workspace, frontend_path):
         client = Client(websocket.receive_text, websocket.send_text)
         await workspace._objectsync._topicsync.handle_client(client)
 
-    @app.get("/frontend/", response_class=HTMLResponse)
-    async def read_root():
-        return open(frontend_path + "/index.html").read()
+    if frontend_path is not None:
 
-    app.mount("/frontend/", StaticFiles(directory=frontend_path), name="static")
+        @app.get("/frontend/", response_class=HTMLResponse)
+        async def read_root():
+            return open(frontend_path + "/index.html").read()
+
+        app.mount("/frontend/", StaticFiles(directory=frontend_path), name="static")
 
     return app
 
@@ -65,17 +67,14 @@ def main():
 
     workspace = Workspace(args.path, "")
 
-    app = make_app(workspace, args.frontend_path)
-    uvicorn_thread = threading.Thread(target=lambda: run_uvicorn(app, args.host, args.port), daemon=True)
-    uvicorn_thread.start()
+    app = make_app(workspace, args.get("frontend_path", None))
+    run_uvicorn(app, args.host, args.port)
 
     try:
         workspace.run()
     except KeyboardInterrupt:
         print("Exiting")
         sys.exit(1)
-        
-
 
 if __name__ == "__main__":
     main()

@@ -129,7 +129,9 @@ documentReady(() => {
         startObjectSync(`wss://workspace.grapycal.org`)
 
     }else{
-        // every thing else will be handled by ObjectSync.
-        startObjectSync(`ws://${location.hostname}:${location.port}/ws`)
+        if(buildConfig.wsPort == null)
+            startObjectSync(`ws://${location.hostname}:${location.port}/ws`)
+        else
+            startObjectSync(`ws://${location.hostname}:${buildConfig.wsPort}/ws`)
     }
 })

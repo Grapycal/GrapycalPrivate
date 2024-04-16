@@ -1,3 +1,3 @@
 cd frontend && npm run build:standalone && cd .. &&\
 
-python entry/run.py --backend-path "backend/src" --frontend-path "frontend/dist"
+python entry/run.py --backend-path "backend/src" --frontend-path "frontend/dist" --port 7943
