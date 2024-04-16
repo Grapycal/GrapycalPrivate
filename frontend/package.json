@@ -32,8 +32,9 @@
     "buffer": "^6.0.3",
     "codemirror": "^6.0.1",
     "marked": "^11.0.0",
-    "objectsync-client": "github:eri24816/ObjectSyncClient_ts#master",
+    "objectsync-client": "file:../submodules/objectsync-client",
     "three": "^0.157.0",
+    "topicsync-client": "file:../submodules/topicsync-client",
     "typescript-cookie": "^1.0.6"
   },
   "include": [
