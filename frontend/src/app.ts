@@ -32,8 +32,8 @@ export const soundManager = new SoundManager();
 function tryReconnect(): void{
     if(Workspace.instance != null)
         Workspace.instance.appNotif.add('Connection to server lost. Reconnecting...',4000)
-    fetch(`http://${location.hostname}:8765`, {
-        method: "GET",
+    fetch(getWsUrl().replace('ws://','http://'), {
+        method: "HEAD",
         signal: AbortSignal.timeout(2000),
         mode: 'no-cors'
     })
@@ -120,18 +120,16 @@ declare var __BUILD_CONFIG__: {
     wsPort: number
 }
 
+// webpack define plugin will replace __BUILD_CONFIG__ with the injected value
+const buildConfig = __BUILD_CONFIG__
+
+function getWsUrl(): string{
+    if(buildConfig.wsPort == null)
+        return `ws://${location.hostname}:${location.port}/ws`
+    else
+        return `ws://${location.hostname}:${buildConfig.wsPort}/ws`
+}
+
 documentReady(() => {
-    // webpack define plugin will replace __BUILD_CONFIG__ with the injected value
-    const buildConfig = __BUILD_CONFIG__
-
-    if (buildConfig.isService){
-        // We have not made the api yet, so we will just use the ws url directly
-        startObjectSync(`wss://workspace.grapycal.org`)
-
-    }else{
-        if(buildConfig.wsPort == null)
-            startObjectSync(`ws://${location.hostname}:${location.port}/ws`)
-        else
-            startObjectSync(`ws://${location.hostname}:${buildConfig.wsPort}/ws`)
-    }
+    startObjectSync(getWsUrl())
 })

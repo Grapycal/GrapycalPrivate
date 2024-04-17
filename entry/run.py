@@ -68,7 +68,7 @@ def main():
     workspace = Workspace(args.path, "")
 
     app = make_app(workspace, args.get("frontend_path", None))
-    thread = threading.Thread(target=run_uvicorn, args=(app, args.host, args.port))
+    thread = threading.Thread(target=run_uvicorn, args=(app, args.host, args.port),daemon=True)
     thread.start()
 
     try:

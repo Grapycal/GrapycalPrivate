@@ -244,7 +244,7 @@ footer{
 
     box-sizing: border-box;
     pointer-events: none;
-    border-image: url(/select.png) 50% round;
+    border-image: url(../select.png) 50% round;
     border-width: 2px;
     border-style: solid;
     border-image-width: 12px;

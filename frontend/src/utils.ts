@@ -372,6 +372,7 @@ export class FetchWithCache{
         this.fetch = this.fetch.bind(this)
     }
     fetch(url:string){
+        url = location.protocol + '//' + location.host + location.pathname + url
         if(!this.cache.has(url)){
             const p = window.fetch(url)
             this.cache.set(url,p.then(r=>r.text()))
