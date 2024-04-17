@@ -28,6 +28,8 @@ import { SliderControl } from './sobjects/controls/sliderControl'
 import {CodeControl} from "./sobjects/controls/codeControl";
 
 export const soundManager = new SoundManager();
+const fetchWithCache = new FetchWithCache().fetch
+export {fetchWithCache}
 
 function tryReconnect(): void{
     if(Workspace.instance != null)
@@ -54,7 +56,6 @@ function documentReady(callback: Function): void {
         document.addEventListener("DOMContentLoaded", (event: Event) => {
             callback()
         })
-
 }
 
 function startObjectSync(wsUrl:string){
@@ -108,11 +109,6 @@ function startObjectSync(wsUrl:string){
     // for debugging
     expose('o',objectsync)
 }
-
-
-
-const fetchWithCache = new FetchWithCache().fetch
-export {fetchWithCache}
 
 // from webpack config files
 declare var __BUILD_CONFIG__: {
