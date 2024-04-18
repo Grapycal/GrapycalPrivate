@@ -14,7 +14,7 @@ def sigint_handler(signum, frame):
 if __name__ == '__main__':
     here = os.path.dirname(os.path.abspath(__file__))
     # Run the server
-    server = subprocess.Popen(['python', os.path.join(here, 'run_server.py')] + sys.argv[1:])
+    server = subprocess.Popen(['python', os.path.join(here, 'run.py')] + sys.argv[1:])
     # Capture SIGINT and close the server with SIGTERM
     signal.signal(signal.SIGINT, sigint_handler)
     # Wait for the server to finish
