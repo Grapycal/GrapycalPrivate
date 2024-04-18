@@ -56,11 +56,21 @@ def make_app(workspace, frontend_path:str|None):
 
 def run_uvicorn(app, host, port):
     uvicorn.run(app, host=host, port=port)
-
+    print("uvicorn exited")
+    sys.exit(1)
 
 def main():
     args = parse_args()
     print(args)
+
+    # make sure port is not in use
+    import socket
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    result = sock.connect_ex((args.host, args.port))
+    if result == 0:
+        print(f"Port {args.port} is already in use. Maybe another instance of grapycal is running?")
+        print("Exiting")
+        sys.exit(1)
 
     sys.path.append(args.backend_path)
     from grapycal.core.workspace import Workspace

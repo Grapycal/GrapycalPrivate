@@ -5,6 +5,9 @@ We try to support Windows so we can't use bash scripts.
 import os
 import sys
 
+here = os.path.dirname(os.path.abspath(__file__))
+os.chdir(here)
+
 # 1. Check python 3.11 is installed
 print('Checking python 3.11 is installed...')
 try:
