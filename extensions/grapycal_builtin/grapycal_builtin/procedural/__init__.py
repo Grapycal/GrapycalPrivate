@@ -28,12 +28,19 @@ class InPortalNode(Node):
         self.out_port = self.add_out_port('then',display_name='')
         self.css_classes.append('fit-content')
         self.label.set(f'{self.name.get()}')
-    
     def init_node(self):
+
+        if self.is_preview.get():
+            return
+        
         PortalManager.ins.append(self.name.get(),self)
         self.name.on_set2.add_manual(self.on_name_set)
 
     def on_name_set(self, old, new):
+
+        if self.is_preview.get():
+            return
+        
         self.label.set(f'{new}')
         PortalManager.ins.remove(old,self)
         PortalManager.ins.append(new,self)
@@ -45,6 +52,10 @@ class InPortalNode(Node):
             node.jump(data)
 
     def double_click(self):
+
+        if self.is_preview.get():
+            return
+        
         data = None
         self.run(self.after_jump,to_queue=False, data=data)
         for node in PortalManager.outs.get(self.name.get()):
@@ -54,6 +65,10 @@ class InPortalNode(Node):
         self.out_port.push(data)
 
     def destroy(self) -> SObjectSerialized:
+
+        if self.is_preview.get():
+            return super().destroy()
+        
         PortalManager.ins.remove(self.name.get(),self)
         return super().destroy()
     
@@ -68,16 +83,28 @@ class OutPortalNode(Node):
         self.css_classes.append('fit-content')
     
     def init_node(self):
+
+        if self.is_preview.get():
+            return
+        
         PortalManager.outs.append(self.name.get(),self)
         self.label.set(f'{self.name.get()}')
         self.name.on_set2.add_manual(self.on_name_set)
         
     def on_name_set(self, old, new):
+
+        if self.is_preview.get():
+            return
+        
         self.label.set(f'{new}')
         PortalManager.outs.remove(old,self)
         PortalManager.outs.append(new,self)
 
     def double_click(self):
+
+        if self.is_preview.get():
+            return
+        
         for node in PortalManager.outs.get(self.name.get()):
             node.jump(None)
 
@@ -85,6 +112,10 @@ class OutPortalNode(Node):
         self.run(self.out_port.push,data=data)
     
     def destroy(self) -> SObjectSerialized:
+
+        if self.is_preview.get():
+            return super().destroy()
+        
         PortalManager.outs.remove(self.name.get(),self)
         return super().destroy()
     
