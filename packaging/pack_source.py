@@ -31,6 +31,9 @@ if __name__ == '__main__':
 
     shutil.copytree(template, dst_root)
 
+    # build frontend
+    os.system('python scripts/build_frontend.py')
+
     def copy(src, dst=None):
         if dst is None:
             dst = src
