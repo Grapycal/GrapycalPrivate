@@ -10,6 +10,15 @@ from typing import Callable, Iterator, Tuple
 import signal
 from .stdout_helper import orig_print
 
+'''
+On Unix, SIGUSR1 is used to interrupt the runner so ctrl-c will not be mistaken as a runner interrupt.
+On Windows, SIGUSR1 is not available. We use SIGINT instead. This means that the runner will be interrupted by ctrl-c. Bad.
+'''
+if not hasattr(signal, 'SIGUSR1'):
+    RUNNER_INTERRUPT_SIGNAL = signal.SIGINT
+else:
+    RUNNER_INTERRUPT_SIGNAL = signal.SIGUSR1
+
 class RunnerInterrupt(Exception):
     pass
 
@@ -32,7 +41,7 @@ class BackgroundRunner:
         self._queue: deque[TaskInfo] = deque()
         self._stack: deque[TaskInfo] = deque()
         self._exit_flag = False
-        signal.signal(signal.SIGUSR1, self.sigusr1_handler)
+        signal.signal(RUNNER_INTERRUPT_SIGNAL, self.interrupt_handler)
 
     def push(self, task: Callable, to_queue: bool = True,
              exception_callback: Callable[[Exception], None] | None = None):
@@ -45,7 +54,7 @@ class BackgroundRunner:
         self._inputs.put((TaskInfo(task, exception_callback), False))
 
     def interrupt(self):
-        signal.raise_signal(signal.SIGUSR1)
+        signal.raise_signal(RUNNER_INTERRUPT_SIGNAL)
 
     def clear_tasks(self):
         self._queue.clear()
@@ -55,7 +64,7 @@ class BackgroundRunner:
         self._exit_flag = True
         self.interrupt()
 
-    def sigusr1_handler(self, signum, frame):
+    def interrupt_handler(self, signum, frame):
         raise RunnerInterrupt
     
     @contextmanager
@@ -64,10 +73,10 @@ class BackgroundRunner:
             logger.info("Cannot interrupt current task")
 
         try:
-            signal.signal(signal.SIGUSR1, handler)
+            signal.signal(RUNNER_INTERRUPT_SIGNAL, handler)
             yield
         finally:
-            signal.signal(signal.SIGUSR1, self.sigusr1_handler)
+            signal.signal(RUNNER_INTERRUPT_SIGNAL, self.interrupt_handler)
 
     def run(self):
         while True:
