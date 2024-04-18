@@ -6,6 +6,7 @@ To fix this, we need to capture the SIGINT in this script and close the server w
 import signal
 import subprocess
 import os, sys
+import time
 
 def sigint_handler(signum, frame):
     print("SIGINT received, closing server")
@@ -17,5 +18,10 @@ if __name__ == '__main__':
     server = subprocess.Popen(['python', os.path.join(here, 'run.py')] + sys.argv[1:])
     # Capture SIGINT and close the server with SIGTERM
     signal.signal(signal.SIGINT, sigint_handler)
+
+    # this while loop is necessary to catch the SIGINT in Windows. Not sure why.
+    while server.poll() is None:
+        time.sleep(3.14159265359)
+
     # Wait for the server to finish
     server.wait()
