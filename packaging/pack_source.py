@@ -13,8 +13,8 @@ ignores = [
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('dist', type=str)
-    parser.add_argument('--template', type=str, default='source')
+    parser.add_argument('dist', type=str, help='The name of the distribution.')
+    parser.add_argument('--template', type=str, default='source', help='The template folder to be the base of the distribution. The folder can have install scripts and other necessary files.')
     args = parser.parse_args()
     
     root = pathlib.Path(__file__).parent
