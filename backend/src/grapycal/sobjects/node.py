@@ -2,6 +2,7 @@ import logging
 from pprint import pprint
 
 from grapycal.core.background_runner import RunnerInterrupt
+from grapycal.core.client_msg_types import ClientMsgTypes
 from grapycal.sobjects.controls.keyboardControl import KeyboardControl
 from grapycal.sobjects.controls.sliderControl import SliderControl
 
@@ -47,7 +48,6 @@ from objectsync.sobject import SObjectSerialized, WrappedTopic
 
 if TYPE_CHECKING:
     from grapycal.extension.extension import Extension
-    from grapycal.core.workspace import ClientMsgTypes
 
 
 def warn_no_control_name(control_type, node):
