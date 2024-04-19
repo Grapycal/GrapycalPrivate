@@ -20,10 +20,11 @@ from .networkDef import *
 from .settings import *
 from .configureNode import *
 from .pooling import *
+from .conversion import *
 
 
 import torch
-from torch import nn
+torch.set_printoptions(threshold=20)
 import torchvision
 from torchvision import transforms
 
@@ -289,11 +290,33 @@ class MnistDatasetNode(SourceNode):
         super().build_node()
         self.label.set("MNIST Dataset")
         self.out = self.add_out_port("MNIST Dataset")
+        self.include_labels = self.add_option_control(name='include_labels',options=['True','False'], value= 'True',label='Include labels')
+        self.size = self.add_slider_control(label="size",min=1,max=60000,int_mode=True,name="size")
 
     def task(self):
-        ds = torchvision.datasets.mnist.MNIST("data", download=True)
-        self.out.push(ds)
+        transform = transforms.Compose(
+            [
+                transforms.ToTensor(),
+            ]
+        )
 
+        with self._redirect_output():
+            raw_ds = torchvision.datasets.mnist.MNIST(
+                root=main_store.settings.data_path.get(),
+                download=True,
+                transform=transform,
+            )
+
+        size = self.size.get_int()
+            
+        ds = []
+        for i in range(size):
+            ds.append(raw_ds[i])
+
+        if self.include_labels.get() == 'False':
+            ds = [x[0] for x in ds]
+
+        self.out.push(ds)
 
 class ImageDataset(torch.utils.data.Dataset): # type: ignore
     """

@@ -1,3 +1,6 @@
+import numpy 
+numpy.set_printoptions(threshold=20)
+
 from grapycal import command
 from grapycal import CommandCtx
 from .interaction import *

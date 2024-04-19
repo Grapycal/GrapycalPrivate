@@ -1,7 +1,7 @@
 from enum import Enum
 from grapycal.sobjects.controls.control import ValuedControl
 from grapycal.utils.misc import Action
-from grapycal.utils.suggestion import get_autocomplete_suggestions
+from grapycal.utils.suggestion import _get_attr_suggestions
 from objectsync import StringTopic, IntTopic
 
 
@@ -52,7 +52,6 @@ class TextControl(ValuedControl[str]):
         super().init()
         self.on_finish = Action()
         self.register_service("finish", self.on_finish.invoke)
-        self.register_service("suggestions", self.get_auto_complete_suggestions)
 
     def set(self, text: str):
         self.text.set(text)
@@ -84,8 +83,3 @@ class TextControl(ValuedControl[str]):
 
     def set_with_value_from_edge(self, value):
         self.set(str(value))  # TODO find more proper way to handle this
-
-    def get_auto_complete_suggestions(self, text: str):
-        s = get_autocomplete_suggestions(text)
-        print(s)
-        return s

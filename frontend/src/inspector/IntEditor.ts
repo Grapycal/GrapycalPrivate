@@ -10,8 +10,8 @@ export class IntEditor extends Editor<IntTopic> {
     get template() {
         return `
         <div class="attribute-editor flex-horiz stretch">
-            <div id="attribute-name" class="attribute-name"></div>
-            <input id="input" type="number" class="text-editor">
+            <div ref="attributeName" id="attribute-name" class="attribute-name"></div>
+            <input ref="input" id="input" type="number" class="text-editor">
         </div>
         `
     }
@@ -25,13 +25,13 @@ export class IntEditor extends Editor<IntTopic> {
     }
 
     readonly input: HTMLInputElement
+    readonly attributeName: HTMLDivElement
     private locked = false;
 
     constructor(displayName: string, editorArgs: any, connectedAttributes: Topic<any>[]) {
         super()
         this.connectedAttributes = connectedAttributes as IntTopic[]
-        this.input = as(this.htmlItem.getHtmlEl('input'), HTMLInputElement)
-        this.htmlItem.getHtmlEl('attribute-name').innerText = displayName
+        this.attributeName.innerText = displayName
         for (let attr of connectedAttributes) {
             attr = as(attr, IntTopic)
             this.linker.link(attr.onSet, this.updateValue)

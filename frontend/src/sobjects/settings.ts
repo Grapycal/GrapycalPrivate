@@ -4,23 +4,26 @@ import { OptionsEditor } from "../inspector/OptionEditor"
 import { bindTopicCookie } from "../utils"
 import { DictTopic } from "objectsync-client"
 import { print } from "../devUtils"
+import { Workspace } from "./workspace"
 
 export class Settings extends CompSObject{
-    inspector: Inspector = new Inspector()
+    protected get template(): string { return `
+    <div>
+        <div class="sidebar-tab-title">
+        <h1>Settings</h1>
+        <hr>
+        </div>
+        <div slot="Inspector"></div>
+    </div>
+    `}
     entries: DictTopic<string,any>
+    inspector: Inspector
 
     protected onStart(): void {
-        this.inspector.htmlItem.setParentElement(document.getElementById('tab-settings'))
+        this.mount(Workspace.instance.leftSidebar)
+        this.inspector = new Inspector().mount(this)
         this.addFrontendSettings()
         this.entries = this.getAttribute('entries')
-        // this.entries.onAdd.add((key,value)=>{
-        //     const category = value.display_name.split('/')
-        //     const name = category.pop()
-        //     this.inspector.addEditor(new OptionsEditor(name,value.editor_args),category,key)
-        // })
-        // this.entries.onPop.add((key)=>{
-        //     this.inspector.removeEditorById(key)
-        // })
         this.link(this.entries.onSet,this.udpateEntries)
         this.udpateEntries()
     }

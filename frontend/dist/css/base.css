@@ -44,15 +44,15 @@ select{
 }
 
 input, textarea{
-    
+
     font-size: inherit;
     color: inherit;
 
     box-sizing: border-box;
     height:100%;
 
-    min-width:4ch; 
-    border: none; 
+    min-width:4ch;
+    border: none;
     outline: none;
     background: none;
     padding: 0px 2.5px;
@@ -74,7 +74,7 @@ input{
 }
 
 button{
-    
+
     color: inherit;
     background-color: #1e1e1e;
     border: #494949 solid 1px;
@@ -118,17 +118,17 @@ footer{
     scrollbar-width: thin;
     scrollbar-color: rgb(54, 54, 54) transparent;
   }
-  
+
   /* Works on Chrome, Edge, and Safari */
   *::-webkit-scrollbar {
     width: 12px;
     border-radius: 10px;
   }
-  
+
   *::-webkit-scrollbar-track {
     background: transparent;
   }
-  
+
   *::-webkit-scrollbar-thumb {
     background-color: rgb(73, 73, 73);
     border: none;
@@ -154,7 +154,7 @@ footer{
     min-height: 24px;
 
     box-sizing: border-box;
-    
+
 }
 
 .simple-node{
@@ -168,7 +168,7 @@ footer{
 .node-label{
     position: relative;
     height: 20.5px;
-    
+
     border-top-left-radius: 2px;
     border-top-right-radius: 2px;
     z-index: -1;
@@ -196,20 +196,20 @@ footer{
 
 
 .round-node .node-content{
-    
+
     width: 30px;
     height: 30px;
 }
 
 .round-node .node-label{
-    
+
     width: 30px;
     height: 30px;
     border-radius: 50%;
 }
 
 .round-node .node-label-underlay{
-    
+
     width: 30px;
     height: 30px;
     border-radius: 50%;
@@ -226,7 +226,7 @@ footer{
 
 .node-icon{
     width: 18px;
-    height: 14px;   
+    height: 14px;
     flex-shrink: 0;
     object-fit: contain;
     opacity: 1;
@@ -244,7 +244,7 @@ footer{
 
     box-sizing: border-box;
     pointer-events: none;
-    border-image: url(/select.png) 50% round;
+    border-image: url(../select.png) 50% round;
     border-width: 2px;
     border-style: solid;
     border-image-width: 12px;
@@ -253,8 +253,7 @@ footer{
 }
 
 .node.hover .node-selection{
-    /* blue border */
-    filter: opacity(0.3);
+    filter: opacity(0.2);
 }
 
 .node.selected .node-selection{
@@ -311,7 +310,7 @@ footer{
     height: 30px;
 }
 
-/* 
+/*
 .node.selected{
     background-color: #54360f8f;
 } */
@@ -367,21 +366,22 @@ footer{
     transform: translate(-50%, -50%);
     top: 50%;
     left: 50%;
+    z-index: -10;
 }
 
-.round-node .port-knob-hitbox{
-    /* reduce the hitbox size so that it is easier to select the node */
-    width: 15px;
-    height: 15px;
+.port-knob-hitbox.accepts-edge:hover{
+    background-color : #88888830;
 }
+
+
 
 .port-label{
     position: relative;
     white-space: nowrap;
     transition: 0.5s ease-out;
     pointer-events: none;
-    
-    
+
+
     font-size: 12px;
 }
 
@@ -424,7 +424,7 @@ footer{
 }
 
 .normal-node .slot-input-port {
-    padding: 0px 10px; 
+    padding: 0px 10px;
     width: 100%;
 }
 
@@ -448,8 +448,8 @@ footer{
 }
 
 .simple-node .slot-output-port{
-    padding-top:7.5px;    
-    padding-bottom: 7.5px;    
+    padding-top:7.5px;
+    padding-bottom: 7.5px;
 }
 
 
@@ -490,15 +490,13 @@ footer{
 .slot-control{
     display: flex;
     flex-direction: column;
-    overflow: hidden;
     width: 100%;
-    box-sizing: border-box; 
+    box-sizing: border-box;
     gap:2px;
 
     position: relative;
     padding-left: 10px;
     padding-right: 10px;
-    /* overflow: visible; */
 }
 
 .slot-control:empty{
@@ -509,7 +507,6 @@ footer{
     box-sizing: border-box;
     width: 100%;
     /* border-radius: 2px; */
-    overflow: hidden;
     font-size: 12px;
     min-height: 15px;
     gap: 4px;
@@ -528,6 +525,21 @@ footer{
     width: 100%;
     height: fit-content;
     object-fit: contain;
+}
+
+input[type="range"]{
+    width: 100%;
+    -webkit-appearance: none;
+    border-radius: 2px;
+    outline: none;
+    padding: 0px;
+    margin: 0px;
+}
+
+input::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 1px;
 }
 
 input:enabled:hover, textarea:enabled:hover{
@@ -580,11 +592,16 @@ input:enabled, textarea:enabled{
     stroke-width: 12;
 }
 
+.edge-path-hit-box:hover{
+    stroke: #88888830;
+}
+
 .edge-label{
     position: absolute;
     transform: translate(-50%, -50%);
     text-align: center;
     font-size: 10px;
+    pointer-events: none;
 }
 
 /* Editor */
@@ -603,7 +620,7 @@ input:enabled, textarea:enabled{
 
 .sidebar{
     position: absolute;
-    bottom: 0px; 
+    bottom: 0px;
     top: 0px;
     z-index: 10;
     background-color:rgba(0,0,0);
@@ -654,7 +671,7 @@ input:enabled, textarea:enabled{
     width: 300px;
     overflow-y: scroll;
     /* initially hidden */
-    display: none; 
+    display: none;
 }
 
 .sidebar-resize-handle {
@@ -667,7 +684,7 @@ input:enabled, textarea:enabled{
     left: -5px; /* Adjust the position to align with the left border */
     z-index: 1; /* Ensure it's above sidebar content */
 }
-  
+
 
 .collapsed.sidebar-container{
     display: none;
@@ -693,7 +710,7 @@ input:enabled, textarea:enabled{
     padding-bottom: 100px;
     padding-left: 12px;
     height:auto;
-    bottom: 0px; 
+    bottom: 0px;
     left: 0px;
     top: 0px;
     right: 0px;
@@ -809,8 +826,8 @@ input:enabled, textarea:enabled{
     position:absolute;
     width:200px;
     z-index: 20;
-    
-    
+
+
 }
 .popup-option{
     padding:10px;
@@ -834,13 +851,13 @@ input:enabled, textarea:enabled{
 }
 
 #node_info{
-    
+
     /* resize: vertical;
     overflow: auto; */
 }
 
 #node_type{
-    
+
     font-size: 18px;
     line-height: 24px;
 }
@@ -877,7 +894,7 @@ hr{
 .flex-vert {
     list-style: none;
     display: flex;
-    flex-direction: column; 
+    flex-direction: column;
     align-items: center;
 }
 
@@ -892,13 +909,13 @@ hr{
     flex-grow: 1;
 }
 
-.space-evenly { 
-  justify-content: space-evenly; 
+.space-evenly {
+  justify-content: space-evenly;
 }
 
-.space-between { 
-  justify-content: space-between; 
-}  
+.space-between {
+  justify-content: space-between;
+}
 
 .full-width {
   width: 100%;
@@ -953,7 +970,7 @@ hr{
     pointer-events: none;
 }
 
-.display-none{ 
+.display-none{
     display: none;
 }
 
@@ -963,7 +980,7 @@ hr{
     left: -50000px;
     width: 100000px;
     height: 100000px;
-    
+
     z-index: -10;
 }
 
@@ -988,7 +1005,7 @@ hr{
 }
 
 .settings-page-content{
-    
+
     position: absolute;
     top: 50%;
     left: 50%;
@@ -998,7 +1015,7 @@ hr{
     height: 60%;
     padding: 50px;
     z-index: 15;
-    background-color : rgba(20, 20, 20, 1); 
+    background-color : rgba(20, 20, 20, 1);
     border-radius: 3px;
     overflow: scroll;
 }
@@ -1036,9 +1053,9 @@ hr{
 .card-image{
     width: 100%;
     flex: 1;
-    background-size: cover;  
+    background-size: cover;
     background-repeat:   no-repeat;
-    background-position: center center; 
+    background-position: center center;
 }
 
 .card-content{
@@ -1059,7 +1076,7 @@ hr{
 .card-button{
     flex-shrink: 0;
     height: 24px;
-    width: 24px;    
+    width: 24px;
     min-width: 0;
 }
 

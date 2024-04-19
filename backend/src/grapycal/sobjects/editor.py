@@ -35,7 +35,7 @@ class Editor(SObject):
 
         # called by client
         self.register_service("create_edge", self.create_edge_from_port_id)
-        self.register_service("create_node", self.create_node_service)
+        self.register_service("create_node", self.create_node_service, pass_sender=True)
         self.register_service("copy", self._copy)
         self.register_service("paste", self._paste, pass_sender=True)
         self.register_service("delete", self._delete)
@@ -67,7 +67,7 @@ class Editor(SObject):
     def create_node_service(self,**kwargs):
         self.create_node(**kwargs) # no return value #TODO make it elegant
 
-    def create_node(self, node_type: str | type[Node], **kwargs) -> Node | None:
+    def create_node(self, node_type: str | type[Node], sender:int|None=None, **kwargs) -> Node | None:
         if isinstance(node_type, str):
             node_type_cls = self._server._object_types[node_type]
             assert issubclass(node_type_cls, Node)
@@ -81,6 +81,8 @@ class Editor(SObject):
         new_node = self.add_child(node_type_cls, is_preview=False, **kwargs)
         assert isinstance(new_node, Node)
         new_node.post_create()
+        if sender is not None:
+            new_node.add_tag(f"created_by_{sender}")
         user_logger.info(f"Created {new_node.get_type_name()}")
         return new_node
 

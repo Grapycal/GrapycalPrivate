@@ -1,3 +1,15 @@
 [submodule "frontend/dist/svg"]
 	path = frontend/dist/svg
 	url = https://github.com/eri24816/grapycal-resource.git
+[submodule "submodules/objectsync"]
+	path = submodules/objectsync
+	url = git@github.com:Grapycal/objectsync.git
+[submodule "submodules/topicsync"]
+	path = submodules/topicsync
+	url = git@github.com:Grapycal/topicsync.git
+[submodule "submodules/topicsync-client"]
+	path = submodules/topicsync-client
+	url = git@github.com:Grapycal/topicsync-client.git
+[submodule "submodules/objectsync-client"]
+	path = submodules/objectsync-client
+	url = git@github.com:Grapycal/objectsync-client.git

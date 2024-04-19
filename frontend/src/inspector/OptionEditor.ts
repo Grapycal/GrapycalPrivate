@@ -10,8 +10,8 @@ export class OptionsEditor extends Editor<StringTopic> {
     get template() {
         return `
         <div class="attribute-editor flex-horiz stretch">
-            <div id="attribute-name" class="attribute-name"></div>
-            <select class="select" id="select">
+            <div ref="attributeName" class="attribute-name"></div>
+            <select ref="selectInput" class="select">
             </select>
         </div>
         `
@@ -32,6 +32,8 @@ export class OptionsEditor extends Editor<StringTopic> {
     readonly connectedAttributes: StringTopic[] = []
     private locked = false;
 
+    private readonly attributeName: HTMLDivElement
+
     constructor(displayName: string, editorArgs: any, connectedAttributes: Topic<any>[]|null=null) {
         super()
         if (connectedAttributes === null) {
@@ -40,14 +42,13 @@ export class OptionsEditor extends Editor<StringTopic> {
         for (let attr of connectedAttributes) {
             this.connectedAttributes.push(as(attr, StringTopic))
         }
-        this.selectInput = as(this.htmlItem.getHtmlEl('select'), HTMLSelectElement)
         for(let option of editorArgs.options){
             const optionEl = document.createElement('option')
             optionEl.value = option
             optionEl.innerText = option
             this.selectInput.appendChild(optionEl)
         }
-        this.htmlItem.getHtmlEl('attribute-name').innerText = displayName
+        this.attributeName.innerText = displayName
         for (let attr of connectedAttributes) {
             attr = as(attr, StringTopic)
             this.linker.link(attr.onSet, this.updateValue)

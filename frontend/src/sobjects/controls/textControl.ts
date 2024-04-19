@@ -13,11 +13,11 @@ export class TextControl extends Control {
     editable = this.getAttribute("editable", IntTopic)
     placeholder = this.getAttribute("placeholder", StringTopic)
 
-    protected template = `
+    protected get template (){return `
     <div class="control flex-horiz">
         <div class="label" id="label">Text</div>
     </div>
-    `
+    `}
 
     protected css: string = `
         .label{
@@ -46,20 +46,6 @@ export class TextControl extends Control {
             this.makeRequest('finish')
         })
 
-        // this.link2(this.textBox as any, "input", () => {
-        //     this.makeRequest('suggestions', {text: this.textBox.value})
-        // })
-
-        this.textBox.addEventListener("input", () => {
-            if (this.textBox.value.endsWith(".")){
-                this.makeRequest('suggestions', {text: this.textBox.value}, handleResponse)
-            }
-        });
-
-        // this.link2(this.textBox as any, "focus", () => {
-        //
-        // }
-
         let labelEl = this.htmlItem.getEl("label", HTMLDivElement)
         this.link(this.label.onSet, (label) => {
             if (label == '') {
@@ -81,23 +67,4 @@ export class TextControl extends Control {
         })
     }
 
-}
-
-interface ResponseItem {
-    key: string;
-    value: string;
-}
-
-function handleResponse(response: ResponseItem[]) {
-    console.log('handleResponse', response)
-    const resultsContainer = document.getElementById('results-container');
-    if (!resultsContainer) return;
-
-    resultsContainer.innerHTML = '';
-
-    response.forEach(item => {
-        const div = document.createElement('div');
-        div.textContent = `${item.key} ${item.value}`;
-        resultsContainer.appendChild(div);
-    });
 }

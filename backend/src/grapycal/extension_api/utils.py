@@ -1,5 +1,5 @@
 from contextlib import contextmanager
-from typing import Callable, Dict, List
+from typing import TYPE_CHECKING, Callable, Dict, List
 from objectsync import Topic
 
 
@@ -50,3 +50,21 @@ class Bus:
     
     def __len__(self):
         return len(self._topics)
+
+if TYPE_CHECKING:
+    import numpy as np
+    
+def to_numpy(data) -> 'np.ndarray':
+    '''
+    Converts data to numpy array
+    '''
+    import numpy as np
+    if isinstance(data, list):
+        return np.array(data)
+    try:
+        import torch
+    except ImportError:
+        return data
+    if isinstance(data, torch.Tensor):
+        return data.cpu().detach().numpy()
+    return data

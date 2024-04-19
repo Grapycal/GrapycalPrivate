@@ -7,13 +7,13 @@ import { Workspace } from "../workspace"
 
 export class ImageControl extends Control {
     
-    protected template = `
+    protected get template (){return `
     <div class="control" tabindex=0>
         <img class="control-image full-height full-width" id="image">
     </div>
-    `
+    `}
 
-    protected css = `
+    protected get style(){return`
     .focused{
         outline: 1px solid #ffffff;
     }
@@ -25,7 +25,7 @@ export class ImageControl extends Control {
                     </svg>');
         background-size: 20px 20px;
     }
-    `
+    `}
 
     protected onStart(): void {
         super.onStart()

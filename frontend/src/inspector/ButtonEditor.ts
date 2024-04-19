@@ -7,19 +7,10 @@ export class ButtonEditor extends Editor<EventTopic> {
     get template() {
         return `
         <div class="attribute-editor flex-horiz stretch">
-            <button id="btn" type="button" class="btn grow"></button>
+            <button ref="button" id="btn" type="button" class="btn grow"></button>
         </div>
         `
     }
-
-    get style(): string {
-        return super.style + `
-        .btn{
-            
-        }
-    `
-    }
-
     readonly button: HTMLButtonElement
 
     constructor(displayName: string, editorArgs: any, connectedAttributes: Topic<any>[]) {
@@ -28,7 +19,6 @@ export class ButtonEditor extends Editor<EventTopic> {
         for(let attr of connectedAttributes){
             this.connectedAttributes.push(as(attr,EventTopic))
         }
-        this.button = as(this.htmlItem.getHtmlEl('btn'), HTMLButtonElement)
         this.button.innerText = displayName
         this.linker.link2(this.button, 'click', this.buttonClicked)
     }

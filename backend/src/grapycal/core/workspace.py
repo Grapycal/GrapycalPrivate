@@ -1,6 +1,9 @@
 from enum import Enum
+from grapycal.sobjects.controls.keyboardControl import KeyboardControl
+from grapycal.sobjects.controls.sliderControl import SliderControl
 import grapycal.utils.logging
 import logging
+
 grapycal.utils.logging.setup_logging()
 logger = logging.getLogger("workspace")
 
@@ -14,7 +17,7 @@ from typing import Any, Dict
 import objectsync
 from objectsync.sobject import SObjectSerialized
 
-''' Import utils from grapycal '''
+""" Import utils from grapycal """
 import grapycal
 from grapycal.core.slash_command import SlashCommandManager
 from grapycal.extension.extension import CommandCtx
@@ -26,33 +29,29 @@ from grapycal.core import stdout_helper, running_module
 from grapycal.core.background_runner import BackgroundRunner
 from grapycal.stores import main_store
 
-''' import all sobject types to register them to the objectsync server '''
+""" import all sobject types to register them to the objectsync server """
 from grapycal.sobjects.fileView import LocalFileView, RemoteFileView
 from grapycal.sobjects.settings import Settings
-from grapycal.sobjects.controls import ButtonControl, ImageControl, LinePlotControl, NullControl, OptionControl, TextControl, ThreeControl
+from grapycal.sobjects.controls import (
+    ButtonControl,
+    ImageControl,
+    LinePlotControl,
+    NullControl,
+    OptionControl,
+    TextControl,
+    ThreeControl,
+    CodeControl,
+)
 from grapycal.sobjects.editor import Editor
 from grapycal.sobjects.workspaceObject import WebcamStream, WorkspaceObject
 from grapycal.sobjects.edge import Edge
 from grapycal.sobjects.port import InputPort, OutputPort
-from grapycal.sobjects.sidebar import Sidebar
+from grapycal.sobjects.nodeLibrary import NodeLibrary
 from grapycal.sobjects.node import Node
-
-class ClientMsgTypes(Enum):
-    '''
-    Used to specify the type of message to send to the client. 
-    Status messages are displayed in the status bar,
-    while notifications are displayed as a popup.
-    '''
-    STATUS = "status"
-    NOTIFICATION = "notification"
-    BOTH = "both"
-
-    def __eq__(self, other):
-        return self.value == other.value
-
+from grapycal.core.client_msg_types import ClientMsgTypes
 
 class Workspace:
-    '''
+    """
     This is the core class of a Grapycal workspace.
 
     To run a Grapycal workspace:
@@ -61,41 +60,41 @@ class Workspace:
     workspace = Workspace(port=8765, host="localhost", path="workspace.grapycal", workspace_id=0)
     workspace.run()
     ```
-    '''
-    def __init__(self, port, host, path, workspace_id) -> None:
-        self.path = path
-        self.port = port
-        self.host = host
+    """
 
-        self.workspace_id = workspace_id 
-        '''used for exit message file'''
+    def __init__(self, path, workspace_id) -> None:
+        self.path = path
+
+        self.workspace_id = workspace_id
+        """used for exit message file"""
 
         self.grapycal_id_count = 0
         self.is_running = False
 
         self.running_module = running_module
-        '''The module that the user's code runs in.'''
+        """The module that the user's code runs in."""
 
-        self._objectsync = objectsync.Server(port, host)
-        ''' Grapycal uses objectsync to store stateful objects and communicate with the frontend.'''
+        self._objectsync = objectsync.Server()
+        """ Grapycal uses objectsync to store stateful objects and communicate with the frontend."""
 
         # utilities
         self._extention_manager = ExtensionManager(self._objectsync)
-        self._slash_commands_topic = self._objectsync.create_topic("slash_commands", objectsync.DictTopic)
+        self._slash_commands_topic = self._objectsync.create_topic(
+            "slash_commands", objectsync.DictTopic
+        )
         self.slash = SlashCommandManager(self._slash_commands_topic)
         stdout_helper.enable_proxy(redirect_error=False)
 
-
     def run(self, run_runner=True) -> None:
-        '''
-        The blocking function that make the workspace start functioning. The main thread will run a background_runner 
+        """
+        The blocking function that make the workspace start functioning. The main thread will run a background_runner
         that runs the background tasks from nodes.
         A communication thread will be started to handle the communication between the frontend and the backend.
 
         args:
             run_runner: bool
                 Set to False if you don't want to run the background runner. This is useful for testing.
-        '''
+        """
 
         # Register all the sobject types to the objectsync server, and link some events to the callbacks.
         self._setup_objectsync()
@@ -106,12 +105,14 @@ class Workspace:
         # Start the communication thread.
         # The thread runs the objectsync server in an asyncio event loop.
         event_loop_set_event = threading.Event()
-        threading.Thread(target=self._communication_thread, daemon=True, args=[event_loop_set_event]).start()  # daemon=True until we have a proper exit strategy
+        threading.Thread(
+            target=self._communication_thread, daemon=True, args=[event_loop_set_event]
+        ).start()  # daemon=True until we have a proper exit strategy
         event_loop_set_event.wait()
-        
+
         # The extension manager starts searching for all extensions available.
         self._extention_manager.start()
-        
+
         # The store is a global object that holds all the data and functions that are shared across classes.
         self._setup_store()
 
@@ -122,37 +123,40 @@ class Workspace:
         if run_runner:
             signal.signal(signal.SIGTERM, lambda sig, frame: self._exit())
             self.is_running = True
-            main_store.runner.run() # this is a blocking call
+            main_store.runner.run()  # this is a blocking call
 
-    '''
+    """
     Subroutines of run()
-    '''
-    
+    """
+
     def _setup_objectsync(self):
         # Register all the sobject types to the objectsync server so they can be created dynamically.
         self._objectsync.register(WorkspaceObject)
         self._objectsync.register(Editor)
-        self._objectsync.register(Sidebar)
+        self._objectsync.register(NodeLibrary)
         self._objectsync.register(Settings)
         self._objectsync.register(LocalFileView)
         self._objectsync.register(RemoteFileView)
         self._objectsync.register(InputPort)
         self._objectsync.register(OutputPort)
         self._objectsync.register(Edge)
-    
+
         self._objectsync.register(TextControl)
         self._objectsync.register(ButtonControl)
         self._objectsync.register(ImageControl)
         self._objectsync.register(ThreeControl)
         self._objectsync.register(NullControl)
         self._objectsync.register(OptionControl)
-    
+        self._objectsync.register(KeyboardControl)
+        self._objectsync.register(CodeControl)
+        self._objectsync.register(SliderControl)
+
         self._objectsync.register(WebcamStream)
         self._objectsync.register(LinePlotControl)
-    
+
         self._objectsync.on_client_connect += self._client_connected
         self._objectsync.on_client_disconnect += self._client_disconnected
-    
+
         # creates the status message topic so client can subscribe to it
         self._objectsync.create_topic(
             f"status_message", objectsync.EventTopic, is_stateful=False
@@ -160,40 +164,39 @@ class Workspace:
         self._objectsync.create_topic(
             "meta", objectsync.DictTopic, {"workspace name": self.path}
         )
-    
+
         self._objectsync.register_service("exit", self._exit)
         self._objectsync.register_service("interrupt", self._interrupt)
-        self._objectsync.register_service("slash_command", lambda name,ctx: self.slash.call(name,CommandCtx(**ctx)))
-        self._objectsync.register_service("ctrl+s", lambda: self._save_workspace(self.path))
-        self._objectsync.register_service("open_workspace", self._open_workspace_callback)
+        self._objectsync.register_service(
+            "slash_command", lambda name, ctx: self.slash.call(name, CommandCtx(**ctx))
+        )
+        self._objectsync.register_service(
+            "ctrl+s", lambda: self._save_workspace(self.path)
+        )
+        self._objectsync.register_service(
+            "open_workspace", self._open_workspace_callback
+        )
 
     def _setup_slash_commands(self):
-        self.slash.register("save workspace", lambda ctx: self._save_workspace(self.path)) 
-    
+        self.slash.register(
+            "save workspace", lambda ctx: self._save_workspace(self.path)
+        )
+
     def _communication_thread(self, event_loop_set_event: threading.Event):
         asyncio.run(self._async_communication_thread(event_loop_set_event))
-    
+
     async def _async_communication_thread(self, event_loop_set_event: threading.Event):
         main_store.event_loop = asyncio.get_event_loop()
         event_loop_set_event.set()
-        try:
-            await self._objectsync.serve()
-        except OSError as e:
-            if e.errno == 10048:
-                logger.error(
-                    f"Port {self.port} is already in use. Maybe another instance of grapycal is running?"
-                )
-                main_store.event_loop.stop()
-                # send signal to the main thread to exit
-                os.kill(os.getpid(), signal.SIGTERM)
-            else:
-                raise e
+        await self._objectsync.serve()
 
     def _setup_store(self):
         """
         Assign members needed for the main_store.
         """
-        main_store.node_types = self._objectsync.create_topic('node_types',objectsync.DictTopic,is_stateful=False)
+        main_store.node_types = self._objectsync.create_topic(
+            "node_types", objectsync.DictTopic, is_stateful=False
+        )
         main_store.clock = Clock(0.1)
         main_store.event_loop.create_task(main_store.clock.run())
         main_store.redirect = stdout_helper.redirect
@@ -203,7 +206,9 @@ class Workspace:
         grapycal.utils.logging.send_client_msg = main_store.send_message_to_all
         main_store.clear_edges = self._clear_edges
         main_store.open_workspace = self._open_workspace_callback
-        main_store.data_yaml = HttpResource("https://github.com/Grapycal/grapycal_data/raw/main/data.yaml", dict)
+        main_store.data_yaml = HttpResource(
+            "https://github.com/Grapycal/grapycal_data/raw/main/data.yaml", dict
+        )
         main_store.next_id = self._next_id
         main_store.vars = self._vars
         main_store.record = self._objectsync.record
@@ -222,16 +227,16 @@ class Workspace:
             )
             self._initialize_workspace()
         if not file_exists(self.path):
-            self._save_workspace(
-                self.path
-            )
+            self._save_workspace(self.path)
 
     """
     Saving and loading workspace
     """
 
     def _initialize_workspace(self) -> None:
-        self._workspace_object = self._objectsync.create_object(WorkspaceObject, parent_id="root")
+        self._workspace_object = self._objectsync.create_object(
+            WorkspaceObject, parent_id="root"
+        )
         try:
             self._extention_manager.import_extension("grapycal_builtin")
         except ModuleNotFoundError:
@@ -252,17 +257,13 @@ class Workspace:
             "workspace_serialized": workspace_serialized.to_dict(),
         }
         file_size = write_workspace(path, metadata, data, compress=True)
-        node_count = len(
-            main_store.main_editor.top_down_search(type=Node)
-        )
-        edge_count = len(
-            main_store.main_editor.top_down_search(type=Edge)
-        )
+        node_count = len(main_store.main_editor.top_down_search(type=Node))
+        edge_count = len(main_store.main_editor.top_down_search(type=Edge))
         logger.info(
-            f"Workspace saved to {path}. Node count: {node_count}. Edge count: {edge_count}. File size: {file_size//1024} KB."
+            f"Workspace saved to {path}. Node count: {node_count}. Edge count: {edge_count}. File size: {file_size // 1024} KB."
         )
         self._send_message_to_all(
-            f"Workspace saved to {path}. Node count: {node_count}. Edge count: {edge_count}. File size: {file_size//1024} KB."
+            f"Workspace saved to {path}. Node count: {node_count}. Edge count: {edge_count}. File size: {file_size // 1024} KB."
         )
 
     def _load_workspace(self, path: str) -> None:
@@ -338,18 +339,19 @@ class Workspace:
             f.write(f"open {path}")
         self._exit()
 
-    '''
+    """
     Utility functions
-    '''
+    """
+
     def _send_message_to_all(self, message, type=ClientMsgTypes.NOTIFICATION):
         if not self.is_running:
             return
         if type == ClientMsgTypes.BOTH:
             self._send_message_to_all(message, ClientMsgTypes.NOTIFICATION)
             self._send_message_to_all(message, ClientMsgTypes.STATUS)
-    
+
         self._objectsync.emit("status_message", message=message, type=type.value)
-    
+
     def _send_message(self, message, client_id=None, type=ClientMsgTypes.NOTIFICATION):
         if not self.is_running:
             return
@@ -358,50 +360,40 @@ class Workspace:
             self._send_message(message, ClientMsgTypes.STATUS)
         if client_id is None:
             client_id = self._objectsync.get_action_source()
-        self._objectsync.emit(f"status_message_{client_id}", message=message, type=type.value)
-    
+        self._objectsync.emit(
+            f"status_message_{client_id}", message=message, type=type.value
+        )
+
     def _next_id(self):
         self.grapycal_id_count += 1
         return self.grapycal_id_count
-    
+
     def _clear_edges(self):
         edges = self._workspace_object.top_down_search(type=Edge)
         for edge in edges:
             edge.clear()
-    
+
     def _vars(self) -> Dict[str, Any]:
         return self.running_module.__dict__
 
-    '''
+    """
     Callbacks
-    '''
+    """
+
     def _exit(self):
         main_store.runner.exit()
-    
+
     def _interrupt(self):
         main_store.runner.interrupt()
         main_store.runner.clear_tasks()
-    
+
     def _client_connected(self, client_id):
         self._objectsync.create_topic(
             f"status_message_{client_id}", objectsync.EventTopic
         )
-    
+
     def _client_disconnected(self, client_id):
         try:
             self._objectsync.remove_topic(f"status_message_{client_id}")
         except:
             pass  # topic may have not been created successfully.
-
-
-import argparse
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--port", type=int, default=8765)
-    parser.add_argument("--host", type=str, default="localhost")
-    parser.add_argument("--path", type=str, default="workspace.grapycal")
-    parser.add_argument("--workspace_id", type=int, default=0)
-    args = parser.parse_args()
-
-    workspace = Workspace(args.port, args.host, args.path, args.workspace_id)
-    workspace.run()

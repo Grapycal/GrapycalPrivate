@@ -7,7 +7,7 @@ class ButtonControl(ValuedControl[None]):
     '''
     To add a button control to a node, use the following code in the node:
     ```python
-    self.add_control(Button, label='')
+    self.add_control(ButtonControl, label='')
     ```
     '''
     frontend_type = 'ButtonControl'

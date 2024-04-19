@@ -6,18 +6,18 @@ import { AutoCompMenu, OptionInfo } from "../../ui_utils/popupMenu/autoCompMenu"
 
 export class OptionControl extends Control {
     
-    menu = new AutoCompMenu()
+    menu: AutoCompMenu
     value = this.getAttribute('value',StringTopic)
     options = this.getAttribute('options',ListTopic<string>)
     label = this.getAttribute('label',StringTopic)
     private locked = false
 
-    protected template = `
+    protected get template (){return `
     <div class="control flex-horiz">
         <div class="label" id="label">Text</div>
         <div slot="menu"></div>
     </div>
-    `
+    `}
 
     protected css: string = `
         .label{
@@ -31,6 +31,7 @@ export class OptionControl extends Control {
 
     protected onStart(): void {
         super.onStart()
+        this.menu = new AutoCompMenu()
         this.menu.htmlItem.setParent(this.htmlItem,'menu')
         this.menu.show()
         this.link(this.options.onSet,()=>{

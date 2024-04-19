@@ -1,5 +1,6 @@
 import { print } from "../devUtils"
 import { Node } from "../sobjects/node"
+import { Workspace } from "../sobjects/workspace"
 import { Action, Constructor, Vector2, as, defined } from "../utils"
 import { Component, IComponentable } from "./component"
 import { Transform } from "./transform"
@@ -71,7 +72,7 @@ export class HtmlItem extends Component{
 
     applyTemplate(template: string|HTMLTemplateElement, order: "prepend"|"append" = "prepend"){
         // create element from template
-        if (this.baseElement !== null)
+        if (this.baseElement !== null && this.parent_slot !== null)
             this.parent_slot.removeChild(this.baseElement);
 
         let templateElement: HTMLTemplateElement;
@@ -81,7 +82,6 @@ export class HtmlItem extends Component{
         }else{
             templateElement = template;
         }
-
         if(this.useCss){
             addPrefixToHtmlClasses(templateElement, this.object.constructor.name);
         }
@@ -112,7 +112,10 @@ export class HtmlItem extends Component{
                 slot.appendChild(child.item.baseElement);
             else
                 slot.prepend(child.item.baseElement);
+            child.item.parent_slot = slot;
         }
+        
+        this._refs = this._getRefs(); // create refs
         
         this.templateChanged.invoke();
     }
@@ -193,6 +196,29 @@ export class HtmlItem extends Component{
         }
     }
 
+    private _refs: Map<string,Element> = null;
+    private _getRefs(): Map<string,Element>{
+        /**
+         * Get all elements with ref attribute in the template.
+         */
+        const element = this.baseElement.querySelectorAll(`[template_id="${this.templateId}"][ref]`);
+        const refs = new Map<string,Element>();
+        for (let i = 0; i < element.length; i++){
+            const el = element[i];
+            const ref = el.getAttribute('ref');
+            refs.set(ref,el);
+            el.removeAttribute('ref');
+        }
+        if (this.baseElement.hasAttribute('ref')){
+            const ref = this.baseElement.getAttribute('ref');
+            refs.set(ref,this.baseElement);
+            this.baseElement.removeAttribute('ref');
+        }
+        return refs;
+    }
+    getRefs(): Map<string,Element>{
+        return this._refs
+    }
 
 
     setParent(parent: HtmlItem, slot: string = 'default', order: "prepend"|"append"="append"): void{

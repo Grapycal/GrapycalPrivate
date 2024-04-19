@@ -23,17 +23,11 @@ export class Control extends CompSObject {
     protected get node(): Node {
         return asControlHost(this.parent).ancestorNode;
     }
-    protected template = `
+    protected get template (){return `
     <div class="control">
         this is a control
     </div>
-    `
-    protected css = ``
-    htmlItem: HtmlItem
-    protected onStart(): void {
-        super.onStart();
-        this.htmlItem=new HtmlItem(this,null,this.template,this.css)
-    }
+    `}
     
     onParentChangedTo(newParent: SObject): void {
         super.onParentChangedTo(newParent)

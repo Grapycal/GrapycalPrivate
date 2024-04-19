@@ -78,12 +78,10 @@ export class Footer extends Componentable{
     status: HTMLSpanElement
     bar: HTMLDivElement
     extendArea: HTMLDivElement
-    eventDispatcher: EventDispatcher = new EventDispatcher(this);
     displacement: number = 0;
     constructor(){
         super();
         Footer.ins = this;
-        this.htmlItem.setParentElement(document.body.getElementsByTagName('footer')[0]);
         this.workspaceName = this.htmlItem.getEl('workspace-name', HTMLSpanElement);
         this.status = this.htmlItem.getEl('status', HTMLSpanElement);
         this.bar = this.htmlItem.getEl('bar', HTMLDivElement);

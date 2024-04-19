@@ -7,7 +7,6 @@ import subprocess
 import grapycal
 import termcolor
 import time
-from .utils import usersettings
 
 
 class GrapycalApp:
@@ -57,8 +56,7 @@ class GrapycalApp:
                 f'Strating webpage server at localhost:{self._config["http_port"]} from {webpage_path}...'
             )
             http_server = subprocess.Popen(
-                [sys.executable, "-m", "http.server", str(self._config["http_port"])],
-                start_new_session=True,
+                ["python", "-m", "http.server", str(self._config["http_port"])],
                 cwd=webpage_path,
                 stdout=subprocess.DEVNULL,
             )
@@ -75,10 +73,17 @@ class GrapycalApp:
             print(f'Start browser at URL: http://localhost:{self._config["http_port"]}')
 
         while True:  # Restart workspace when it exits. Convenient for development
+            # turn on sigint handler
+            signal.signal(signal.SIGINT, signal.default_int_handler)
+
             import random
-            workspace_id = random.randint(0, 1000000) # used for exit message file
+
+            workspace_id = random.randint(0, 1000000)  # used for exit message file
             with self._run_workspace(workspace_id) as workspace:
                 self._waitForWorkspace(workspace)
+
+            # turn off sigint handler to avoid the third sigint
+            signal.signal(signal.SIGINT, lambda sig, frame: None)
 
             restart = self._config["restart"] and workspace.poll() == 0
 
@@ -109,7 +114,7 @@ class GrapycalApp:
         return
 
     @contextlib.contextmanager
-    def _run_workspace(self,workspace_id: int):
+    def _run_workspace(self, workspace_id: int):
         """
         Run a workspace. Ensure that the workspace is terminated when the context is exited.
         """
@@ -132,7 +137,6 @@ class GrapycalApp:
                 "--workspace_id",
                 str(workspace_id),
             ],
-            start_new_session=True,
         )
         try:
             yield workspace
@@ -145,9 +149,7 @@ class GrapycalApp:
             try:
                 time.sleep(3)
             except KeyboardInterrupt:
-                print(
-                    "Shutting down Grapycal server will force kill all workspaces. Press Ctrl+C again to confirm."
-                )
+                print("Press Ctrl+C again to confirm exit.")
                 try:
                     time.sleep(3)
                 except KeyboardInterrupt:

@@ -9,7 +9,7 @@ import { bloomDiv as bloomDiv, glowText } from '../ui_utils/effects'
 import { Vector2, as } from '../utils'
 import { EventDispatcher, GlobalEventDispatcher } from '../component/eventDispatcher'
 import { MouseOverDetector } from '../component/mouseOverDetector'
-import { Sidebar } from './sidebar'
+import { NodeLibrary } from './nodeLibrary'
 import { Editor } from './editor'
 import { Selectable } from '../component/selectable'
 import { Workspace } from './workspace'
@@ -25,6 +25,7 @@ export class Node extends CompSObject implements IControlHost {
         for(let subCat of category.split('/')){
             if(subCat == '') continue
             str += '-'+subCat.replace(/[^a-zA-Z0-9]/g,'-')
+            str = str.toLowerCase()
             classes.push(str)
         }
         return classes
@@ -51,15 +52,8 @@ export class Node extends CompSObject implements IControlHost {
 
     editor: Editor;
     ancestorNode: Node = this;
-    htmlItem: HtmlItem = new HtmlItem(this);
-    eventDispatcher: EventDispatcher = new EventDispatcher(this)
-    transform: Transform = null
-    selectable: Selectable;
-    functionalSelectable: Selectable;
-    mouseOverDetector: MouseOverDetector
 
     dragEndCorrection: Vector2 = new Vector2(0,0)
-
     private draggingTargetPos: Vector2 = new Vector2(0,0)
     
     public moved: Action<[]> = new Action();
@@ -72,7 +66,7 @@ export class Node extends CompSObject implements IControlHost {
             <div class="node-selection"></div>
             <div class="node-label full-width">
                 <div class="node-label-underlay"></div>
-                <div id="label"></div>
+                <div ref="labelDiv"></div>
             </div>
 
             <div class="node-border-container">
@@ -99,7 +93,7 @@ export class Node extends CompSObject implements IControlHost {
                 <div class="full-width flex-vert space-evenly">
                     <div class="node-label full-width flex-horiz">
                         <div class="node-label-underlay"></div>
-                        <div id="label"></div>
+                        <div ref="labelDiv"></div>
                     </div>
                     <div slot="control"  class="slot-control main-section"></div>
                 </div>
@@ -118,7 +112,7 @@ export class Node extends CompSObject implements IControlHost {
                 <div slot="input_port" class=" flex-vert space-evenly slot-input-port"></div>
                 <div class="full-width flex-vert space-evenly node-label"> 
                     <div class="node-label-underlay"></div>
-                    <div id="label" class="center-align"></div>
+                    <div ref="labelDiv" class="center-align"></div>
                 </div>
                 <div slot="control" style="display:none"></div>
                 
@@ -127,36 +121,37 @@ export class Node extends CompSObject implements IControlHost {
         </div>`,
     }
 
+    private readonly labelDiv: HTMLDivElement
+
     constructor(objectsync: ObjectSyncClient, id: string) {
         super(objectsync, id)
-
-        this.mouseOverDetector = new MouseOverDetector(this)
-
-        this.link(this.eventDispatcher.onDoubleClick, () => {
-            this.emit('double_click')
-        })
         this.errorPopup = new ErrorPopup(this)
-
+        this.htmlItem// Ensure htmlItem is created
     }
 
     protected onStart(): void {
         super.onStart()
-        this.selectable = new Selectable(this, Workspace.instance.selection)
-        this.functionalSelectable = new Selectable(this, Workspace.instance.functionalSelection)
-        this._isPreview = this.parent instanceof Sidebar
 
+        this._isPreview = this.parent instanceof NodeLibrary
         this.editor = this.isPreview? null : this.parent as Editor
-        
+        this.selectable.selectionManager = Workspace.instance.selection
+        if (!this.isPreview)
+            this.transform.positionAbsolute = true
+
         // Bind attributes to UI
+        
+        this.link(this.eventDispatcher.onDoubleClick, () => {
+            this.emit('double_click')
+        })
 
         this.link(this.shape.onSet,this.reshape)
 
         this.link(this.label.onSet, (label: string) => {
-            this.htmlItem.getHtmlEl('label').innerText = label
+            this.labelDiv.innerText = label
         })
 
         this.link(this.label_offset.onSet, (offset: number) => {
-            let label_el = this.htmlItem.getHtmlEl('label')
+            let label_el = this.labelDiv
             label_el.style.marginTop = offset + 'em'
         })
 
@@ -165,7 +160,7 @@ export class Node extends CompSObject implements IControlHost {
         }
 
         this.link(this.category.onSet2, (oldCategory: string, newCategory: string) => {
-            if(this.parent instanceof Sidebar){
+            if(this.parent instanceof NodeLibrary){
                 if(this.parent.hasItem(this.htmlItem))
                     this.parent.removeItem(this.htmlItem, oldCategory)
                 this.parent.addItem(this.htmlItem, newCategory)
@@ -204,7 +199,9 @@ export class Node extends CompSObject implements IControlHost {
 
         // Configure components
         
-        this.htmlItem.setParent(this.getComponentInAncestors(HtmlItem))
+        if (!this.isPreview){ 
+            this.htmlItem.setParent(this.editor.htmlItem)
+        }
 
         // Before setting up the transform, we need to add classes to the element so the shape is correct
         
@@ -221,9 +218,7 @@ export class Node extends CompSObject implements IControlHost {
         }
         
         // Setup the transform
-
         if (!this.isPreview){
-            this.transform = new Transform(this,null,true)
             this.transform.updateUI()
             this.transform.pivot = new Vector2(0,0)
         
@@ -247,19 +242,20 @@ export class Node extends CompSObject implements IControlHost {
                 // pass the event to the editor
                 if(e.buttons != 1) this.eventDispatcher.forwardEvent()
             })
+            
+            // the node is only draggable when the left mouse button is pressed
+            this.eventDispatcher.isDraggable = (e)=> {
+                if (e.buttons != 1) return false
+                if(e.ctrlKey) return false
+                return true
+            }
 
             this.link(this.eventDispatcher.onDragStart,(e: MouseEvent,pos: Vector2) => {
-                if(e.buttons != 1) return this.eventDispatcher.forwardEvent()
                 this.draggingTargetPos = this.transform.translation
                 this.htmlItem.baseElement.classList.add('dragging')
             })
 
             this.link(this.eventDispatcher.onDrag,(e: MouseEvent,newPos: Vector2,oldPos: Vector2) => {
-                if (e.buttons != 1) return this.eventDispatcher.forwardEvent()
-                // pass the event to the editor to box select
-                if(e.ctrlKey){
-                    return this.eventDispatcher.forwardEvent()
-                }
                 if(!this.selectable.selectionManager.enabled && !this.selectable.selected) return;
                 if(!this.selectable.selected) this.selectable.click()
 
@@ -305,6 +301,7 @@ export class Node extends CompSObject implements IControlHost {
                 //create a new node
                 this.emit('spawn',{client_id:this.objectsync.clientId}) 
             })
+            this.selectable.enabled = false
         }
         
         this.link(this.selectable.onSelected, () => {
@@ -315,33 +312,6 @@ export class Node extends CompSObject implements IControlHost {
             this.htmlItem.baseElement.classList.remove('selected')
         })  
 
-        this.link(this.functionalSelectable.onSelected, () => {
-            this.htmlItem.baseElement.classList.add('functional-selected')
-        })
-
-        this.link(this.functionalSelectable.onDeselected, () => {
-            this.htmlItem.baseElement.classList.remove('functional-selected')
-        })
-
-        if(this.hasTag(`spawned_by_${this.objectsync.clientId}`))
-        {
-            this.removeTag(`spawned_by_${this.objectsync.clientId}`)
-            this.selectable.click()
-            let pivot = this.transform.pivot
-            this.transform.globalPosition = this.eventDispatcher.mousePos.add(pivot.mul(this.transform.size)).add(this.transform.size.mulScalar(-0.5))
-            this.eventDispatcher.fakeOnMouseDown() //fake a mouse down to start dragging
-        }
-
-        if(this.hasTag(`pasted_by_${this.objectsync.clientId}`))
-        {
-            this.removeTag(`pasted_by_${this.objectsync.clientId}`)
-            this.selectable.select()
-        }
-
-        if(this.isPreview){
-            this.selectable.enabled = false
-            this.functionalSelectable.enabled = false
-        }
 
         this.link(this.eventDispatcher.onMouseOver, () => {
             this.htmlItem.baseElement.classList.add('hover')
@@ -360,6 +330,46 @@ export class Node extends CompSObject implements IControlHost {
         //set background image
         if(this.icon_path.getValue() != ''){
             this.setIcon(this.icon_path.getValue())
+        }
+    }
+
+    protected postStart(): void {
+        // called after all the children are set up
+        super.postStart()
+        
+        if(this.hasTag(`drag_created_by${this.objectsync.clientId}`))
+        {
+            this.removeTag(`drag_created_by${this.objectsync.clientId}`)
+            this.selectable.click()
+            let pivot = this.transform.pivot
+            this.transform.globalPosition = this.eventDispatcher.mousePos.add(pivot.mul(this.transform.size)).add(this.transform.size.mulScalar(-0.5))
+            this.eventDispatcher.fakeOnMouseDown() //fake a mouse down to start dragging
+        }
+        
+        if(this.hasTag(`pasted_by_${this.objectsync.clientId}`))
+        {
+            this.removeTag(`pasted_by_${this.objectsync.clientId}`)
+            this.selectable.select()
+            // focus the first input or .cm-editor element in the node
+            let input = this.htmlItem.baseElement.querySelector('.code-control') as HTMLElement
+            || this.htmlItem.baseElement.querySelector('textarea')
+            || this.htmlItem.baseElement.querySelector('input');
+
+            if(input) input.focus()
+        }
+        
+        if(this.hasTag(`created_by_${this.objectsync.clientId}`))
+        {
+            this.removeTag(`created_by_${this.objectsync.clientId}`)
+            this.selectable.select()
+            // focus the first input or .cm-editor element in the node
+            let input = this.htmlItem.baseElement.querySelector('.code-control') as HTMLElement
+            || this.htmlItem.baseElement.querySelector('textarea')
+            || this.htmlItem.baseElement.querySelector('input') 
+            
+            
+            if(input) input.focus();
+            (window as any).i = input
         }
     }
 
@@ -400,7 +410,7 @@ export class Node extends CompSObject implements IControlHost {
 
     onParentChangedTo(newParent: SObject): void {
         super.onParentChangedTo(newParent)
-        if(newParent instanceof Sidebar){
+        if(newParent instanceof NodeLibrary){
             newParent.addItem(this.htmlItem, this.category.getValue())
             if(!this.isPreview)
                 this.transform.enabled = false
@@ -417,16 +427,17 @@ export class Node extends CompSObject implements IControlHost {
     }
 
     reshape(shape: string) {
-        this.htmlItem.applyTemplate(this.templates[shape])
+        this.applyTemplate(this.templates[shape])
         this.eventDispatcher.setEventElement(as(this.htmlItem.baseElement, HTMLElement))
         this.mouseOverDetector.eventElement = this.htmlItem.baseElement
+        
+        this.labelDiv.innerText = this.label.getValue()
         
         this.link2(this.htmlItem.baseElement,'mousedown', () => {
             soundManager.playClick()
         })
         
-        let label_el = this.htmlItem.getHtmlEl('label')
-        label_el.style.marginTop = this.label_offset.getValue() + 'em'
+        this.labelDiv.style.marginTop = this.label_offset.getValue() + 'em'
 
         if(this._isPreview){
             this.htmlItem.baseElement.classList.add('node-preview')
@@ -455,7 +466,7 @@ export class Node extends CompSObject implements IControlHost {
 
     public onDestroy(): void {
         super.onDestroy()
-        if(this.parent instanceof Sidebar){
+        if(this.parent instanceof NodeLibrary){
             this.parent.removeItem(this.htmlItem, this.category.getValue())
         }
         this.errorPopup.destroy()

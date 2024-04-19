@@ -5,7 +5,16 @@ import { EventDispatcher } from "./eventDispatcher"
 import { SelectionManager } from "./selectionManager"
 
 export class Selectable extends Component{
-    selectionManager: SelectionManager
+    private _selectionManager: SelectionManager
+    set selectionManager(value: SelectionManager){
+        if(this._selectionManager != null) this._selectionManager.unregister(this)
+        this._selectionManager = value
+        if(value != null)
+            value.register(this)
+    }
+    get selectionManager(): SelectionManager{
+        return this._selectionManager
+    }
     onSelected: Action<[]> = new Action()
     onDeselected: Action<[]> = new Action()
 
@@ -27,15 +36,17 @@ export class Selectable extends Component{
         return this.selectionManager.selected
     }
 
-    constructor(object: IComponentable, selectionManager:SelectionManager){
+    constructor(object: IComponentable, selectionManager:SelectionManager=null){
         super(object)
-        this.selectionManager = selectionManager
-        this.selectionManager.register(this)
+        if(selectionManager != null){
+            this.selectionManager = selectionManager
+        }
         this.getComponent(EventDispatcher).onClick.add(this.click.bind(this))
     }
 
     onDestroy(){
-        this.selectionManager.unregister(this)
+        if (this.selectionManager != null)
+            this.selectionManager.unregister(this)
     }
 
     click(){

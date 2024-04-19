@@ -73,7 +73,7 @@ class ExtensionManager:
         added_node_types = new_node_types - old_node_types
         changed_node_types = old_node_types & new_node_types
 
-        existing_nodes = main_store.main_editor.get_children_of_type(Node) + main_store.sidebar.get_children_of_type(Node)
+        existing_nodes = main_store.main_editor.get_children_of_type(Node) + main_store.node_library.get_children_of_type(Node)
 
         # Ensure there are no nodes of removed types
         for node in existing_nodes:
@@ -273,7 +273,7 @@ class ExtensionManager:
         x = snap_node(ctx.mouse_pos[0])
         y = snap_node(ctx.mouse_pos[1])
         translation = [x,y]
-        main_store.main_editor.create_node(node_type_name,translation=translation)
+        main_store.main_editor.create_node(node_type_name,translation=translation,sender=ctx.client_id)
     
     def _check_extension_not_used(self, name: str) -> None:
         extension = self._extensions[name]
@@ -302,11 +302,11 @@ class ExtensionManager:
         node_types = self._extensions[name].node_types_d
         for node_type in node_types.values():
             if not node_type.category == 'hidden' and not node_type._is_singleton:
-                self._objectsync.create_object(node_type,parent_id=main_store.sidebar.get_id(),is_preview=True,is_new=True)
+                self._objectsync.create_object(node_type,parent_id=main_store.node_library.get_id(),is_preview=True,is_new=True)
  
     def _destroy_nodes(self, name: str) -> None:
         node_types = self._extensions[name].node_types_d
-        for obj in main_store.sidebar.get_children_of_type(Node)\
+        for obj in main_store.node_library.get_children_of_type(Node)\
         + main_store.main_editor.top_down_search(type=Node):
             if obj.get_type_name() in node_types:
                 self._objectsync.destroy_object(obj.get_id())
