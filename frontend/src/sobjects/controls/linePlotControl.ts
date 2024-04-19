@@ -16,9 +16,10 @@ export class LinePlotControl extends Control{
             <div class="label-container"></div>
         </div>
     `}
-    protected css = `
+    protected get style(){return`
     .control{
         position:relative;
+        overflow:hidden;
     }
     .label-container{
         position:absolute;
@@ -28,12 +29,12 @@ export class LinePlotControl extends Control{
         height:100%;
         transform:translate(50%,50%);
     }
-    .label-container .label{
+    .label{
         color:var(--text-high);
         position:absolute;
         font-size:7px;
     }
-    `
+    `}
     private scene: THREE.Scene
     private camera: THREE.OrthographicCamera
     private renderer: THREE.WebGLRenderer

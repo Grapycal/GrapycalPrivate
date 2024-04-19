@@ -104,4 +104,23 @@ export class CompSObject extends SObject implements IComponentable {
             (this as any)[name] = el;
         }
     }
+
+    mount(parent: IComponentable|HtmlItem|HTMLElement, slot: string = null): this {
+        if (parent instanceof HTMLElement) {
+            this.htmlItem.setParentElement(parent)
+            return this
+        }
+        let parent_: HtmlItem
+        if (parent instanceof HtmlItem) {
+            parent_ = parent
+        }
+        else {
+            parent_ = parent.componentManager.getComponent(HtmlItem)
+        }
+        if(slot === null){
+            slot = this.constructor.name
+        }
+        this.htmlItem.setParent(parent_, slot)
+        return this
+    }
 }

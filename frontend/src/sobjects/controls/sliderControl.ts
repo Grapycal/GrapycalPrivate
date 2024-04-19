@@ -22,7 +22,7 @@ export class SliderControl extends Control {
     </div>
     `}
 
-    protected css = `
+    protected get style(){return`
     .control-slider-container{
         position: relative;
         flex-grow: 1;
@@ -38,7 +38,7 @@ export class SliderControl extends Control {
         width: 100%;
         height: 100%;
     }
-    `
+    `}
 
     get min(): number {
         return this.config.get("min")

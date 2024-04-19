@@ -81,10 +81,36 @@ export class Componentable implements IComponentable {
         this.componentManager.onDestroy.add(this.onDestroy.bind(this))
     }
 
+    mount(parent: IComponentable|HtmlItem|HTMLElement, slot: string = null): this {
+        if (parent instanceof HTMLElement) {
+            this.htmlItem.setParentElement(parent)
+            return this
+        }
+        let parent_: HtmlItem
+        if (parent instanceof HtmlItem) {
+            parent_ = parent
+        }
+        else {
+            parent_ = parent.componentManager.getComponent(HtmlItem)
+        }
+        if(slot === null){
+            slot = this.constructor.name
+        }
+        this.htmlItem.setParent(parent_, slot)
+        return this
+    }
+
+    /**
+     * Call this method to destroy the componentable. Its components will do cleanup.
+     * This method should be called when the componentable is no longer needed.
+    */
     destroy(): void {
         this.componentManager.destroy()
     }
 
+    /**
+    * Called when the componetable is destroyed. Override this method to clean up any resources.
+    */
     onDestroy(): void {
     }
 

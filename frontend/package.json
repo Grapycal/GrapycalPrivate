@@ -2,7 +2,6 @@
   "name": "grapycal-client",
   "version": "0.11.3",
   "main": "app.ts",
-  "license": "BSD-3-Clause",
   "devDependencies": {
     "@web/dev-server": "^0.1.35",
     "ts-loader": "^9.4.2",
@@ -12,17 +11,14 @@
     "webpack-dev-server": "^4.11.1"
   },
   "scripts": {
-    "app": "npx webpack serve --port 9001 --config webpack.config.dev.js",
+    "dev": "npx webpack serve --port 9001 --config webpack.config.dev.js",
     "serv": "npx webpack serve --port 9001 --config webpack.config.service.js",
     "stan": "npx webpack serve --port 9001 --config webpack.config.standalone.js",
     "monitor": "npx webpack serve --port 9000 --entry ./node_modules/chatroom-client/src/testApp.ts",
     "prebuild": "node -p \"'export const LIB_VERSION = ' + JSON.stringify(require('./package.json').version) + ';'\" > src/version.ts",
     "build": "npx webpack --mode development",
     "build:standalone": "npx webpack --mode development --config webpack.config.standalone.js",
-    "build:service": "npx webpack --mode development --config webpack.config.service.js",
-    "postbuild": "python ./postbuild.py",
-    "postbuild:standalone": "python ./postbuild.py",
-    "postbuild:service": "python ./postbuild.py"
+    "build:service": "npx webpack --mode development --config webpack.config.service.js"
   },
   "dependencies": {
     "@codemirror/lang-python": "^6.1.5",
@@ -32,8 +28,9 @@
     "buffer": "^6.0.3",
     "codemirror": "^6.0.1",
     "marked": "^11.0.0",
-    "objectsync-client": "github:eri24816/ObjectSyncClient_ts#master",
+    "objectsync-client": "file:../submodules/objectsync-client",
     "three": "^0.157.0",
+    "topicsync-client": "file:../submodules/topicsync-client",
     "typescript-cookie": "^1.0.6"
   },
   "include": [

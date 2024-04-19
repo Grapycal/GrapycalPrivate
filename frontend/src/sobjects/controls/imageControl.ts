@@ -13,7 +13,7 @@ export class ImageControl extends Control {
     </div>
     `}
 
-    protected css = `
+    protected get style(){return`
     .focused{
         outline: 1px solid #ffffff;
     }
@@ -25,7 +25,7 @@ export class ImageControl extends Control {
                     </svg>');
         background-size: 20px 20px;
     }
-    `
+    `}
 
     protected onStart(): void {
         super.onStart()

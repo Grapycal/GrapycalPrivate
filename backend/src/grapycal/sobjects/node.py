@@ -1,6 +1,8 @@
 import logging
 from pprint import pprint
 
+from grapycal.core.background_runner import RunnerInterrupt
+from grapycal.core.client_msg_types import ClientMsgTypes
 from grapycal.sobjects.controls.keyboardControl import KeyboardControl
 from grapycal.sobjects.controls.sliderControl import SliderControl
 
@@ -46,7 +48,6 @@ from objectsync.sobject import SObjectSerialized, WrappedTopic
 
 if TYPE_CHECKING:
     from grapycal.extension.extension import Extension
-    from grapycal.core.workspace import ClientMsgTypes
 
 
 def warn_no_control_name(control_type, node):
@@ -930,7 +931,7 @@ class Node(SObject, metaclass=NodeMeta):
 
     def _on_exception(self, e: Exception):
         self.print_exception(e, truncate=2)
-        if isinstance(e, KeyboardInterrupt):
+        if isinstance(e, RunnerInterrupt):
             main_store.send_message_to_all(
                 "Runner interrupted by user.", ClientMsgTypes.BOTH
             )

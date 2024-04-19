@@ -244,7 +244,7 @@ footer{
 
     box-sizing: border-box;
     pointer-events: none;
-    border-image: url(/select.png) 50% round;
+    border-image: url(../select.png) 50% round;
     border-width: 2px;
     border-style: solid;
     border-image-width: 12px;
@@ -253,8 +253,7 @@ footer{
 }
 
 .node.hover .node-selection{
-    /* blue border */
-    filter: opacity(0.3);
+    filter: opacity(0.2);
 }
 
 .node.selected .node-selection{
@@ -367,13 +366,14 @@ footer{
     transform: translate(-50%, -50%);
     top: 50%;
     left: 50%;
+    z-index: -10;
 }
 
-.round-node .port-knob-hitbox{
-    /* reduce the hitbox size so that it is easier to select the node */
-    width: 15px;
-    height: 15px;
+.port-knob-hitbox.accepts-edge:hover{
+    background-color : #88888830;
 }
+
+
 
 .port-label{
     position: relative;
@@ -490,7 +490,6 @@ footer{
 .slot-control{
     display: flex;
     flex-direction: column;
-    /* overflow: hidden; */
     width: 100%;
     box-sizing: border-box;
     gap:2px;
@@ -498,7 +497,6 @@ footer{
     position: relative;
     padding-left: 10px;
     padding-right: 10px;
-    /* overflow: visible; */
 }
 
 .slot-control:empty{
@@ -509,7 +507,6 @@ footer{
     box-sizing: border-box;
     width: 100%;
     /* border-radius: 2px; */
-    overflow: hidden;
     font-size: 12px;
     min-height: 15px;
     gap: 4px;
@@ -595,11 +592,16 @@ input:enabled, textarea:enabled{
     stroke-width: 12;
 }
 
+.edge-path-hit-box:hover{
+    stroke: #88888830;
+}
+
 .edge-label{
     position: absolute;
     transform: translate(-50%, -50%);
     text-align: center;
     font-size: 10px;
+    pointer-events: none;
 }
 
 /* Editor */
