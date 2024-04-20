@@ -1,4 +1,5 @@
 '''
+For running Grapycal in Windows CLI.
 run_server.py can run the server already, but it can't be ctrl+c'd because the keyboard interrupt is handled by the runner.
 To fix this, we need to capture the SIGINT in this script and close the server with SIGTERM instead of SIGINT.
 '''
