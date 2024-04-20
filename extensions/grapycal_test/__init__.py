@@ -74,3 +74,34 @@ class DefaultTestNode(DVfunctionNode):
 
     def calculate(self, **kwargs):
         return kwargs
+    
+class TemplateNode(Node):
+    def build_node(self):
+        self.expose_attribute(self.label, 'text')
+        self.expose_attribute(self.shape, 'options', options= ['normal','simple','round'])
+        self.restore_attributes('shape','label')
+        self.in_ports_topic = self.add_attribute('in_ports_topic', ListTopic, [], editor_type='list',display_name='in_ports')
+        self.out_ports_topic = self.add_attribute('out_ports_topic', ListTopic, [], editor_type='list',display_name='out_ports')
+
+        for port_name in self.in_ports_topic.get():
+            self.add_in_port(port_name)
+        for port_name in self.out_ports_topic.get():
+            self.add_out_port(port_name)
+
+    def init_node(self):
+        self.in_ports_topic.on_insert.add_auto(self.on_inport_insert)
+        self.in_ports_topic.on_pop.add_auto(self.on_inport_pop)
+        self.out_ports_topic.on_insert.add_auto(self.on_outport_insert)
+        self.out_ports_topic.on_pop.add_auto(self.on_outport_pop)
+
+    def on_inport_insert(self, port_name, _):
+        self.add_in_port(port_name)
+
+    def on_inport_pop(self, port_name, _):
+        self.remove_in_port(port_name)
+
+    def on_outport_insert(self, port_name, _):
+        self.add_out_port(port_name)
+
+    def on_outport_pop(self, port_name, _):
+        self.remove_out_port(port_name)

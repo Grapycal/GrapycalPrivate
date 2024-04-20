@@ -70,10 +70,10 @@ class Edge(SObject):
             self.head.get().remove_edge(self)
         
         if hasattr(self, 'editor'):
-            self.editor.set_running(self, False)
+            self.editor.is_running_manager.set_running(self, False)
         return super().destroy()
 
-    def get_data(self)->Any:
+    def get(self)->Any:
         if not self._data_ready:
             raise Exception('Data not available')
         self._activated = False
@@ -81,23 +81,27 @@ class Edge(SObject):
         if not self.reaquirable:
             self._data_ready = False
             
-            self.editor.set_running(self, False)
+            self.editor.is_running_manager.set_running(self, False)
             self._data = None # reloase memory
         return temp
     
-    def peek_data(self)->Any:
+    def peek(self)->Any:
         if not self._data_ready:
             raise Exception('Data not available')
         return self._data
     
-    def push_data(self, data, label:str|None=None):
+    def push(self, data, label:str|None=None):
+        '''
+        Send data into the edge and activate it. If the edge is already activated, the data will overwrite the old data.
+        The head node can get the data with Edge.get() method.
+        '''
         self._data = data
         self._activated = True
         self._data_ready = True
         with self._server.record(allow_reentry=True): # aquire a lock to prevent calling set while destroying
             if self.is_destroyed():
                 return
-            self.editor.set_running(self, True)
+            self.editor.is_running_manager.set_running(self, True)
         if label:
             self.label.set(label)
         else:
@@ -115,9 +119,9 @@ class Edge(SObject):
 
         self._activated = False
 
-    def clear_data(self):
+    def clear(self):
         if self.is_data_ready():
-            self.get_data() # clear the data
+            self.get() # clear the data
 
     def set_label(self, label):
         self.label.set(label)

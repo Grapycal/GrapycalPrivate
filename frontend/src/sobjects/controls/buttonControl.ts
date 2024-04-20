@@ -9,11 +9,11 @@ export class ButtonControl extends Control {
     button: HTMLInputElement
     label = this.getAttribute("label", StringTopic)
 
-    protected template = `
+    protected get template (){return `
     <div class="control flex-horiz">
         <button class="control-button  full-width" id="button"></button>
     </div>
-    `
+    `}
 
     protected onStart(): void {
         super.onStart()

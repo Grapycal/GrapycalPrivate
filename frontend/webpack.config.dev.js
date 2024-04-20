@@ -6,7 +6,7 @@ module.exports = {
         new webpack.DefinePlugin({
             __BUILD_CONFIG__: JSON.stringify({
                 isService: false,
-                wsPort: 8765,
+                wsPort: 7943,
             }),
         }),
     ],

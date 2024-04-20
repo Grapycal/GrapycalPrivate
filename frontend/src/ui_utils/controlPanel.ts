@@ -5,7 +5,7 @@ import { as } from "../utils"
 export class ControlPanel extends Componentable{
     protected get template(): string {
         return `
-        <div class="cont" id="slot_default">
+        <div class="cont" slot="default">
             <button id="run">run</button>
             <button id="interrupt">interrupt</button>
         </div>
@@ -35,7 +35,6 @@ export class ControlPanel extends Componentable{
     }
     constructor(){
         super()
-        this.htmlItem.setParentElement(document.body);
         this.link2(this.htmlItem.getEl("interrupt"),'click',()=>{
             Workspace.instance.objectsync.makeRequest('interrupt')
         })

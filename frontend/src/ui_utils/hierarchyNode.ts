@@ -1,4 +1,5 @@
 import { ComponentManager, IComponentable } from "../component/component"
+import { Componentable } from "../component/componentable"
 import { HtmlItem } from "../component/htmlItem"
 import { Linker } from "../component/linker"
 import { print } from "../devUtils"
@@ -47,39 +48,35 @@ class TwoWayMap<K,V>{
     }
 }
 
-export class HierarchyNode implements IComponentable{
-    readonly template: string = `
+export class HierarchyNode extends Componentable{
+    protected get template(): string { return `
     <div class="hierarchy-node full-width">
         <span id="name" class="hierarchy-name"></span>
         <div id="indent" class="hierarchy-indent">
-            <div id="slot_childnode" class="hierarchy-child-node-slot">
+            <div slot="childnode" class="hierarchy-child-node-slot">
                 
             </div>
-            <div id="slot_leaf" class="hierarchy-leaf-slot">
+            <div slot="leaf" class="hierarchy-leaf-slot">
                         
             </div>
         </div>
     </div>
-    `;
+    `}
 
-    readonly componentManager = new ComponentManager();
     private readonly children = new Map<string,HierarchyNode>();
     private readonly leafs: HtmlItem[] = [];
-    private readonly linker = new Linker(this);
     private expanded = true;
     private readonly itemIdMap = new TwoWayMap<string,HtmlItem>();
 
     readonly name: string;
     readonly path: string;
-    readonly htmlItem: HtmlItem;
     
     constructor(name:string,path:string='',isRoot: boolean = false){
+        super();
         this.name = name;
         this.path = path;
-        this.htmlItem = new HtmlItem(this, document.body);
         this.htmlItem.applyTemplate(this.template);
         if(isRoot){
-            //no padding slot_childnode and slot_leaf
             this.htmlItem.getHtmlEl('name').remove();
             this.htmlItem.getHtmlEl('indent').classList.remove('hierarchy-indent');
             this.htmlItem.baseElement.classList.remove('hierarchy-node');

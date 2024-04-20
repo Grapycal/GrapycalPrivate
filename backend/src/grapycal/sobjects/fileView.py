@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
 from grapycal.extension.utils import list_to_dict
+from grapycal.stores import main_store
 from grapycal.utils.httpResource import HttpResource
 from matplotlib.style import available
 from objectsync import IntTopic, SObject, StringTopic
@@ -35,7 +36,7 @@ class FileView(SObject):
         raise NotImplementedError()
 
     def open_workspace(self, path):
-        self._server.globals.workspace._open_workspace_callback(path)
+        main_store.open_workspace(path)
 
 
 class LocalFileView(FileView):
@@ -83,7 +84,7 @@ class LocalFileView(FileView):
         path = os.path.join(root, path)
         if os.path.exists(path):
             return False
-        self._server.globals.workspace._open_workspace_callback(path, no_exist_ok=True)
+        main_store.open_workspace(path, no_exist_ok=True)
 
     def add_dir(self, path):
         root = os.getcwd()
@@ -92,7 +93,7 @@ class LocalFileView(FileView):
         if os.path.exists(path):
             return False
         os.mkdir(path)
-        self._server.globals.workspace.send_status_message(f"Created directory {path}")
+        main_store.send_message(f"Created directory {path}")
         return True
 
     def delete(self, path):
@@ -243,4 +244,4 @@ class RemoteFileView(FileView):
 
         # open workspace
 
-        self._server.globals.workspace._open_workspace_callback(local_path)
+        main_store.open_workspace(local_path)

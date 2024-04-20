@@ -43,14 +43,12 @@ export class ErrorPopup extends Componentable{
     node: Node
     baseDiv: HTMLDivElement
     messageDiv: HTMLDivElement
-    transform: Transform
 
     constructor(node:Node,title:string='',message: string='') {
         super()
         this.node = node
         this.baseDiv = this.htmlItem.baseElement as HTMLDivElement
         this.messageDiv = this.htmlItem.getElByClass("message")
-        this.transform = new Transform(this)
 
         this.set(title,message)
         this.hide()

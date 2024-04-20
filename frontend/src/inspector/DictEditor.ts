@@ -19,14 +19,14 @@ export class DictEditor extends Editor<DictTopic<string,string>> {
     get template() {
         return `
         <div class="attribute-editor flex-horiz stretch">
-            <div id="attribute-name" class="attribute-name"></div>
-            <div class="container">
-                <div class="container" id="slot_container"></div>
+            <div ref="attributeName" id="attribute-name" class="attribute-name"></div>
+            <div ref="container" class="container">
+                <div class="container" slot="container" id="container"></div>
                 <div class="container container2">
-                    <div id="slot_key" class="grow"></div>
+                    <div slot="key" class="grow"></div>
                     <span id="colon">:</span>
-                    <div id="slot_value" class="grow"></div>
-                    <button id="add-button" class="button center-align">+</button>
+                    <div slot="value" class="grow"></div>
+                    <button ref="addButton" id="add-button" class="button center-align">+</button>
                 </div>
             </div>
         </div>
@@ -64,6 +64,8 @@ export class DictEditor extends Editor<DictTopic<string,string>> {
 
     private readonly container: HTMLDivElement
     private readonly addButton: HTMLButtonElement
+    private readonly attributeName: HTMLDivElement
+
     private readonly keyInput: AutoCompMenu
     private readonly valueInput: AutoCompMenu
     private readonly items: Set<DictEditorItem> = new Set();
@@ -74,7 +76,6 @@ export class DictEditor extends Editor<DictTopic<string,string>> {
         super()
         this.connectedAttributes = connectedAttributes
 
-        this.container = as(this.htmlItem.getHtmlEl('slot_container'), HTMLDivElement)
         this.keyInput = new AutoCompMenu()
         this.valueInput = new AutoCompMenu()
         this.keyInput.htmlItem.setParent(this.htmlItem, 'key')
@@ -91,7 +92,6 @@ export class DictEditor extends Editor<DictTopic<string,string>> {
                 return {key:value,value:value,callback:()=>{}}
             }))
         }
-        this.addButton = as(this.htmlItem.getHtmlEl('add-button'), HTMLButtonElement)
 
         this.link2(this.htmlItem.baseElement, 'keydown', (e: KeyboardEvent) => {
             if (e.key === 'Enter') {
@@ -101,7 +101,7 @@ export class DictEditor extends Editor<DictTopic<string,string>> {
 
         this.linker.link2(this.addButton, 'click', this.addHandler)
 
-        this.htmlItem.getHtmlEl('attribute-name').innerText = displayName
+        this.attributeName.innerText = displayName
 
         for (let attr of connectedAttributes) {
             this.linker.link(attr.onSet, this.updateValue)
@@ -229,9 +229,9 @@ class DictEditorItem extends Componentable {
     get template() {
         return `
         <div class="item flex-horiz stretch">
-            <div id="dict-editor-item-key"class="text grow"></div>
-            <input id="dict-editor-item-value" type="text" class="grow">
-            <button id="dict-editor-item-delete" class="button center-align">-</button>
+            <div id="keyDiv"class="text grow"></div>
+            <input id="valueInput" type="text" class="grow">
+            <button id="deleteButton" class="button center-align">-</button>
         </div>
         `
     }
@@ -261,12 +261,16 @@ class DictEditorItem extends Componentable {
    `
     }
 
+    /* Element References */
+
+
+    private readonly keyDiv: HTMLDivElement
+    private readonly valueInput: HTMLInputElement
+    private readonly deleteButton: HTMLButtonElement
+
+    /* Other Variables */
+
     readonly key: string
-
-    readonly keyDiv: HTMLDivElement
-    readonly valueInput: HTMLInputElement
-    public readonly deleteButton: HTMLButtonElement
-
     public readonly valueChanged = new Action<[string,string]>();
     public readonly deleteClicked = new Action<[DictEditorItem]>();
 
@@ -275,9 +279,6 @@ class DictEditorItem extends Componentable {
     constructor(key: string,value: string) {
         super()
         this.key = key
-        this.keyDiv = as(this.htmlItem.getHtmlEl('dict-editor-item-key'), HTMLDivElement)
-        this.valueInput = as(this.htmlItem.getHtmlEl('dict-editor-item-value'), HTMLInputElement)
-        this.deleteButton = as(this.htmlItem.getHtmlEl('dict-editor-item-delete'), HTMLButtonElement)
         
         this.keyDiv.innerText = key
         if(value === null){

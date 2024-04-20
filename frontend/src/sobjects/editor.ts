@@ -3,24 +3,24 @@ import { ComponentManager } from "../component/component"
 import { EventDispatcher as EventDispatcher, GlobalEventDispatcher } from "../component/eventDispatcher"
 import { HtmlItem } from "../component/htmlItem"
 import { MouseOverDetector } from "../component/mouseOverDetector"
-import { Transform } from "../component/transform"
+import { ScrollBehavior, Transform } from "../component/transform"
 import { CompSObject } from "./compSObject"
 import { Linker } from "../component/linker"
 import { Port } from "./port"
 import { print } from "../devUtils"
-import { AddNodeMenu } from "../ui_utils/popupMenu/addNodeMenu"
+import { SlashCommandMenu } from "../ui_utils/popupMenu/slashCommandMenu"
 import { ActionDict, Vector2, getImageFromClipboard, getSelectionText } from "../utils"
 import { Node } from "./node"
 import { Workspace } from "./workspace"
 import { Edge } from "./edge"
 
 export class Editor extends CompSObject{
-    readonly template: string = `
+    protected get template(): string { return `
     <div style="width:100%;height:100%; position:relative;">
-        <div class="viewport" id="Viewport" style="width:100%;height:100%;top:0;left:0;">
+        <div ref="viewport" class="viewport" id="Viewport" style="width:100%;height:100%;top:0;left:0;">
             <div style="position:absolute;top:50%;left:50%">
                 
-                <div id="slot_default" class="editor" style="position:absolute;top:50%;left:50%;width:1px;height:1px;">
+                <div ref="editor" slot="default" class="editor" id="editor" style="position:absolute;top:50%;left:50%;width:1px;height:1px;">
                 <svg class="bg" id="bg"
                     
                     <defs>
@@ -47,54 +47,47 @@ export class Editor extends CompSObject{
             
         </div>
 
-        <div id="box_selection" class="box-selection" style="position:absolute;width:0px;height:0px; display:none;"></div>
+        <div ref="boxSelection" class="box-selection" style="position:absolute;width:0px;height:0px; display:none;"></div>
     </div>
-    `;
+    `}
 
-    componentManager = new ComponentManager();
-    linker = new Linker(this);
-    eventDispatcher: EventDispatcher;
-    htmlItem: HtmlItem;
-    transform: Transform;
-    mouseOverDetector: MouseOverDetector;
+    editor: HTMLDivElement
+    viewport: HTMLDivElement
+    boxSelection: HTMLDivElement
 
     running_nodes: ObjSetTopic = this.getAttribute('running_nodes',ObjSetTopic);
     runningChanged = new ActionDict<SObject,[boolean]>();
-    
-    constructor(objectsync: ObjectSyncClient, id: string){
-        super(objectsync,id);
-        this.htmlItem = new HtmlItem(this, document.body.getElementsByClassName('main')[0] as HTMLElement);
-        this.htmlItem.applyTemplate(this.template);
-        let viewport = this.htmlItem.getHtmlEl('Viewport')
-        let editor = this.htmlItem.getHtmlEl('slot_default')
-        
-        this.transform = new Transform(this,editor);
 
-        this.eventDispatcher = new EventDispatcher(this, viewport);
-        this.linker.link(this.eventDispatcher.onMoveGlobal,this.mouseMove)
-        this.mouseOverDetector = new MouseOverDetector(this, viewport);
+    protected onStart(): void {
+        new SlashCommandMenu(this)
+        this.htmlItem.setParentElement(document.body.getElementsByClassName('main')[0] as HTMLElement)
         
+        this.transform.targetElement = this.editor
+        this.transform.positionAbsolute = true
         this.transform.scale = 1
         this.transform.maxScale = 8
         this.transform.minScale = 0.1
         this.transform.draggable = true;
-        this.transform.scrollable = true;
+        this.transform.scroll_behavior = ScrollBehavior.TranslateOrScale
 
+        this.eventDispatcher.setEventElement(this.viewport)
+        this.mouseOverDetector.eventElement = this.viewport
+        
+        this.link(this.eventDispatcher.onMoveGlobal,this.mouseMove)
         this.link(this.eventDispatcher.onDragStart,this.onDragStart)
         this.link(this.eventDispatcher.onDrag,this.onDrag)
         this.link(this.eventDispatcher.onDragEnd,this.onDragEnd)
         this.link(this.running_nodes.onAppend, (node:Node)=>this.runningChanged.invoke(node,true))
         this.link(this.running_nodes.onRemove, (node:Node)=>this.runningChanged.invoke(node,false))
-    }
-
-    protected onStart(): void {
-        new AddNodeMenu(this)
         this.link(GlobalEventDispatcher.instance.onKeyDown.slice('ctrl c'),this.copy)
-        this.link2(document, "paste", this.paste)
         this.link(GlobalEventDispatcher.instance.onKeyDown.slice('ctrl x'),this.cut)
         this.link(GlobalEventDispatcher.instance.onKeyDown.slice('Delete'),this.delete)
+        this.link(GlobalEventDispatcher.instance.onKeyDown.slice('Backspace'),this.delete)
         this.link(GlobalEventDispatcher.instance.onKeyDown.slice('ctrl y'),this.preventDefault)
         this.link(GlobalEventDispatcher.instance.onKeyDown.slice('ctrl z'),this.preventDefault)
+        this.link(GlobalEventDispatcher.instance.onKeyDown.slice('ctrl a'),this.selectAll)
+        this.link2(document, "keydown", (e: KeyboardEvent) => { if (e.key == "Enter") this.createExecNode() })
+        this.link2(document, "paste", this.paste)
     }
 
     private preventDefault(e: KeyboardEvent){
@@ -131,6 +124,14 @@ export class Editor extends CompSObject{
         this.makeRequest('create_edge',{tail_id:tailId,head_id:headId})
     }
 
+    /**
+     * Get the mouse position in the editor's local space
+     * @returns the mouse position in the editor's local space
+     */
+    public getMousePos(): Vector2{
+        return this.transform.worldToLocal(GlobalEventDispatcher.instance.mousePos)
+    }
+
     public createNode(type: string,args:any={}): void{
         let translation = this.transform.worldToLocal(GlobalEventDispatcher.instance.mousePos)
         let snap = 17
@@ -152,7 +153,7 @@ export class Editor extends CompSObject{
             this.transform.draggable = false;
             this.boxSelectionStart = this.transform.WroldToEl(mousePos,this.htmlItem.baseElement as HTMLElement,false)
             this.boxSelectionStartClient = mousePos
-            this.htmlItem.getHtmlEl('box_selection').style.display = 'block'
+            this.boxSelection.style.display = 'block'
         }
     }
 
@@ -163,15 +164,15 @@ export class Editor extends CompSObject{
         let boxSelection = new Vector2(mousePos.x-this.boxSelectionStart.x,mousePos.y-this.boxSelectionStart.y)
         let boxSelectionSize = new Vector2(Math.abs(boxSelection.x),Math.abs(boxSelection.y))
         let boxSelectionPos = new Vector2(Math.min(this.boxSelectionStart.x,mousePos.x),Math.min(this.boxSelectionStart.y,mousePos.y))
-        this.htmlItem.getHtmlEl('box_selection').style.width = boxSelectionSize.x+'px'
-        this.htmlItem.getHtmlEl('box_selection').style.height = boxSelectionSize.y+'px'
-        this.htmlItem.getHtmlEl('box_selection').style.left = boxSelectionPos.x+'px'
-        this.htmlItem.getHtmlEl('box_selection').style.top = boxSelectionPos.y+'px'
+        this.boxSelection.style.width = boxSelectionSize.x+'px'
+        this.boxSelection.style.height = boxSelectionSize.y+'px'
+        this.boxSelection.style.left = boxSelectionPos.x+'px'
+        this.boxSelection.style.top = boxSelectionPos.y+'px'
     }
 
     private onDragEnd(e: MouseEvent, mousePos: Vector2){
         if(!this.boxSelectionStart) return;
-        this.htmlItem.getHtmlEl('box_selection').style.display = 'none'
+        this.boxSelection.style.display = 'none'
         this.transform.draggable = true;
         let boxSelectionEnd = mousePos
         let boxSelectionStart = this.boxSelectionStartClient
@@ -199,25 +200,20 @@ export class Editor extends CompSObject{
         if (!e.ctrlKey && !e.shiftKey){ 
             // select only the nodes and edges in the box
             Workspace.instance.selection.clearSelection()
-            Workspace.instance.functionalSelection.clearSelection()
             for(let node of nodes){
                 node.selectable.select()
-                node.functionalSelectable.select()
             }
             for(let edge of edges){
                 edge.selectable.select()
-                edge.functionalSelectable.select()
             }
         }
         else{ 
             // use semantics of ctrl and shift
             for(let node of nodes){
                 node.selectable.click()
-                node.functionalSelectable.click()
             }
             for(let edge of edges){
                 edge.selectable.click()
-                edge.functionalSelectable.click()
             }
         }
 
@@ -246,30 +242,37 @@ export class Editor extends CompSObject{
         if(getSelectionText() != '') return;
         
         getImageFromClipboard(e, (base64String) => {
+            // ws message must < 4MB
+            // but we will limit it to 2MB because change of StringTopic also sends old value
+            if (base64String.length > 2000000) {
+                Workspace.instance.appNotif.add("Image is too large. Max size is 2MB")
+                return
+            }
             this.createNode('grapycal_builtin.ImagePasteNode',
                 {image:base64String}
             )
-        })
+        },()=>{
 
-        navigator.clipboard.readText().then(text=>{
-            let data = null
-            if (text.startsWith('{"nodes":[')){
-                try{
-                    data = JSON.parse(text)
-                }catch(e){
-                    data = null
+            navigator.clipboard.readText().then(text=>{
+                let data = null
+                if (text.startsWith('{"nodes":[')){
+                    try{
+                        data = JSON.parse(text)
+                    }catch(e){
+                        data = null
+                    }
                 }
-            }
-            if(data){
+                if(data){
 
-                let mousePos = this.transform.worldToLocal(this.eventDispatcher.mousePos)
-                this.makeRequest('paste',{data,mouse_pos:mousePos})
-                Workspace.instance.selection.clearSelection()
-            }else{
-                this.createNode('grapycal_builtin.ExecNode',
-                    {text:text}
-                )
-            }
+                    let mousePos = this.transform.worldToLocal(this.eventDispatcher.mousePos)
+                    this.makeRequest('paste',{data,mouse_pos:mousePos})
+                    Workspace.instance.selection.clearSelection()
+                }else{
+                    this.createNode('grapycal_builtin.ExecNode',
+                        {text:text}
+                    )
+                }
+            })
         })
     }
 
@@ -302,5 +305,16 @@ export class Editor extends CompSObject{
             }
         }
         this.makeRequest('delete',{ids:selectedIds})
+    }
+
+    private createExecNode(){
+        if(document.activeElement != document.body) return;
+        this.createNode('grapycal_builtin.ExecNode')
+    }
+
+    private selectAll(e: KeyboardEvent){
+        if(document.activeElement != document.body) return;
+        Workspace.instance.selection.selectAll()
+        e.preventDefault()
     }
 }

@@ -2,17 +2,18 @@ import { StringTopic } from "objectsync-client"
 import { Control } from "./control"
 import { print } from "../../devUtils"
 import { as, getImageFromClipboard } from "../../utils"
+import { Workspace } from "../workspace"
 
 
 export class ImageControl extends Control {
     
-    protected template = `
+    protected get template (){return `
     <div class="control" tabindex=0>
         <img class="control-image full-height full-width" id="image">
     </div>
-    `
+    `}
 
-    protected css = `
+    protected get style(){return`
     .focused{
         outline: 1px solid #ffffff;
     }
@@ -24,7 +25,7 @@ export class ImageControl extends Control {
                     </svg>');
         background-size: 20px 20px;
     }
-    `
+    `}
 
     protected onStart(): void {
         super.onStart()
@@ -52,6 +53,12 @@ export class ImageControl extends Control {
 
     onPaste(e: ClipboardEvent) {
         getImageFromClipboard(e, (base64String) => {
+            // we message must < 4MB
+            // but we will limit it to 2MB because change of StringTopic also sends old value
+            if (base64String.length > 2000000) {
+                Workspace.instance.appNotif.add("Image is too large. Max size is 2MB")
+                return
+            }
             let imageTopic = this.getAttribute("image", StringTopic)
             imageTopic.set(base64String)
         })

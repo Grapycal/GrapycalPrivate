@@ -26,85 +26,73 @@ interface PathResult {
 }
 
 export class Edge extends CompSObject {
-    tail: ObjectTopic<Port> = this.getAttribute('tail', ObjectTopic<Port>)
-    head: ObjectTopic<Port> = this.getAttribute('head', ObjectTopic<Port>)
-    labelTopic: StringTopic = this.getAttribute('label', StringTopic)
 
-    editor: Editor
-    htmlItem: HtmlItem
-    eventDispatcher: EventDispatcher
-    transform: Transform
-    selectable: Selectable
-    functionalSelectable: Selectable;
+    /* Template */
+    get template(): string { return`
+    <div ref="base" id="base" style="position:absolute;width:1px;height:1px">
+        <div ref="label" class="edge-label"></div>
+        <svg ref="svg" class="edge">
+            <g>
+                <path ref="path" class="edge-path"d=""  fill="none"></path>
+                <path ref="path_hit_box" class="edge-path-hit-box"d=""  fill="none"></path>
+                <circle ref="dot" class="edge-dot"cx="0" cy="0" r="2" fill="none"></circle>
+            </g>
+        </svg>
+    </div>
+    `}
+
+    get style(): string { return`
+    .svg {
+        position: absolute;
+        width: auto;
+        height: auto;
+    }
+    .base {
+        width: 1px;
+        height: 1px;
+    }
+    `}
+
+    /* Element References */
+    base: HTMLDivElement
     path: SVGPathElement
     path_hit_box: SVGPathElement
     svg: SVGSVGElement
     label: HTMLDivElement
+    dot: SVGCircleElement
+
+    /* Attributes */
+    tail = this.getAttribute('tail', ObjectTopic<Port>)
+    head = this.getAttribute('head', ObjectTopic<Port>)
+    labelTopic = this.getAttribute('label', StringTopic)
+
+    /* Other Fields */
+    editor: Editor
     dotAnimation: DotAnimation
     state: EdgeState = EdgeState.Idle
 
-    template = `
-    <div id="base" style="position:absolute;width:1px;height:1px">
-        <div class="edge-label" id="label"></div>
-        <svg class="edge" id="svg">
-            <g>
-                <path class="edge-path" id="path" d=""  fill="none"></path>
-                <path class="edge-path-hit-box" id="path_hit_box" d=""  fill="none"></path>
-                <circle class="edge-dot" id="dot" cx="0" cy="0" r="2" fill="none"></circle>
-            </g>
-        </svg>
-    </div>
-    `
-    base: HTMLDivElement
-
     constructor(objectsync: ObjectSyncClient, id: string) {
         super(objectsync, id)
-
         this.editor = this.parent as Editor
-
-        this.updateSVG = this.updateSVG.bind(this)
-        this.onDrag = this.onDrag.bind(this)
-        this.onDragEndWhileCreating = this.onDragEndWhileCreating.bind(this)
-
-        // setup components
-        this.htmlItem = new HtmlItem(this)
-        this.htmlItem.applyTemplate(this.template)
-
-        this.eventDispatcher = new EventDispatcher(this, this.htmlItem.getEl('path_hit_box', SVGPathElement))
-
-        this.transform = new Transform(this, this.htmlItem.getHtmlEl('base'))
-        this.transform.pivot = Vector2.zero
-        this.transform.translation = Vector2.zero
-
-
-        this.path = this.htmlItem.getEl('path',SVGPathElement)
-        this.path_hit_box = this.htmlItem.getEl('path_hit_box',SVGPathElement)
-        this.base = this.htmlItem.getEl('base',HTMLDivElement)
-        this.svg = this.htmlItem.getEl('svg', SVGSVGElement)
-
-        this.svg.style.width = "auto"
-        this.svg.style.height = "auto"
-        this.base.style.width = "1px"
-        this.base.style.height = "1px"
-        this.svg.style.position = 'absolute'
-
-        this.label = this.htmlItem.getEl('label',HTMLDivElement)
-        const dot = this.htmlItem.getEl('dot',SVGCircleElement)
-        this.dotAnimation = new DotAnimation(dot)
-
-        this.link2(this.htmlItem.baseElement,'mousedown', () => {
-            soundManager.playClick() // why not working?
-        })
-
+        this.dotAnimation = new DotAnimation(this.dot)
     }
 
     protected onStart(): void {
         super.onStart()
 
-        this.selectable = new Selectable(this, Workspace.instance.selection)
-        this.functionalSelectable = new Selectable(this, Workspace.instance.functionalSelection)
+        this.eventDispatcher.setEventElement(this.path_hit_box)
+        this.selectable.selectionManager = Workspace.instance.selection
+
+        
+        this.transform.pivot = Vector2.zero
+        this.transform.translation = Vector2.zero
+        this.transform.positionAbsolute = true
 
         // link attributes to UI
+
+        this.link(this.eventDispatcher.onClick, () => {
+            soundManager.playClick() // why not working?
+        })
 
         if(this.hasTag('CreatingDragTail')) this.state = EdgeState.DraggingTail
         if(this.hasTag('CreatingDragHead')) this.state = EdgeState.DraggingHead
@@ -127,22 +115,11 @@ export class Edge extends CompSObject {
             })
         }
 
-        const onPortChanged = ((oldPort:Port,newPort:Port) =>{
-            if(oldPort){
-                oldPort.moved.remove(this.updateSVG)
-                oldPort.removeEdge(this)
-            }
-            if(newPort){
-                this.updateSVG()
-
-                newPort.moved.add(this.updateSVG)
-                newPort.addEdge(this)
-            }
-        }).bind(this)
-        onPortChanged(null,this.tail.getValue())
-        onPortChanged(null,this.head.getValue())
-        this.link(this.tail.onSet2,onPortChanged)
-        this.link(this.head.onSet2,onPortChanged)
+        
+        this.onPortChanged(null,this.tail.getValue())
+        this.onPortChanged(null,this.head.getValue())
+        this.link(this.tail.onSet2,this.onPortChanged)
+        this.link(this.head.onSet2,this.onPortChanged)
 
         this.link(this.selectable.onSelected, () => {
             this.svg.classList.add('selected')
@@ -150,12 +127,6 @@ export class Edge extends CompSObject {
 
         this.link(this.selectable.onDeselected, () => {
             this.svg.classList.remove('selected')
-        })
-        this.link(this.functionalSelectable.onSelected, () => {
-            this.svg.classList.add('functional-selected')
-        })
-        this.link(this.functionalSelectable.onDeselected, () => {
-            this.svg.classList.remove('functional-selected')
         })
         this.link(this.labelTopic.onSet, () => {
             this.label.innerText = this.labelTopic.getValue()
@@ -173,6 +144,18 @@ export class Edge extends CompSObject {
         })
 
 
+    }
+
+    private onPortChanged (oldPort:Port,newPort:Port) : void{
+        if(oldPort){
+            this.unlink(oldPort.moved)
+            oldPort.removeEdge(this)
+        }
+        if(newPort){
+            this.updateSVG()
+            this.link(newPort.moved,this.updateSVG)
+            newPort.addEdge(this)
+        }
     }
 
     onDestroy(): void {
@@ -215,8 +198,8 @@ export class Edge extends CompSObject {
     private onDragStart(event: MouseEvent, mousePos: Vector2) {
         if(event.ctrlKey || event.shiftKey || event.buttons != 1) { return }
         let maxR = 200
-        let distToTail = this.tail.getValue().getComponent(Transform).worldCenter.distanceTo(mousePos)
-        let distToHead = this.head.getValue().getComponent(Transform).worldCenter.distanceTo(mousePos)
+        let distToTail = this.tail.getValue().transform.worldCenter.distanceTo(mousePos)
+        let distToHead = this.head.getValue().transform.worldCenter.distanceTo(mousePos)
         //if(distToTail > maxR && distToHead > maxR)return;
         if(distToTail < distToHead) {
             this.state = EdgeState.DraggingTail
@@ -255,7 +238,7 @@ export class Edge extends CompSObject {
         let nearestPort: Port | null = null
         let nearestPortDist = Infinity
         for(let port of candidatePorts){
-            let dist = port.getComponent(Transform).worldCenter.distanceTo(mousePos)
+            let dist = port.transform.worldCenter.distanceTo(mousePos)
             if(dist < nearestPortDist){
                 nearestPort = port
                 nearestPortDist = dist
@@ -390,7 +373,7 @@ export class Edge extends CompSObject {
             this.head.getValue() != null &&
             (this.tail.getValue() == null || !MouseOverDetector.objectsUnderMouse.includes(this.tail.getValue()))){
             tail = this.transform.worldToLocal(this.eventDispatcher.mousePos)
-            head = this.transform.worldToLocal(this.head.getValue().getComponent(Transform).worldCenter)
+            head = this.transform.worldToLocal(this.head.getValue().transform.worldCenter)
             //tail_orientation = Math.atan2(head.y - tail.y, head.x - tail.x)
             tail_orientation = 0
             head_orientation = this.head.getValue().orientation
@@ -399,15 +382,15 @@ export class Edge extends CompSObject {
             this.state == EdgeState.DraggingHead &&
             this.tail.getValue() != null &&
             (this.head.getValue() == null || !MouseOverDetector.objectsUnderMouse.includes(this.head.getValue()))) {
-            tail = this.transform.worldToLocal(this.tail.getValue().getComponent(Transform).worldCenter)
+            tail = this.transform.worldToLocal(this.tail.getValue().transform.worldCenter)
             head = this.transform.worldToLocal(this.eventDispatcher.mousePos)
             tail_orientation = this.tail.getValue().orientation
             //head_orientation = Math.atan2(tail.y - head.y, tail.x - head.x)
             head_orientation = Math.PI
         }else {
             if(!this.tail.getValue() || !this.head.getValue()) {throw Error;return null}
-            tail = this.transform.worldToLocal(this.tail.getValue().getComponent(Transform).worldCenter)
-            head = this.transform.worldToLocal(this.head.getValue().getComponent(Transform).worldCenter)
+            tail = this.transform.worldToLocal(this.tail.getValue().transform.worldCenter)
+            head = this.transform.worldToLocal(this.head.getValue().transform.worldCenter)
             tail_orientation = this.tail.getValue().orientation
             head_orientation = this.head.getValue().orientation
         }

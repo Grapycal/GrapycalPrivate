@@ -1,11 +1,70 @@
 import { ObjectSyncClient, SObject } from "objectsync-client"
 import { Component, ComponentManager, IComponentable } from "../component/component"
 import { Constructor, as } from "../utils"
+import { HtmlItem } from "../component/htmlItem"
+import { Transform } from "../component/transform"
+import { EventDispatcher } from "../component/eventDispatcher"
+import { Linker } from "../component/linker"
+import { Selectable } from "../component/selectable"
+import { MouseOverDetector } from "../component/mouseOverDetector"
 
 export class CompSObject extends SObject implements IComponentable {
+
+    private _htmlItem: HtmlItem = null;
+    protected get template(): string { return '<div></div>' }
+    protected get style(): string { return '' }
+    get htmlItem(): HtmlItem {
+        if (this._htmlItem == null) {
+            this._htmlItem = new HtmlItem(this, null, this.template, this.style);
+            // iterate through all refs and assign them to this
+            for (let [name,el] of this._htmlItem.getRefs()) {
+                (this as any)[name] = el;
+            }
+        }
+        return this._htmlItem;
+    }
+
+    private _transform: Transform = null;
+    get transform(): Transform {
+        if (this._transform == null) {
+            this.htmlItem; // Ensure htmlItem is created
+            this.eventDispatcher; // Ensure eventDispatcher is created
+            this._transform = new Transform(this);
+        }
+        return this._transform;
+    }
+
+    private _eventDispatcher: EventDispatcher = null;
+    get eventDispatcher(): EventDispatcher {
+        if (this._eventDispatcher == null) {
+            this._eventDispatcher = new EventDispatcher(this);
+        }
+        return this._eventDispatcher;
+    }
+
+    private _selectable: Selectable = null;
+    get selectable(): Selectable {
+        this.eventDispatcher; // Ensure eventDispatcher is created
+        if (this._selectable == null) {
+            this._selectable = new Selectable(this);
+        }
+        return this._selectable;
+    }
+
+    private _mouseOverDetector: MouseOverDetector = null;
+    get mouseOverDetector(): MouseOverDetector {
+        if (this._mouseOverDetector == null) {
+            this.eventDispatcher; // Ensure eventDispatcher is created
+            this._mouseOverDetector = new MouseOverDetector(this);
+        }
+        return this._mouseOverDetector;
+    }
+
     componentManager: ComponentManager = new ComponentManager();
     constructor(objectsync: ObjectSyncClient, id: string) {
         super(objectsync, id);
+        if(this.template != `<div></div>`)
+            this.htmlItem; // Create the htmlItem prior to other components to prevent errors
     }
 
     public get parent(): CompSObject {
@@ -37,5 +96,31 @@ export class CompSObject extends SObject implements IComponentable {
     public onDestroy(): void {
         super.onDestroy();
         this.componentManager.destroy();
+    }
+
+    protected applyTemplate(template: string): void {
+        this.htmlItem.applyTemplate(template);
+        for (let [name,el] of this._htmlItem.getRefs()) {
+            (this as any)[name] = el;
+        }
+    }
+
+    mount(parent: IComponentable|HtmlItem|HTMLElement, slot: string = null): this {
+        if (parent instanceof HTMLElement) {
+            this.htmlItem.setParentElement(parent)
+            return this
+        }
+        let parent_: HtmlItem
+        if (parent instanceof HtmlItem) {
+            parent_ = parent
+        }
+        else {
+            parent_ = parent.componentManager.getComponent(HtmlItem)
+        }
+        if(slot === null){
+            slot = this.constructor.name
+        }
+        this.htmlItem.setParent(parent_, slot)
+        return this
     }
 }

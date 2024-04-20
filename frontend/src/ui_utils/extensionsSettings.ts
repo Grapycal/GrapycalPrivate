@@ -6,13 +6,29 @@ import { PopupMenu } from "./popupMenu/popupMenu"
 import { Workspace } from "../sobjects/workspace"
 
 export class ExtensionsSetting extends Componentable{
+    protected get template(): string { return `
+    <div>
+        <div class="sidebar-tab-title">
+        <h1>Extensions</h1>
+        <hr>
+        </div>
+        <h2>In Use</h2>
+        <div class="card-gallery" ref="importedDiv"></div>
+        <h2>Avaliable</h2>
+        <div class="card-gallery"  ref="avaliableDiv"></div>
+        <h2>Not Installed</h2>
+        <div class="card-gallery"  ref="notInstalledDiv"></div>
+        <button ref="refreshButton">Refresh</button>
+    </div>
+    `}
     objectsync: ObjectSyncClient
     importedExtensionsTopic: DictTopic<string,any>
     avaliableExtensionsTopic: DictTopic<string,any>
     notInstalledExtensionsTopic: DictTopic<string,any>
-    importedDiv = document.getElementById('imported-extensions')
-    avaliableDiv = document.getElementById('avaliable-extensions')
-    notInstalledDiv = document.getElementById('not-installed-extensions')
+    importedDiv: HTMLElement
+    avaliableDiv: HTMLElement
+    notInstalledDiv: HTMLElement
+    refreshButton: HTMLButtonElement
     cardTemplate = `
     <div class="card">
         <div class="card-image"></div>
@@ -34,10 +50,10 @@ export class ExtensionsSetting extends Componentable{
         avaliable:{},
         not_installed:{}
     }
-    constructor(objectsync:ObjectSyncClient){
+    constructor(){
         super()
 
-        this.objectsync = objectsync
+        this.objectsync = Workspace.instance.objectsync //TODO: do not steal the objectsync from workspace like this
 
         this.importedExtensionsTopic = this.objectsync.getTopic('imported_extensions',DictTopic<string,any>)
         for(let [name,extension] of this.importedExtensionsTopic.getValue()){
@@ -84,8 +100,8 @@ export class ExtensionsSetting extends Componentable{
             this.addCard(newExtension,'not_installed')
         })
 
-        document.getElementById('refresh-extensions').addEventListener('click',()=>{
-            this.objectsync.emit('refresh_extensions')
+        this.refreshButton.addEventListener('click',()=>{
+            this.objectsync.makeRequest('refresh_extensions')
         })
     }
 
@@ -101,22 +117,22 @@ export class ExtensionsSetting extends Componentable{
         const cardContent = card.querySelector<HTMLDivElement>('.card-content')
         if(status == 'imported'){
             this.addButtonToCard(card,this.removeButtonTemplate,()=>{
-                this.objectsync.emit('unimport_extension',{extension_name:newExtension.name})
+                this.objectsync.makeRequest('unimport_extension',{extension_name:newExtension.name})
             })
             this.addButtonToCard(card,this.reloadButtonTemplate,()=>{
-                this.objectsync.emit('update_extension',{extension_name:newExtension.name})
+                this.objectsync.makeRequest('update_extension',{extension_name:newExtension.name})
             })
         }
 
         if(status == 'avaliable'){
             this.addButtonToCard(card,this.importButtonTemplate,()=>{
-                this.objectsync.emit('import_extension',{extension_name:newExtension.name})
+                this.objectsync.makeRequest('import_extension',{extension_name:newExtension.name})
             })
         }
 
         if(status == 'not_installed'){
             this.addButtonToCard(card,this.installButtonTemplate,()=>{
-                this.objectsync.emit('install_extension',{extension_name:newExtension.name})
+                this.objectsync.makeRequest('install_extension',{extension_name:newExtension.name})
             })
         }
 
@@ -127,14 +143,14 @@ export class ExtensionsSetting extends Componentable{
             popup.openAt(e.clientX,e.clientY)
             if(status == 'imported'){
                 popup.addOption('Reload',()=>{
-                    this.objectsync.emit('update_extension',{extension_name:newExtension.name})
+                    this.objectsync.makeRequest('update_extension',{extension_name:newExtension.name})
                 })
                 popup.addOption('Remove from workspace',()=>{
-                    this.objectsync.emit('unimport_extension',{extension_name:newExtension.name})
+                    this.objectsync.makeRequest('unimport_extension',{extension_name:newExtension.name})
                 })
             }else{
                 popup.addOption('Import to workspace',()=>{
-                    this.objectsync.emit('import_extension',{extension_name:newExtension.name})
+                    this.objectsync.makeRequest('import_extension',{extension_name:newExtension.name})
                 })
             }
         })

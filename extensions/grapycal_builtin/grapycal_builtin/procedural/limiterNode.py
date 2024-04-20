@@ -5,6 +5,8 @@ from grapycal.sobjects.edge import Edge
 from grapycal.sobjects.port import InputPort
 from threading import Lock
 
+from grapycal.stores import main_store
+
 
 class LimiterNode(Node):
     category = 'procedural'
@@ -24,12 +26,12 @@ class LimiterNode(Node):
         self.lock = Lock()
         self.counter = 0
         self.last_push_time = 0
-        self.workspace.clock.on_tick += (self.tick)
+        main_store.clock.on_tick += (self.tick)
 
 
     def edge_activated(self, edge: Edge, port: InputPort):
         with self.lock:
-            self.value = edge.get_data()
+            self.value = edge.get()
             self.counter += 1
             self.has_value = True
 
@@ -39,7 +41,7 @@ class LimiterNode(Node):
                 self.counter = 0
                 self.last_push_time = time.time()   
                 self.has_value = False
-                self.out_port.push_data(self.value)
+                self.out_port.push(self.value)
                 self.value = None
 
     def tick(self):
@@ -53,6 +55,6 @@ class LimiterNode(Node):
                 self.counter = 0
                 self.last_push_time = time.time()   
                 self.has_value = False
-                self.out_port.push_data(self.value)
+                self.out_port.push(self.value)
                 self.value = None
         

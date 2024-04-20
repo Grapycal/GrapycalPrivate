@@ -64,6 +64,12 @@ class RequestFrameManager{
 export enum Space{
     Local,World
 }
+export enum ScrollBehavior{
+    Scale,
+    Translate,
+    TranslateOrScale,
+    None
+}
 // Dependency: HtmlItem
 export class Transform extends Component{
 
@@ -73,13 +79,25 @@ export class Transform extends Component{
     _targetElement: HTMLElement = null;
     get targetElement(){return this._targetElement;}
     set targetElement(targetElement: HTMLElement){
+        if(this.targetElement != null && this.positionAbsolute){
+            this.targetElement.style.position = 'relative'
+            this.targetElement.style.left = 'auto'
+            this.targetElement.style.top = 'auto'
+        }
+        if(this.targetElement != null){
+            this.targetElement.style.transform = 'none';
+        }
+        let oldDraggable = this.draggable;
+        this.draggable = false;
+
         this._targetElement = targetElement;
         if(targetElement != null && this.positionAbsolute){
             this.targetElement.style.position = 'absolute'
             this.targetElement.style.left = '0px'
             this.targetElement.style.top = '0px'
-                
+            this.requestUpdateUI()
         }
+        this.draggable = oldDraggable;
     }
     specifiedTargetElement: HTMLElement = null;
 
@@ -89,7 +107,17 @@ export class Transform extends Component{
     private _pivot: Vector2 = new Vector2(0.5, 0.5);
     private _scale: number = 1;
     private _translation: Vector2 = Vector2.zero;
-    private positionAbsolute: boolean = false;
+    private _positionAbsolute: boolean = false;
+    get positionAbsolute(){return this._positionAbsolute;}
+    set positionAbsolute(positionAbsolute: boolean){
+        this._positionAbsolute = positionAbsolute;
+        if(this.targetElement != null && positionAbsolute){
+            this.targetElement.style.position = 'absolute'
+            this.targetElement.style.left = '0px'
+            this.targetElement.style.top = '0px'
+            this.requestUpdateUI()
+        }
+    }
 
     public scrollSmoothness: number = 0;
 
@@ -152,7 +180,6 @@ export class Transform extends Component{
     private set actuallyDraggable(actuallyDraggable: boolean){
         if(this._actuallyDraggable == actuallyDraggable) return;
         this._actuallyDraggable = actuallyDraggable;
-
         if (actuallyDraggable){
             this.linker.link(this.getComponent(EventDispatcher).onDrag,this.onDrag);
         }
@@ -163,12 +190,12 @@ export class Transform extends Component{
     }
 
 
-    _scrollable: boolean = false;
-    get scrollable(){return this._scrollable;}
-    set scrollable(scrollable: boolean){
-        if(this._scrollable == scrollable) return;
-        this._scrollable = scrollable;
-        if (this.enabled && scrollable)
+    _scroll_behavior: ScrollBehavior = ScrollBehavior.None;
+    get scroll_behavior(){return this._scroll_behavior;}
+    set scroll_behavior(value: ScrollBehavior){
+        if(this._scroll_behavior == value) return;
+        this._scroll_behavior = value;
+        if (this.enabled && value != ScrollBehavior.None)
             this.actuallyScrollable = true;
         else
             this.actuallyScrollable = false;
@@ -215,7 +242,7 @@ export class Transform extends Component{
         else
             this.actuallyDraggable = false;
 
-        if (enabled && this.scrollable)
+        if (enabled && this.scroll_behavior != ScrollBehavior.None)
             this.actuallyScrollable = true;
         else
             this.actuallyScrollable = false;
@@ -254,13 +281,6 @@ export class Transform extends Component{
             this.targetElement.offsetHeight
         );
     }
-
-    // get worldCenter(){
-    //     return {
-    //         x: this.worldPosition.x + this.targetElement.clientWidth*(0.5-this.pivot.x),
-    //         y: this.worldPosition.y + this.targetElement.clientHeight*(0.5-this.pivot.y)
-    //     }
-    // }
     
     constructor(object:IComponentable, targetElement:HTMLElement=null, positionAbsolute:boolean=false){
         super(object);
@@ -301,7 +321,19 @@ export class Transform extends Component{
 
     private onScroll(e:WheelEvent){
         e.stopPropagation();
-        this.smoothScroll(-0.002*e.deltaY);
+        if (this.scroll_behavior == ScrollBehavior.Scale){
+            this.smoothScroll(-0.002*e.deltaY);
+        }
+        else if (this.scroll_behavior == ScrollBehavior.Translate){
+            this.translate(new Vector2(-e.deltaX,-e.deltaY));
+        }else if (this.scroll_behavior == ScrollBehavior.TranslateOrScale){
+            if(e.ctrlKey){
+                this.smoothScroll(-0.002*e.deltaY);
+                e.preventDefault();
+            }else{
+                this.translate(new Vector2(-e.deltaX,-e.deltaY));
+            }
+        }
     }
 
     private smoothScroll(amount:number){

@@ -1,12 +1,14 @@
 import logging
 
+from grapycal.stores import main_store
+
 logger = logging.getLogger("WORKSPACE")
 from typing import Any, Dict, Self
 from grapycal.sobjects.edge import Edge
 from grapycal.sobjects.editor import Editor
 from grapycal.sobjects.fileView import FileView, LocalFileView, RemoteFileView
 from grapycal.sobjects.node import Node
-from grapycal.sobjects.sidebar import Sidebar
+from grapycal.sobjects.nodeLibrary import NodeLibrary
 from grapycal.sobjects.settings import Settings
 from objectsync import (
     SObject,
@@ -21,57 +23,53 @@ from objectsync import (
 
 class WorkspaceObject(SObject):
     frontend_type = "Workspace"
-    ins: Self
 
     def build(self, old: SObjectSerialized | None = None):
-        from grapycal.core.workspace import Workspace
-
-        self._workspace: Workspace = self._server.globals.workspace
-        WorkspaceObject.ins = self
         if old is None:
             self.settings = self.add_child(Settings)
             self.webcam = self.add_child(WebcamStream)
-            self.sidebar = self.add_child(Sidebar)
+            self.node_library = self.add_child(NodeLibrary)
+        else:
+            self.settings = self.add_child(Settings, old=old.get_child("settings"))
+            self.webcam = self.add_child(WebcamStream, old=old.get_child("webcam"))
+
+            #BACKWARD COMPATIBILITY: v0.11.3 and below, node_library was called sidebar
+            if old.has_child("node_library"):
+                old_node_library = old.get_child("node_library")
+            else:
+                old_node_library = old.get_child("sidebar")
+
+            self.node_library = self.add_child(NodeLibrary, old=old_node_library)
+
+        main_store.settings = self.settings
+        main_store.webcam = self.webcam
+        main_store.node_library = self.node_library
+
+        if old is None:
             self.main_editor = self.add_child(Editor)
         else:
-            if old.has_child("settings"):
-                self.settings = self.add_child(Settings, old=old.get_child("settings"))
-            else:
-                self.settings = self.add_child(Settings)
-            if old.has_child("webcam"):
-                self.webcam = self.add_child(WebcamStream, old=old.get_child("webcam"))
-            else:
-                self.webcam = self.add_child(WebcamStream)
-            self.sidebar = self.add_child(Sidebar, old=old.get_child("sidebar"))
-
-            if old.has_child("main_editor"):
-                self.main_editor = self.add_child(
-                    Editor, old=old.get_child("main_editor")
-                )
-            else:
-                self.main_editor = self.add_child(
-                    Editor, old=old.children[old.get_attribute("main_editor")]
-                )
-
+            self.main_editor = self.add_child(Editor, old=old.get_child("main_editor") )
+        
+        main_store.main_editor = self.main_editor
+        
         # Add local file view and remote file view
         self.file_view = self.add_child(LocalFileView, name="Local Files 💻")
 
         async def add_examples_file_view():
-            if not await self._workspace.data_yaml.is_avaliable():
+            if not await main_store.data_yaml.is_avaliable():
                 logger.info("Cannot get example files from GitHub.")
                 return  # no internet connection
-            data_yaml = await self._workspace.data_yaml.get()
+            data_yaml = await main_store.data_yaml.get()
 
             self.add_child(
                 RemoteFileView, url=data_yaml["examples_url"], name="Examples💡"
             )
             self._server.clear_history()
 
-        self._workspace.add_task_to_event_loop(add_examples_file_view())
+        main_store.event_loop.create_task(add_examples_file_view())
 
         # read by frontend
         self.add_attribute("main_editor", ObjTopic).set(self.main_editor)
-
 
 class WebcamStream(SObject):
     frontend_type = "WebcamStream"
@@ -84,4 +82,3 @@ class WebcamStream(SObject):
 
     def init(self):
         self.source_client.set(-1)
-        self._server.globals.workspace.webcam = self

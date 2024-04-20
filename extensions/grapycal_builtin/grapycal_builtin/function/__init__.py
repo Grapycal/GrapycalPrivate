@@ -13,10 +13,10 @@ class LambdaNode(Node):
     provides an input box for you to define the function with an expression.
 
     :inputs:
-        You can add any number of inputs to the node.
+        - *inputs: You can add any number of inputs to the node.
 
     :outputs:
-        You can add any number of outputs to the node.
+        - *outputs: You can add any number of outputs to the node.
         
     '''
     category = 'function'
@@ -75,16 +75,16 @@ class LambdaNode(Node):
 
     def calculate(self):
         for port in self.in_ports:
-            if not port.is_all_edge_ready():
+            if not port.is_all_ready():
                 return
             if len(port.edges) == 0:
                 return
-        arg_values = [port.get_one_data() for port in self.in_ports]
+        arg_values = [port.get() for port in self.in_ports]
 
         def task():
             for out_name, text_control in self.text_controls.get().items():
                 expr = f'lambda {",".join(self.input_args)}: {text_control.text.get()}'
-                y = eval(expr,self.workspace.vars())(*arg_values)
-                self.get_out_port(out_name).push_data(y)
+                y = eval(expr,self.get_vars())(*arg_values)
+                self.get_out_port(out_name).push(y)
                 
         self.run(task)

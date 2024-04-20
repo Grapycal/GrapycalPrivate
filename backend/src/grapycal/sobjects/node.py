@@ -1,23 +1,32 @@
+import logging
+from pprint import pprint
+
+from grapycal.core.background_runner import RunnerInterrupt
+from grapycal.core.client_msg_types import ClientMsgTypes
+from grapycal.sobjects.controls.keyboardControl import KeyboardControl
+from grapycal.sobjects.controls.sliderControl import SliderControl
+
+logger = logging.getLogger(__name__)
+from typing import TYPE_CHECKING, Awaitable, Callable, Literal, Self, TypeVar
+
 from abc import ABCMeta
+import asyncio
 import enum
 import io
 from itertools import count
-import logging
-import random
+from contextlib import contextmanager
+import functools
+import traceback
+
 from grapycal.sobjects.controls.buttonControl import ButtonControl
 from grapycal.sobjects.controls.imageControl import ImageControl
 from grapycal.sobjects.controls.linePlotControl import LinePlotControl
 from grapycal.sobjects.controls.nullControl import NullControl
 from grapycal.sobjects.controls.optionControl import OptionControl
-
 from grapycal.sobjects.controls.textControl import TextControl
-
-logger = logging.getLogger(__name__)
+from grapycal.sobjects.controls.codeControl import CodeControl
+from grapycal.stores import main_store
 from grapycal.utils.logging import error_extension, user_logger, warn_extension
-from contextlib import contextmanager
-import functools
-import traceback
-from typing import TYPE_CHECKING, Any, Callable, Generator, Literal, Self, TypeVar
 from grapycal.extension.utils import NodeInfo
 from grapycal.sobjects.controls.control import Control, ValuedControl
 from grapycal.sobjects.edge import Edge
@@ -38,17 +47,25 @@ from objectsync import (
 from objectsync.sobject import SObjectSerialized, WrappedTopic
 
 if TYPE_CHECKING:
-    from grapycal.core.workspace import Workspace
+    from grapycal.extension.extension import Extension
 
 
 def warn_no_control_name(control_type, node):
-    node_type = node.get_type_name().split('.')[1]
+    """
+    Log a warning if the control does not have a name.
+    """
+    node_type = node.get_type_name().split(".")[1]
     warn_extension(
         node,
         f"Consider giving a name to the {control_type.__name__} in {node_type} \
 to prevent error when Grapycal auto restores the control.",
         extra={"key": f"No control name {node_type}"},
     )
+
+
+"""
+Decorator for node development.
+"""
 
 
 def singletonNode(auto_instantiate=True):
@@ -74,22 +91,6 @@ def singletonNode(auto_instantiate=True):
     T = TypeVar("T", bound=Node)
 
     def wrapper(cls: type[T]):
-        # class WrapperClass(cls):
-        #     instance: T
-        #     def __init__(self,*args,**kwargs):
-        #         super().__init__(*args,**kwargs)
-        #         if hasattr(WrapperClass, "instance"):
-        #             raise RuntimeError("Singleton node can only be instantiated once")
-        #         WrapperClass.instance = self # type: ignore # strange complaint from linter
-
-        #     def destroy(self) -> SObjectSerialized:
-        #         del WrapperClass.instance
-        #         return super().destroy()
-
-        # WrapperClass._is_singleton = True
-        # WrapperClass._auto_instantiate = auto_instantiate
-        # WrapperClass.__name__ = cls.__name__
-
         def new_init(self, *args, **kwargs):
             if hasattr(cls, "instance"):
                 raise RuntimeError("Singleton node can only be instantiated once")
@@ -158,22 +159,28 @@ class NodeMeta(ABCMeta):
 class RESTORE_FROM(enum.Enum):
     SAME = 0
 
+
 class Node(SObject, metaclass=NodeMeta):
     frontend_type = "Node"
     category = "hidden"
     instance: Self  # The singleton instance. Used by singleton nodes.
     _deprecated = False  # TODO: If set to True, the node will be marked as deprecated in the inspector.
+    ext: "Extension"
+
+    @classmethod
+    def set_extension(cls, ext: "Extension"):
+        cls.ext = ext
 
     @classmethod
     def get_def_order(cls):
         return cls.def_order[cls.__name__]
-    
-    def initialize(self, serialized:SObjectSerialized|None=None, *args, **kwargs):
 
+    def initialize(self, serialized: SObjectSerialized | None = None, *args, **kwargs):
         self._already_restored_attributes = set()
         self._already_restored_controls = set()
         self.old_node_info = NodeInfo(serialized) if serialized is not None else None
         self.is_building = False
+        self._n_running_tasks = 0
 
         super().initialize(serialized, *args, **kwargs)
 
@@ -187,7 +194,6 @@ class Node(SObject, metaclass=NodeMeta):
     ):
         self.is_new = is_new
         self.old_node_info = old_node_info
-        self.workspace: Workspace = self._server.globals.workspace
         self.is_building = True
 
         self.shape = self.add_attribute(
@@ -202,7 +208,13 @@ class Node(SObject, metaclass=NodeMeta):
         self.label_offset = self.add_attribute(
             "label_offset", FloatTopic, 0, restore_from=None
         )
-        self.translation = self.add_attribute("translation", StringTopic, translation)
+        self.translation = self.add_attribute(
+            "translation",
+            StringTopic,
+            translation
+            if isinstance(translation, str)
+            else ",".join(map(str, translation)),
+        )
         self.is_preview = self.add_attribute(
             "is_preview", IntTopic, 1 if is_preview else 0, restore_from=None
         )
@@ -252,8 +264,9 @@ class Node(SObject, metaclass=NodeMeta):
         """
         # check for override of create
         if type(self).create != Node.create:
-            error_extension(self,
-                f"Class {self.__class__.__name__} has overridden create() method. The Node.create() method was orignated from a wrong design and should not be used. It will be removed in few commits. Use build_node() and init_node() instead."
+            error_extension(
+                self,
+                f"Class {self.__class__.__name__} has overridden create() method. The Node.create() method was orignated from a wrong design and should not be used. It will be removed in few commits. Use build_node() and init_node() instead.",
             )
             exit(1)
 
@@ -277,27 +290,20 @@ class Node(SObject, metaclass=NodeMeta):
         else:
             self.editor = None
 
-        self.workspace: Workspace = self._server.globals.workspace
-        
         self.on("double_click", self.double_click, is_stateful=False)
         self.on("spawn", self.spawn, is_stateful=False)
 
         self._output_stream = OutputStream(self.raw_print)
-        self._output_stream.set_event_loop(
-            self.workspace.get_communication_event_loop()
-        )
-        self.workspace.get_communication_event_loop().create_task(
-            self._output_stream.run()
-        )
+        self._output_stream.set_event_loop(main_store.event_loop)
+        main_store.event_loop.create_task(self._output_stream.run())
 
         from grapycal.sobjects.workspaceObject import WorkspaceObject
 
         self.globally_exposed_attributes.on_add.add_auto(
-            lambda k, v: WorkspaceObject.ins.settings.entries.add(k, v)
+            lambda k, v: main_store.settings.entries.add(k, v)
         )
         for k, v in self.globally_exposed_attributes.get().items():
-            WorkspaceObject.ins.settings.entries.add(k, v)
-
+            main_store.settings.entries.add(k, v)
 
         self.init_node()
 
@@ -354,7 +360,7 @@ class Node(SObject, metaclass=NodeMeta):
                 )
                 continue
             new_attr = self.get_attribute(new_name)
-            old_attr = self.old_node_info[old_name] #type: ignore # not self.is_new grarauntees old_node_info is not None
+            old_attr = self.old_node_info[old_name]  # type: ignore # not self.is_new grarauntees old_node_info is not None
             if isinstance(new_attr, WrappedTopic):
                 new_attr.set_raw(old_attr)
             else:
@@ -382,14 +388,18 @@ class Node(SObject, metaclass=NodeMeta):
                 warn_extension(
                     self,
                     f"Control {new_name} does not exist in {self}",
-                    extra={"key": f"Control not exist {self.get_type_name()} {new_name}"},
+                    extra={
+                        "key": f"Control not exist {self.get_type_name()} {new_name}"
+                    },
                 )
                 continue
             if not (old_name in self.old_node_info.controls):
                 warn_extension(
                     self,
                     f"Control {old_name} does not exist in the old node of {self}",
-                    extra={"key": f"Control not exist old {self.get_type_name()} {old_name}"},
+                    extra={
+                        "key": f"Control not exist old {self.get_type_name()} {old_name}"
+                    },
                 )
                 continue
             try:
@@ -410,13 +420,11 @@ class Node(SObject, metaclass=NodeMeta):
         """
         Called when a client wants to spawn a node.
         """
-        new_node = self.workspace.get_workspace_object().main_editor.create_node(
-            type(self)
-        )
+        new_node = main_store.main_editor.create_node(type(self),sender=client_id)
         if new_node is None:  # failed to create node
             return
         new_node.add_tag(
-            f"spawned_by_{client_id}"
+            f"drag_created_by{client_id}"
         )  # So the client can find the node it spawned and make it follow the mouse
 
     def destroy(self) -> SObjectSerialized:
@@ -436,10 +444,10 @@ class Node(SObject, metaclass=NodeMeta):
                     f"Trying to destroy node {self.get_id()} but it still has output edges"
                 )
         for name in self.globally_exposed_attributes.get():
-            self.workspace.get_workspace_object().settings.entries.pop(name)
-        
+            main_store.settings.entries.pop(name)
+
         if self.editor is not None:
-            self.editor.set_running(self, False)
+            self.editor.is_running_manager.set_running(self, False)
         return super().destroy()
 
     T = TypeVar("T", bound=ValuedControl)
@@ -475,13 +483,13 @@ class Node(SObject, metaclass=NodeMeta):
             control_name = None
         if control_name is not None:
             if control_name in self.controls:
-                raise ValueError(f'Control with name {control_name} already exists')
+                raise ValueError(f"Control with name {control_name} already exists")
         else:
-            control_name = 'Control0'
-            i=0
+            control_name = "Control0"
+            i = 0
             while control_name in self.controls:
-                i+=1
-                control_name = f'Control{i}'
+                i += 1
+                control_name = f"Control{i}"
 
         self.controls.add(control_name, port.default_control)
         if control_type is not NullControl:
@@ -521,6 +529,7 @@ class Node(SObject, metaclass=NodeMeta):
 
         # remove the port
         self.in_ports.remove(port)
+        self.controls.remove(port.default_control)
         port.remove()
 
     def remove_out_port(self, name: str):
@@ -607,7 +616,7 @@ class Node(SObject, metaclass=NodeMeta):
                 i += 1
                 name = f"Control{i}"
 
-        control = self.add_child(control_type,  **kwargs)
+        control = self.add_child(control_type, **kwargs)
         self.controls.add(name, control)
 
         # restore the control
@@ -674,6 +683,59 @@ class Node(SObject, metaclass=NodeMeta):
         """
         control = self.add_control(
             OptionControl, value=value, options=options, label=label, name=name
+        )
+        return control
+
+    def add_keyboard_control(self, label: str = "") -> KeyboardControl:
+        """
+        Add a keyboard control to the node.
+        """
+        control = self.add_control(KeyboardControl, label=label)
+        return control
+
+    def add_slider_control(
+        self,
+        label: str = "",
+        min: float = 0,
+        max: float = 1,
+        step: float = 0.01,
+        int_mode: bool = False,
+        name: str | None = None,
+    ) -> SliderControl:
+        """
+        Add a slider control to the node.
+        """
+        control = self.add_control(
+            SliderControl,
+            label=label,
+            min=min,
+            max=max,
+            step=step,
+            int_mode=int_mode,
+            name=name,
+        )
+        return control
+
+    def add_code_control(
+        self,
+        text: str = "",
+        label: str = "",
+        readonly=False,
+        editable: bool = True,
+        name: str | None = None,
+        placeholder: str = "",
+    ) -> CodeControl:
+        """
+        Add a code control to the node.
+        """
+        control = self.add_control(
+            CodeControl,
+            text=text,
+            label=label,
+            readonly=readonly,
+            editable=editable,
+            name=name,
+            placeholder=placeholder,
         )
         return control
 
@@ -744,7 +806,7 @@ class Node(SObject, metaclass=NodeMeta):
         Args:
             - attribute: The attribute to expose.
 
-            - editor_type: The type of the editor to use. Can be ``text`` or ``list``.
+            - editor_type: The type of the editor to use. Can be ``text``, ``list``, ``int``, ``float``,  ``button``, ``options``, or ``dict``.
 
             - display_name: The name to display in the editor. If not specified, the attribute's name will be used.
 
@@ -815,7 +877,7 @@ class Node(SObject, metaclass=NodeMeta):
                 },
             )
 
-    def print(self, *args, **kwargs):
+    def print(self, *objs,sep=' ',end='\n', **kwargs):
         """
         Print to the node's output.
         """
@@ -823,8 +885,15 @@ class Node(SObject, metaclass=NodeMeta):
         # self._output_stream.flush()
 
         # maybe the self._output_stream can be abandoned
-        output = io.StringIO()
-        print(*args, file=output, **kwargs)
+        output = io.StringIO(newline="")
+        for obj in objs[:-1]:
+            if isinstance(obj,str):
+                output.write(obj)
+            else:
+                pprint(obj, stream=output, **kwargs)
+            output.write(sep)
+        pprint(objs[-1], stream=output, **kwargs)
+        output.write(end)
         contents = output.getvalue()
         output.close()
 
@@ -855,10 +924,18 @@ class Node(SObject, metaclass=NodeMeta):
 
         try:
             self._output_stream.enable_flush()
-            with self.workspace.redirect(self._output_stream):
+            with main_store.redirect(self._output_stream):
                 yield
         finally:
             self._output_stream.disable_flush()
+
+    def _on_exception(self, e: Exception):
+        self.print_exception(e, truncate=2)
+        if isinstance(e, RunnerInterrupt):
+            main_store.send_message_to_all(
+                "Runner interrupted by user.", ClientMsgTypes.BOTH
+            )
+        main_store.clear_edges()
 
     def _run_in_background(
         self, task: Callable[[], None], to_queue=True, redirect_output=False
@@ -867,32 +944,29 @@ class Node(SObject, metaclass=NodeMeta):
         Run a task in the background thread.
         """
 
-        def exception_callback(e):
-            self.print_exception(e, truncate=3)
-            if isinstance(e, KeyboardInterrupt):
-                self.workspace.send_message_to_all("Runner interrupted by user.")
-            self.workspace.background_runner.set_exception_callback(None)
-            self.workspace.clear_edges()
-
         def wrapped():
-            self.set_running(True)
-            self.workspace.background_runner.set_exception_callback(exception_callback)
-            if redirect_output:
-                with self._redirect_output():
+            self.incr_n_running_tasks()
+            try:
+                if redirect_output:
+                    with self._redirect_output():
+                        ret = task()
+                else:
                     ret = task()
-            else:
-                ret = task()
-            self.set_running(False)
-            self.workspace.background_runner.set_exception_callback(None)
+            except Exception:
+                raise
+            finally:
+                self.decr_n_running_tasks()
             return ret
 
-        self.workspace.background_runner.push(wrapped, to_queue=to_queue)
+        main_store.runner.push(
+            wrapped, to_queue=to_queue, exception_callback=self._on_exception
+        )
 
     def _run_directly(self, task: Callable[[], None], redirect_output=False):
         """
         Run a task in the current thread.
         """
-        self.set_running(True)
+        self.incr_n_running_tasks()
         try:
             if redirect_output:
                 with self._redirect_output():
@@ -901,7 +975,32 @@ class Node(SObject, metaclass=NodeMeta):
                 task()
         except Exception as e:
             self.print_exception(e, truncate=1)
-        self.set_running(False)
+        self.decr_n_running_tasks()
+
+    def _run_async(self, task: Callable[[], Awaitable[None]]):
+        """
+        Run an async task.
+        """
+
+        async def wrapped():
+            self.incr_n_running_tasks()
+            try:
+                await task()
+            except Exception as e:
+                self.print_exception(e, truncate=1)
+            self.decr_n_running_tasks()
+
+        main_store.event_loop.create_task(wrapped())
+
+    def incr_n_running_tasks(self):
+        self._n_running_tasks += 1
+        if self._n_running_tasks == 1:
+            self.set_running(True)
+
+    def decr_n_running_tasks(self):
+        self._n_running_tasks -= 1
+        if self._n_running_tasks == 0:
+            self.set_running(False)
 
     def run(
         self,
@@ -923,28 +1022,34 @@ class Node(SObject, metaclass=NodeMeta):
             - to_queue: This argument is used only when `background` is True. If set to True, the task will be pushed to the :class:`.BackgroundRunner`'s queue.\
             If set to False, the task will be pushed to its stack. See :class:`.BackgroundRunner` for more details.
         """
+        is_async = asyncio.iscoroutinefunction(task)
         task = functools.partial(task, *args, **kwargs)
-        if background:
+        if is_async:
+            self._run_async(task)
+        elif background:
             self._run_in_background(task, to_queue, redirect_output=False)
         else:
             self._run_directly(task, redirect_output=False)
 
-    def print_exception(self, e, truncate=0):
-        message = "".join(traceback.format_exception(e)[truncate:])
+    def print_exception(self, e: Exception | str, truncate=0):
+        if isinstance(e, str):
+            message = e
+        else:
+            message = "".join(traceback.format_exception(e)[truncate:])
         if self.is_destroyed():
             logger.warning(
                 f"Exception occured in a destroyed node {self.get_id()}: {message}"
             )
         else:
-            self.set_running(False)
+            self.decr_n_running_tasks()
             if len(self.output) > 100:
                 self.output.set([])
                 self.output.insert(["error", "Too many output lines. Cleared.\n"])
             self.output.insert(["error", message])
 
     def flash_running_indicator(self):
-        self.set_running(True)
-        self.set_running(False)
+        self.incr_n_running_tasks()
+        self.decr_n_running_tasks()
 
     def set_running(self, running: bool):
         with self._server.record(
@@ -953,17 +1058,31 @@ class Node(SObject, metaclass=NodeMeta):
             if self.is_destroyed():
                 return
             if running:
-                self.editor.set_running(self, True)
+                self.editor.is_running_manager.set_running(self, True)
             else:
-                self.editor.set_running(self, False)
+                self.editor.is_running_manager.set_running(self, False)
+
+    def get_vars(self):
+        """
+        Get the variables of the running module.
+        """
+        return main_store.vars()
 
     """
     Node events
     """
 
-    def edge_activated(self, edge: Edge | ValuedControl, port: InputPort):
+    def edge_activated(self, edge: Edge, port: InputPort):
         """
         Called when an edge on an input port is activated.
+        """
+        pass
+
+    def port_activated(self, port: InputPort):
+        """
+        Called when an input port is activated, which means either
+        1. an connected edge is activated
+        2. or the control on the port is activated.
         """
         pass
 

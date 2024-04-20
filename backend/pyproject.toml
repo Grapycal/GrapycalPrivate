@@ -13,20 +13,21 @@ maintainers = [
     "eri24816 <a931eric@gmail.com>",
 ]
 
-readme = "README.md"
 documentation = "https://wiki.grapycal.org/"
 
 include = ["src/grapycal/webpage/**/*","src/grapycal/Welcome.grapycal"] # Have to explicitly include here because Poetry by default ignores all files in the .gitignore file.
 
 [tool.poetry.dependencies]
 python = "^3.11"
-objectsync = ">=0.9.2"
+objectsync = ">=0.10.0"
 pyyaml = "^6.0"
 dacite = "^1.8.1"
 usersettings = "^1.1.5"
 aiohttp = "^3.9.1"
 toml = "^0.10.2"
 certifi = "^2023.11.17"
+fastapi = "^0.110.1"
+uvicorn = "^0.29.0"
 
 [tool.poetry.group.docs]
 optional = true

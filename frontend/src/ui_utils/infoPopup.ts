@@ -39,7 +39,6 @@ export class InfoPopup extends Componentable{
         `
     }
     baseDiv: HTMLDivElement
-    transform: Transform
     private _mouseOver: boolean = false
     get mouseOver(): boolean {return this._mouseOver}
 
@@ -47,7 +46,6 @@ export class InfoPopup extends Componentable{
         super()
         this.baseDiv = this.htmlItem.baseElement as HTMLDivElement
         this.htmlItem.setParentElement(document.body)
-        this.transform = new Transform(this)
 
         this.hide()
 

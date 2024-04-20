@@ -11,12 +11,12 @@ export class ListEditor extends Editor<ListTopic<any>> {
     get template() {
         return `
         <div class="attribute-editor flex-horiz stretch">
-            <div id="attribute-name" class="attribute-name"></div>
+            <div ref="attributeName" class="attribute-name"></div>
             <div class="container">
-                <div class="container" id="slot_container"></div>
+                <div ref="container" class="container" slot="container" id="container"></div>
                 <div class="container horiz">
-                    <input id="input" type="text" class="grow">
-                    <button id="add-button" class="button center-align">+</button>
+                    <input ref="addInput" type="text" class="grow">
+                    <button ref="addButton" class="button center-align">+</button>
                 </div>
             </div>
         </div>
@@ -47,8 +47,10 @@ export class ListEditor extends Editor<ListTopic<any>> {
     private readonly container: HTMLDivElement
     private readonly addButton: HTMLButtonElement
     private readonly addInput: HTMLInputElement
+    private readonly attributeName: HTMLDivElement
     private readonly items: Set<ListEditorItem> = new Set();
     private locked = false;
+
 
     constructor(displayName: string, editorArgs: any, connectedAttributes: Topic<any>[]) {
         super()
@@ -57,10 +59,6 @@ export class ListEditor extends Editor<ListTopic<any>> {
             this.connectedAttributes.push(as(attr, ListTopic))
         }
 
-        this.container = as(this.htmlItem.getHtmlEl('slot_container'), HTMLDivElement)
-        this.addInput = as(this.htmlItem.getHtmlEl('input'), HTMLInputElement)
-        this.addButton = as(this.htmlItem.getHtmlEl('add-button'), HTMLButtonElement)
-
         this.linker.link2(this.addInput, 'keydown', (e: KeyboardEvent) => {
             if (e.key === 'Enter') {
                 this.addHandler()
@@ -68,7 +66,7 @@ export class ListEditor extends Editor<ListTopic<any>> {
         })
         this.linker.link2(this.addButton, 'click', this.addHandler)
 
-        this.htmlItem.getHtmlEl('attribute-name').innerText = displayName
+        this.attributeName.innerText = displayName
 
         for (let attr of connectedAttributes) {
             this.linker.link(attr.onSet, this.updateValue)
@@ -144,8 +142,8 @@ class ListEditorItem extends Componentable {
     get template() {
         return `
         <div class="item flex-horiz stretch">
-            <div id="list-editor-item-text"class="text"></div>
-            <button id="list-editor-item-delete" class="button center-align">-</button>
+            <div ref="textDiv" class="text"></div>
+            <button ref="deleteButton" class="button center-align">-</button>
         </div>
         `
     }
@@ -184,8 +182,6 @@ class ListEditorItem extends Componentable {
         super()
         this.text = text
         this.position = position
-        this.textDiv = as(this.htmlItem.getHtmlEl('list-editor-item-text'), HTMLDivElement)
-        this.deleteButton = as(this.htmlItem.getHtmlEl('list-editor-item-delete'), HTMLButtonElement)
         this.textDiv.innerText = text
         this.linker.link2(this.deleteButton, 'click', this.deleteClickedHandler)
     }

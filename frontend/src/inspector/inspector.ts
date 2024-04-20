@@ -10,7 +10,6 @@ import { TextEditor } from "./TextEditor"
 import { ListEditor } from "./ListEditor"
 import { IntEditor } from "./IntEditor"
 import { FloatEditor } from "./FloatEditor"
-import { ObjSetEditor } from "./ObjSetEditor"
 import { print } from "../devUtils"
 import { ButtonEditor } from "./ButtonEditor"
 import { OptionsEditor as OptionsEditor } from "./OptionEditor"
@@ -32,7 +31,6 @@ export class Inspector extends Componentable{
         'list':ListEditor,
         'int':IntEditor,
         'float':FloatEditor,
-        'objSet':ObjSetEditor,
         'button':ButtonEditor,
         'options':OptionsEditor,
         'dict':DictEditor
@@ -40,7 +38,7 @@ export class Inspector extends Componentable{
     }
 
     protected get template(): string {return `
-        <div class="full-height flex-vert" id="slot_default">
+        <div class="full-height flex-vert" slot="default">
         </div>
         `;
     }
@@ -89,11 +87,9 @@ export class Inspector extends Componentable{
     }
 
     private getTopicForEditor(topicName:string,editorType:Constructor<any>){
-        if(editorType === ObjSetEditor){
-            return Workspace.instance.objectsync.getTopic(topicName,ObjSetTopic);
-        }else{
+        
             return Workspace.instance.objectsync.getTopic(topicName);
-        }
+        
     }
 
     public addEditor<T extends Topic<any>|ObjectTopic<any>|ObjListTopic<any>|ObjSetTopic<any>|ObjDictTopic<any>>(editor:Editor<T>,category:string|string[]='',id=''): T{

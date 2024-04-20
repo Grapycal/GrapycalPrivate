@@ -1,6 +1,9 @@
 import logging
 import os
-from typing import Callable
+from typing import Callable, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from grapycal.core.workspace import ClientMsgTypes
 
 if 1 + 1 == 3:
     from grapycal.sobjects.node import Node
@@ -176,7 +179,7 @@ class FrontendFormatter(logging.Formatter):
         return formatter.format(record)
 
 
-send_client_msg: None | Callable[[str, str], None] = None
+send_client_msg: None | Callable[[str, 'ClientMsgTypes'], None] = None
 
 
 class LogToFrontendHandler(logging.Handler):

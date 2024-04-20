@@ -1,4 +1,6 @@
 import { print } from "../devUtils"
+import { Node } from "../sobjects/node"
+import { Workspace } from "../sobjects/workspace"
 import { Action, Constructor, Vector2, as, defined } from "../utils"
 import { Component, IComponentable } from "./component"
 import { Transform } from "./transform"
@@ -29,6 +31,9 @@ function addPrefixToCssClasses(css: string, prefix: string): string{
     });
 }
 
+/**
+ * Display a template in the DOM.
+ */
 export class HtmlItem extends Component{
     private static styleAdded = new Set<string>()
 
@@ -36,7 +41,6 @@ export class HtmlItem extends Component{
 
     baseElement: Element;
     parent_slot: Element;
-    slots: Map<string,HTMLElement> = new Map();
     parent_: HtmlItem;
     get parent(){return this.parent_;}
     children: {item:HtmlItem,slotName:string,order:'append'|'prepend'}[] = [];
@@ -68,7 +72,7 @@ export class HtmlItem extends Component{
 
     applyTemplate(template: string|HTMLTemplateElement, order: "prepend"|"append" = "prepend"){
         // create element from template
-        if (this.baseElement !== null)
+        if (this.baseElement !== null && this.parent_slot !== null)
             this.parent_slot.removeChild(this.baseElement);
 
         let templateElement: HTMLTemplateElement;
@@ -78,7 +82,6 @@ export class HtmlItem extends Component{
         }else{
             templateElement = template;
         }
-
         if(this.useCss){
             addPrefixToHtmlClasses(templateElement, this.object.constructor.name);
         }
@@ -101,41 +104,28 @@ export class HtmlItem extends Component{
         else
             this.parent_slot?.prepend(this.baseElement);
 
-        // search for elements that id = slot_name
-        // if found, add to slots:
-        this.slots = new Map();
-        const slotElements = this.baseElement.querySelectorAll('[id^="slot_"]')
-        if(this.baseElement.id.startsWith('slot_')){
-            const slotName = this.baseElement.id.slice(5);
-            this.addSlot(slotName, as(this.baseElement,HTMLElement));
-        }
-
-        for(let element of slotElements){
-            const slotName = element.id.slice(5);
-            this.addSlot(slotName, as(element,HTMLElement));
-        }
-        
         // move children to slots
         for(let child of this.children){
             if(child.item.baseElement===null) continue;
-            const slot = this.slots.get(child.slotName);
-            if(slot === undefined)
-                throw new Error(`Slot ${child.slotName} not found`);
+            const slot = this.getSlot(child.slotName);
             if(order === "append")
                 slot.appendChild(child.item.baseElement);
             else
                 slot.prepend(child.item.baseElement);
+            child.item.parent_slot = slot;
         }
+        
+        this._refs = this._getRefs(); // create refs
         
         this.templateChanged.invoke();
     }
 
     addChild(child: HtmlItem,slotName: string, order: "prepend"|"append" = "prepend"){
-        const slot = this.slots.get(slotName);
+        const slot = this.getSlot(slotName);
         if(slot === undefined)
             throw new Error(`Slot ${slotName} not found`);
 
-        if(child.baseElement===null) return slot;
+        if(child.baseElement===null) throw new Error('child.baseElement is null');
         if(order === "append")
             slot.appendChild(child.baseElement);
         else
@@ -206,6 +196,29 @@ export class HtmlItem extends Component{
         }
     }
 
+    private _refs: Map<string,Element> = null;
+    private _getRefs(): Map<string,Element>{
+        /**
+         * Get all elements with ref attribute in the template.
+         */
+        const element = this.baseElement.querySelectorAll(`[template_id="${this.templateId}"][ref]`);
+        const refs = new Map<string,Element>();
+        for (let i = 0; i < element.length; i++){
+            const el = element[i];
+            const ref = el.getAttribute('ref');
+            refs.set(ref,el);
+            el.removeAttribute('ref');
+        }
+        if (this.baseElement.hasAttribute('ref')){
+            const ref = this.baseElement.getAttribute('ref');
+            refs.set(ref,this.baseElement);
+            this.baseElement.removeAttribute('ref');
+        }
+        return refs;
+    }
+    getRefs(): Map<string,Element>{
+        return this._refs
+    }
 
 
     setParent(parent: HtmlItem, slot: string = 'default', order: "prepend"|"append"="append"): void{
@@ -233,18 +246,16 @@ export class HtmlItem extends Component{
     moveToBack(){
         this.parent_slot?.prepend(this.baseElement);
     }
-
-    addSlot(name: string, element: HTMLElement){
-        this.slots.set(name,element);
-    }
-    removeSlot(name: string){
-        this.slots.delete(name);
-    }
     getSlot(name: string): HTMLElement{
-        const slot = this.slots.get(name);
-        if (slot === undefined)
+        // if baseElement is the slot
+        if (this.baseElement.getAttribute('slot') === name)
+            return as(this.baseElement,HTMLElement);
+
+        // search for slot in children
+        var slot = this.baseElement.querySelector(`[slot="${name}"][template_id="${this.templateId}"]`);
+        if (slot === undefined || slot === null)
             throw new Error(`Slot ${name} not found`);
-        return slot;
+        return as(slot,HTMLElement);
     }
     findTransformParent(): Transform|null{
         let i : HtmlItem = this.parent;

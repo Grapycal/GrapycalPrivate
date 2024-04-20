@@ -8,6 +8,7 @@ from grapycal.extension.utils import NodeInfo
 from grapycal.sobjects.controls.imageControl import ImageControl
 from grapycal.sobjects.edge import Edge
 from grapycal.sobjects.port import InputPort
+from grapycal.stores import main_store
 from objectsync.sobject import SObjectSerialized
 import websockets
 from websockets.sync.client import connect
@@ -95,7 +96,7 @@ class RosbridgeNode(Node):
         self.connect_btn.label.set('Disconnect')
         self.url.editable.set(False)
         self.status = RosbridgeNode.Status.CONNECTED
-        self.workspace.clock.on_tick += self.on_tick
+        main_store.clock.on_tick += self.on_tick
 
         for topic_name,topic_type in self.subs_info.get().items():
             self.send(json.dumps({
@@ -106,7 +107,7 @@ class RosbridgeNode(Node):
 
     def disconnect(self):
         self.ws.close()
-        self.workspace.clock.on_tick -= self.on_tick
+        main_store.clock.on_tick -= self.on_tick
         self.url.editable.set(True)
         self.status = RosbridgeNode.Status.NOT_CONNECTED
         self.connect_btn.label.set('Connect')
@@ -132,20 +133,20 @@ class RosbridgeNode(Node):
             self.on_recv_msg(msg)
         
     def on_recv_msg(self, msg_str: str):
-        self.recv_port.push_data(msg_str)
+        self.recv_port.push(msg_str)
         self.flash_running_indicator()
 
         msg = json.loads(msg_str)
         if msg['op'] == 'publish':
             topic_name = msg['topic']
             if self.has_out_port(topic_name):
-                self.get_out_port(topic_name).push_data(msg['msg'])
+                self.get_out_port(topic_name).push(msg['msg'])
 
     def edge_activated(self, edge: Edge, port: InputPort):
         if port == self.send_port:
             if self.status != RosbridgeNode.Status.CONNECTED:
                 return
-            msg = edge.get_data()
+            msg = edge.get()
             if not isinstance(msg, str):
                 msg = json.dumps(msg)
             self.ws.send(msg)

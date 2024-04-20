@@ -1,4 +1,4 @@
-from typing import List
+from typing import TYPE_CHECKING, List
 from grapycal.extension.utils import NodeInfo
 from grapycal.sobjects.controls.buttonControl import ButtonControl
 from grapycal.sobjects.controls.optionControl import OptionControl
@@ -8,6 +8,7 @@ from grapycal.sobjects.functionNode import FunctionNode
 from grapycal.sobjects.node import Node, deprecated
 from grapycal.sobjects.port import InputPort
 from grapycal import FloatTopic, StringTopic
+from grapycal.stores import main_store
 from objectsync import ObjSetTopic, SObject
 import torch
 from torch import nn
@@ -15,11 +16,13 @@ from torch import nn
 from .utils import setup_net_name_ctrl
 from .moduleNode import ModuleNode
 
-from .manager import Manager as M
+if TYPE_CHECKING:
+    from grapycal_torch import GrapycalTorch
 
 
 @deprecated("Use TrainNode instead.", "0.3.0", "0.4.0")
 class TrainerNode(Node):
+    ext: "GrapycalTorch"
     category = "torch/training"
 
     def build_node(self):
@@ -52,8 +55,8 @@ class TrainerNode(Node):
 
     def get_module_nodes(self) -> List[ModuleNode]:
         result: List[ModuleNode] = []
-        for name in self.network_names.get_one_data().split(","):
-            mn = M.net.get_module_nodes(name)
+        for name in self.network_names.get().split(","):
+            mn = self.ext.net.get_module_nodes(name)
             result += mn
         return result
 
@@ -70,9 +73,9 @@ class TrainerNode(Node):
             )
             self.print("recreated optimizer, ", len(self.tracked_modules), " modules")
 
-    def edge_activated(self, edge: Edge, port: InputPort):
+    def port_activated(self, port: InputPort):
         if port == self.train_port:
-            self.run(self.train_step, loss=edge.get_data())
+            self.run(self.train_step, loss=port.get())
             return
 
         if port == self.init_modules_port:
@@ -81,7 +84,7 @@ class TrainerNode(Node):
             self.run(self.eval_mode)
         elif port == self.train_mode_port:
             self.run(self.train_mode)
-        port.get_data()  # deactivates the edge
+        port.get_all()  # deactivates the edge
 
     def init_modules(self):
         for mn in self.get_module_nodes():
@@ -113,6 +116,10 @@ class TrainerNode(Node):
 
 
 class TrainNode(Node):
+    '''
+    Train a network using a loss value. Pass in the loss to train for one step.
+    '''
+    ext: "GrapycalTorch"
     category = "torch/training"
 
     def build_node(self):
@@ -126,14 +133,14 @@ class TrainNode(Node):
     def init_node(self):
         self.network_name = self.network_port.default_control.value
         self.to_unlink = setup_net_name_ctrl(
-            self.network_port.default_control, multi=True, set_value=self.is_new
+            self.network_port.default_control,self.ext, multi=True, set_value=self.is_new
         )
         self.optimizing_modules: set[nn.Module] = set()
         self.optimizer_device = None
 
     def edge_activated(self, edge: Edge, port: InputPort):
         if port == self.loss_port:
-            self.run(self.train_step, loss=edge.get_data())
+            self.run(self.train_step, loss=edge.get())
             return
         if port == self.network_port:
             self.label.set("Train " + self.network_name.get())
@@ -142,8 +149,8 @@ class TrainNode(Node):
         names = self.network_name.get()
         res = []
         for name in names.split(","):
-            if M.net.has_network(name):
-                res += M.net.get_module_nodes(name)
+            if self.ext.net.has_network(name):
+                res += self.ext.net.get_module_nodes(name)
             else:
                 raise Exception(f"Network {name} does not exist.")
         return res
@@ -175,18 +182,19 @@ class TrainNode(Node):
 
 
 class SaveNode(Node):
+    ext: "GrapycalTorch"
     category = "torch/training"
 
     def build_node(self):
-        self.label.set("Save")
+        self.label.set("Save Network")
         self.network_port = self.add_in_port(
             "network", control_type=OptionControl, options=["net a", "net b"]
         )
-        self.path_port = self.add_in_port("path", control_type=TextControl)
-        self.save_port = self.add_in_port("save network", control_type=ButtonControl)
+        self.path_port = self.add_in_port("file", control_type=TextControl)
+        self.save_port = self.add_in_port("save", control_type=ButtonControl)
 
     def init_node(self):
-        self.to_unlink = setup_net_name_ctrl(self.network_port.default_control, set_value=self.is_new)
+        self.to_unlink = setup_net_name_ctrl(self.network_port.default_control, self.ext,set_value=self.is_new)
         self.network_name = self.network_port.default_control.value
         self.path = self.path_port.default_control.text
 
@@ -196,13 +204,13 @@ class SaveNode(Node):
     def edge_activated(self, edge: Edge, port: InputPort):
         if port == self.save_port:
             self.run(self.save)
-            port.get_one_data()
+            port.get()
 
     def save(self):
         network_name = self.network_name.get()
         path = self.path.get()
-        M.net.save_network(network_name, path)
-        self.workspace.send_message_to_all(f"Saved {network_name} to {path}.")
+        self.ext.net.save_network(network_name, path)
+        main_store.send_message_to_all(f"Saved {network_name} to {path}.")
 
     def destroy(self):
         self.to_unlink()
@@ -210,18 +218,19 @@ class SaveNode(Node):
 
 
 class LoadNode(Node):
+    ext: "GrapycalTorch"
     category = "torch/training"
 
     def build_node(self):
-        self.label.set("Load")
+        self.label.set("Load Network")
         self.network_port = self.add_in_port(
             "network", control_type=OptionControl, options=["net a", "net b"]
         )
-        self.path_port = self.add_in_port("path", control_type=TextControl)
-        self.load_port = self.add_in_port("load network", control_type=ButtonControl)
+        self.path_port = self.add_in_port("file", control_type=TextControl)
+        self.load_port = self.add_in_port("load", control_type=ButtonControl)
 
     def init_node(self):
-        self.to_unlink = setup_net_name_ctrl(self.network_port.default_control, set_value=self.is_new)
+        self.to_unlink = setup_net_name_ctrl(self.network_port.default_control, self.ext,set_value=self.is_new)
         self.network_name = self.network_port.default_control.value
         self.path = self.path_port.default_control.text
 
@@ -231,13 +240,17 @@ class LoadNode(Node):
     def edge_activated(self, edge: Edge, port: InputPort):
         if port == self.load_port:
             self.run(self.load)
-            port.get_one_data()
+            port.get()
 
     def load(self):
         network_name = self.network_name.get()
         path = self.path.get()
-        M.net.load_network(network_name, path)
-        self.workspace.send_message_to_all(f"Loaded {network_name} from {path}.")
+        try:
+            self.ext.net.load_network(network_name, path, self)
+        except Exception as e:
+            self.print_exception(e,-1)
+            return
+        main_store.send_message_to_all(f"Loaded {network_name} from {path}.")
 
     def destroy(self):
         self.to_unlink()

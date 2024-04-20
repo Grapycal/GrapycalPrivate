@@ -1,4 +1,4 @@
-import { IntTopic, StringTopic } from "objectsync-client"
+import { EventTopic, IntTopic, StringTopic } from "objectsync-client"
 import { Control } from "./control"
 import { print } from "../../devUtils"
 import { BindInputBoxAndTopic } from "../../ui_utils/interaction"
@@ -6,18 +6,18 @@ import { TextBox} from "../../utils"
 
 
 export class TextControl extends Control {
-    
+
     textBox: TextBox
     text = this.getAttribute("text", StringTopic)
     label = this.getAttribute("label", StringTopic)
     editable = this.getAttribute("editable", IntTopic)
     placeholder = this.getAttribute("placeholder", StringTopic)
 
-    protected template = `
+    protected get template (){return `
     <div class="control flex-horiz">
         <div class="label" id="label">Text</div>
     </div>
-    `
+    `}
 
     protected css: string = `
         .label{
@@ -25,6 +25,8 @@ export class TextControl extends Control {
             min-width: 20px;
         }
     `
+
+
 
     protected onStart(): void {
         super.onStart()
@@ -37,8 +39,12 @@ export class TextControl extends Control {
         this.textBox.textarea.classList.add("control-text","text-field")
         this.textBox.value = this.text.getValue()
         this.textBox.onResize.add(()=>{this.node.moved.invoke()})
-        
+
         new BindInputBoxAndTopic(this,this.textBox, this.text,this.objectsync,true)
+
+        this.link2(this.textBox as any, "blur", () => {
+            this.makeRequest('finish')
+        })
 
         let labelEl = this.htmlItem.getEl("label", HTMLDivElement)
         this.link(this.label.onSet, (label) => {
