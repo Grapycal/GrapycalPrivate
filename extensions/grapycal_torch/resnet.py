@@ -183,6 +183,8 @@ class ResNet:
         self.layers = layers
         self.current_x_pos = start_x_pos
         self.current_y_pos = start_y_pos
+        self.x = start_x_pos
+        self.y = start_y_pos
         self.conv1 = self.grapycal_torch.create_node(
             Conv2dNode,
             [self.current_x_pos, self.current_y_pos],
@@ -196,7 +198,7 @@ class ResNet:
         self.bn1 = self.grapycal_torch.create_node(
             BatchNorm2dNode,
             [
-                self.current_x_pos + GRID * self.spacing,  # add some space
+                self.current_x_pos + GRID * 7,  # add some space
                 self.current_y_pos,
             ],
             num_features=self.inplanes,
@@ -204,14 +206,14 @@ class ResNet:
         self.relu = self.grapycal_torch.create_node(
             ReLUNode,
             [
-                self.current_x_pos + GRID * self.spacing * 1,  # add some space
+                self.current_x_pos + GRID * 14,  # add some space
                 self.current_y_pos,
             ],
         )
         self.maxpool = self.grapycal_torch.create_node(
             MaxPool2dNode,
             [
-                self.current_x_pos + GRID * self.spacing + 2,  # add some space
+                self.current_x_pos + GRID * 21,  # add some space
                 self.current_y_pos,
             ],
             kernel_size=3,
@@ -247,8 +249,12 @@ class ResNet:
             spacing=self.spacing,
         )
 
-    def connect_internal(self, prev_output: OutputPort):
-        # TODO: connect the init layers
+    def connect_internal(self):
+        self.grapycal_torch.create_edge(self.conv1.out_ports[0], self.bn1.in_ports[0])
+        self.grapycal_torch.create_edge(self.bn1.out_ports[0], self.relu.in_ports[0])
+        self.grapycal_torch.create_edge(
+            self.relu.out_ports[0], self.maxpool.in_ports[0]
+        )
         prev_output = self.maxpool.out_ports[0]
         for layer in self.layer1:
             prev_output = layer.connect_internal(prev_output)
@@ -299,4 +305,6 @@ class ResNet:
                 )
             )
 
+        self.x = max(self.x, x_pos + blocks * GRID * 36)
+        self.y = max(self.y, y_pos)
         return nodes
