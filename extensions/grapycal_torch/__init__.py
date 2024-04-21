@@ -1,71 +1,77 @@
 import asyncio
+import io
 from pathlib import Path
-from typing import Literal, Sequence, Tuple, Type, cast
-from grapycal.extension.utils import NodeInfo
-from grapycal_builtin.function.math import AdditionNode
-from grapycal.sobjects.edge import Edge
-from grapycal.sobjects.port import InputPort, Port
-from grapycal_torch.manager import MNManager, NetManager
-from .basic import *
-from .cnn import *
-from .activation import *
-from .tensor_operations import *
-from .tensor import *
-from .optimizerNode import *
-from .transform import *
-from .dataloader import *
-from .normalize import *
-from .loss import *
-from .generative import *
-from .networkDef import *
-from .settings import *
-from .configureNode import *
-from .pooling import *
-from .conversion import *
+from typing import Dict, List, Literal, Sequence, Tuple, Type, cast
 
-
+import aiofiles
+import matplotlib
+import matplotlib.pyplot as plt
 import torch
-torch.set_printoptions(threshold=20)
 import torchvision
+from grapycal import (
+    GRID,
+    CommandCtx,
+    Edge,
+    Extension,
+    FunctionNode,
+    InputPort,
+    Node,
+    SourceNode,
+    command,
+)
+from grapycal.extension.utils import NodeInfo
+from grapycal.sobjects.port import OutputPort
+from grapycal.stores import main_store
+from topicsync.topic import FloatTopic
 from torchvision import transforms
 
-from grapycal import GRID, Node, Edge, InputPort, Extension, command, CommandCtx
-
-import io
-import matplotlib
+from grapycal_torch.activation import LeakyReLUNode, ReLUNode
+from grapycal_torch.basic import FlattenNode, LinearNode
+from grapycal_torch.cnn import Conv2dNode
+from grapycal_torch.manager import MNManager, NetManager
+from grapycal_torch.moduleNode import ModuleNode, SimpleModuleNode
+from grapycal_torch.networkDef import NetworkCallNode, NetworkInNode, NetworkOutNode
+from grapycal_torch.normalize import BatchNorm2dNode
+from grapycal_torch.pooling import MaxPool2dNode
+from grapycal_torch.resnet import ResNet
 
 matplotlib.use("agg")  # use non-interactive backend
-import matplotlib.pyplot as plt
-import numpy as np
+torch.set_printoptions(threshold=20)
+
 
 class GrapycalTorch(Extension):
-
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.mn = MNManager()
         self.net = NetManager(self)
 
-    @command('Create network: empty')
-    def create_network(self,ctx:CommandCtx):
+    @command("Create network: empty")
+    def create_network(self, ctx: CommandCtx):
         x = ctx.mouse_pos[0]
         y = ctx.mouse_pos[1]
 
-        name = self.net.next_name('Network')
+        name = self.net.next_name("Network")
 
-        in_node = self.create_node(NetworkInNode, [x-150, y], name=name)
-        out_node = self.create_node(NetworkOutNode, [x+150, y], name=name)
-        tail = in_node.get_out_port('x')
-        head = out_node.get_in_port('y')
+        in_node = self.create_node(NetworkInNode, [x - 150, y], name=name)
+        out_node = self.create_node(NetworkOutNode, [x + 150, y], name=name)
+        tail = in_node.get_out_port("x")
+        head = out_node.get_in_port("y")
         self.create_edge(tail, head)
 
-        self.create_node(NetworkCallNode, [x-150, y+100], name=name)
+        self.create_node(NetworkCallNode, [x - 150, y + 100], name=name)
 
-    def create_sequential(self,x:float,y:float,node_types:Sequence[Type[Node]|Tuple[Type[Node],dict]|Literal['\n']],gap:float=2):
+    def create_sequential(
+        self,
+        x: float,
+        y: float,
+        node_types: Sequence[Type[Node] | Tuple[Type[Node], dict] | Literal["\n"]],
+        gap: float = 2,
+    ):
         y0 = y
-        nodes:List[Node] = []
+        nodes: List[Node] = []
         for item in node_types:
-            if item == '\n':
-                x += GRID*12
+            if item == "\n":
+                x += GRID * 12
                 y = y0
                 continue
             if isinstance(item, tuple):
@@ -75,19 +81,35 @@ class GrapycalTorch(Extension):
                 kwargs = {}
             new_node = self.create_node(nt, [x, y], **kwargs)
             nodes.append(new_node)
-            y += GRID*gap
+            y += GRID * gap
 
-        for i in range(len(nodes)-1):
+        for i in range(len(nodes) - 1):
             tail = nodes[i].out_ports[0]
-            head = nodes[i+1].in_ports[0]
+            head = nodes[i + 1].in_ports[0]
             assert tail is not None and head is not None
             self.create_edge(tail, head)
-        
+
         return nodes, x, y
-    
-    def wrap_with_network(self,inputs:Dict[str,InputPort],outputs:Dict[str,OutputPort],x1:float,y1:float,x2:float,y2:float,name:str):
-        in_node = self.create_node(NetworkInNode, [x1-200, y1-GRID], name=name, inputs=list(inputs.keys()))
-        out_node = self.create_node(NetworkOutNode, [x2+150, y2-GRID*3], name=name, outputs=list(outputs.keys()))
+
+    def wrap_with_network(
+        self,
+        inputs: Dict[str, InputPort],
+        outputs: Dict[str, OutputPort],
+        x1: float,
+        y1: float,
+        x2: float,
+        y2: float,
+        name: str,
+    ):
+        in_node = self.create_node(
+            NetworkInNode, [x1 - 200, y1 - GRID], name=name, inputs=list(inputs.keys())
+        )
+        out_node = self.create_node(
+            NetworkOutNode,
+            [x2 + 150, y2 - GRID * 3],
+            name=name,
+            outputs=list(outputs.keys()),
+        )
         for inp, port in inputs.items():
             tail = in_node.get_out_port(inp)
             assert tail is not None
@@ -98,188 +120,390 @@ class GrapycalTorch(Extension):
             assert head is not None
             self.create_edge(port, head)
 
-    def set_num_features(self,nodes:Sequence[Node],num_features:List[int]):
+    def set_num_features(self, nodes: Sequence[Node], num_features: List[int]):
         i = 0
         for node in nodes:
-            if isinstance(node,LinearNode):
+            if isinstance(node, LinearNode):
                 node.in_features.set(num_features[i])
-                node.out_features.set(num_features[i+1])
+                node.out_features.set(num_features[i + 1])
                 i += 1
-            if isinstance(node,Conv2dNode):
+            if isinstance(node, Conv2dNode):
                 node.in_channels.set(num_features[i])
-                node.out_channels.set(num_features[i+1])
+                node.out_channels.set(num_features[i + 1])
                 i += 1
 
-    def create_mlp(self,ctx:CommandCtx,node_types:Sequence[Type[Node]],num_features:List[int]):
-        name = self.net.next_name('MLP')
+    def create_mlp(
+        self, ctx: CommandCtx, node_types: Sequence[Type[Node]], num_features: List[int]
+    ):
+        name = self.net.next_name("MLP")
 
         x, y = ctx.mouse_pos
-        nodes, x1, y1 = self.create_sequential(x,y,node_types)
+        nodes, x1, y1 = self.create_sequential(x, y, node_types)
 
-        inputs = {'x':cast(InputPort,nodes[0].in_ports[0])}
-        outputs = {'y':cast(OutputPort,nodes[-1].out_ports[0])}
+        inputs = {"x": cast(InputPort, nodes[0].in_ports[0])}
+        outputs = {"y": cast(OutputPort, nodes[-1].out_ports[0])}
 
-        self.wrap_with_network(inputs,outputs,x,y,x1,y1,name)
-        self.set_num_features(nodes,num_features)
-    
-    @command('Create network: Linear')
-    def create_linear(self,ctx:CommandCtx):
+        self.wrap_with_network(inputs, outputs, x, y, x1, y1, name)
+        self.set_num_features(nodes, num_features)
+
+    @command("Create network: Linear")
+    def create_linear(self, ctx: CommandCtx):
         node_types = [LinearNode]
         num_features = [1, 10]
-        self.create_mlp(ctx,node_types,num_features)
+        self.create_mlp(ctx, node_types, num_features)
 
-    @command('Create network: MLP 3 layer')
-    def create_mlp_3(self,ctx:CommandCtx):
-        node_types = [LinearNode,ReLUNode,LinearNode,ReLUNode,LinearNode]
+    @command("Create network: MLP 3 layer")
+    def create_mlp_3(self, ctx: CommandCtx):
+        node_types = [LinearNode, ReLUNode, LinearNode, ReLUNode, LinearNode]
         num_features = [1, 10, 10, 1]
-        self.create_mlp(ctx,node_types,num_features)
+        self.create_mlp(ctx, node_types, num_features)
 
-    @command('Create network: MLP 5 layer')
-    def create_mlp_5(self,ctx:CommandCtx):
-        node_types = [LinearNode,ReLUNode]*5
+    @command("Create network: MLP 5 layer")
+    def create_mlp_5(self, ctx: CommandCtx):
+        node_types = [LinearNode, ReLUNode] * 5
         node_types.pop()
         num_features = [1, 10, 10, 10, 10, 1]
-        self.create_mlp(ctx,node_types,num_features)
+        self.create_mlp(ctx, node_types, num_features)
 
-    @command('Create network: LeNet')
-    def create_lenet(self,ctx:CommandCtx):
+    @command("Create network: LeNet")
+    def create_lenet(self, ctx: CommandCtx):
         node_types = [
-            (Conv2dNode,{'in_channels':1,'out_channels':6,'kernel_size':5,'padding':0}),
+            (
+                Conv2dNode,
+                {"in_channels": 1, "out_channels": 6, "kernel_size": 5, "padding": 0},
+            ),
             ReLUNode,
-            (MaxPool2dNode,{'kernel_size':2}),
-            (Conv2dNode,{'in_channels':6,'out_channels':16,'kernel_size':5,'padding':0}),
+            (MaxPool2dNode, {"kernel_size": 2}),
+            (
+                Conv2dNode,
+                {"in_channels": 6, "out_channels": 16, "kernel_size": 5, "padding": 0},
+            ),
             ReLUNode,
-            (MaxPool2dNode,{'kernel_size':2}),
+            (MaxPool2dNode, {"kernel_size": 2}),
             FlattenNode,
-            '\n',
-            (LinearNode,{'in_features':16*5*5,'out_features':120}),
+            "\n",
+            (LinearNode, {"in_features": 16 * 5 * 5, "out_features": 120}),
             ReLUNode,
-            (LinearNode,{'in_features':120,'out_features':84}),
+            (LinearNode, {"in_features": 120, "out_features": 84}),
             ReLUNode,
-            (LinearNode,{'in_features':84,'out_features':10})
+            (LinearNode, {"in_features": 84, "out_features": 10}),
         ]
         x0, y0 = ctx.mouse_pos
-        nodes, x, y = self.create_sequential(ctx.mouse_pos[0],ctx.mouse_pos[1],node_types,gap=3)
-        
-        inputs = {'x':cast(InputPort,nodes[0].in_ports[0])}
-        outputs = {'y':cast(OutputPort,nodes[-1].out_ports[0])}
+        nodes, x, y = self.create_sequential(
+            ctx.mouse_pos[0], ctx.mouse_pos[1], node_types, gap=3
+        )
 
-        self.wrap_with_network(inputs,outputs,x0,y0,x,y,'LeNet')
+        inputs = {"x": cast(InputPort, nodes[0].in_ports[0])}
+        outputs = {"y": cast(OutputPort, nodes[-1].out_ports[0])}
 
-    @command('Create network: VGG16')
-    def create_vgg16(self,ctx:CommandCtx):
+        self.wrap_with_network(inputs, outputs, x0, y0, x, y, "LeNet")
+
+    @command("Create network: VGG16")
+    def create_vgg16(self, ctx: CommandCtx):
         node_types = [
-            (Conv2dNode,{'in_channels':3,'out_channels':64,'kernel_size':3,'padding':1}),
+            (
+                Conv2dNode,
+                {"in_channels": 3, "out_channels": 64, "kernel_size": 3, "padding": 1},
+            ),
             ReLUNode,
-            (Conv2dNode,{'in_channels':64,'out_channels':64,'kernel_size':3,'padding':1}),
+            (
+                Conv2dNode,
+                {"in_channels": 64, "out_channels": 64, "kernel_size": 3, "padding": 1},
+            ),
             ReLUNode,
-            (MaxPool2dNode,{'kernel_size':2}),
-            (Conv2dNode,{'in_channels':64,'out_channels':128,'kernel_size':3,'padding':1}),
+            (MaxPool2dNode, {"kernel_size": 2}),
+            (
+                Conv2dNode,
+                {
+                    "in_channels": 64,
+                    "out_channels": 128,
+                    "kernel_size": 3,
+                    "padding": 1,
+                },
+            ),
             ReLUNode,
-            (Conv2dNode,{'in_channels':128,'out_channels':128,'kernel_size':3,'padding':1}),
+            (
+                Conv2dNode,
+                {
+                    "in_channels": 128,
+                    "out_channels": 128,
+                    "kernel_size": 3,
+                    "padding": 1,
+                },
+            ),
             ReLUNode,
-            (MaxPool2dNode,{'kernel_size':2}),
-            (Conv2dNode,{'in_channels':128,'out_channels':256,'kernel_size':3,'padding':1}),
+            (MaxPool2dNode, {"kernel_size": 2}),
+            (
+                Conv2dNode,
+                {
+                    "in_channels": 128,
+                    "out_channels": 256,
+                    "kernel_size": 3,
+                    "padding": 1,
+                },
+            ),
             ReLUNode,
-            (Conv2dNode,{'in_channels':256,'out_channels':256,'kernel_size':3,'padding':1}),
+            (
+                Conv2dNode,
+                {
+                    "in_channels": 256,
+                    "out_channels": 256,
+                    "kernel_size": 3,
+                    "padding": 1,
+                },
+            ),
             ReLUNode,
-            (Conv2dNode,{'in_channels':256,'out_channels':256,'kernel_size':3,'padding':1}),
+            (
+                Conv2dNode,
+                {
+                    "in_channels": 256,
+                    "out_channels": 256,
+                    "kernel_size": 3,
+                    "padding": 1,
+                },
+            ),
             ReLUNode,
-            (MaxPool2dNode,{'kernel_size':2}),
-            '\n',
-            (Conv2dNode,{'in_channels':256,'out_channels':512,'kernel_size':3,'padding':1}),
+            (MaxPool2dNode, {"kernel_size": 2}),
+            "\n",
+            (
+                Conv2dNode,
+                {
+                    "in_channels": 256,
+                    "out_channels": 512,
+                    "kernel_size": 3,
+                    "padding": 1,
+                },
+            ),
             ReLUNode,
-            (Conv2dNode,{'in_channels':512,'out_channels':512,'kernel_size':3,'padding':1}),
+            (
+                Conv2dNode,
+                {
+                    "in_channels": 512,
+                    "out_channels": 512,
+                    "kernel_size": 3,
+                    "padding": 1,
+                },
+            ),
             ReLUNode,
-            (Conv2dNode,{'in_channels':512,'out_channels':512,'kernel_size':3,'padding':1}),
+            (
+                Conv2dNode,
+                {
+                    "in_channels": 512,
+                    "out_channels": 512,
+                    "kernel_size": 3,
+                    "padding": 1,
+                },
+            ),
             ReLUNode,
-            (MaxPool2dNode,{'kernel_size':2}),
-            (Conv2dNode,{'in_channels':512,'out_channels':512,'kernel_size':3,'padding':1}),
+            (MaxPool2dNode, {"kernel_size": 2}),
+            (
+                Conv2dNode,
+                {
+                    "in_channels": 512,
+                    "out_channels": 512,
+                    "kernel_size": 3,
+                    "padding": 1,
+                },
+            ),
             ReLUNode,
-            (Conv2dNode,{'in_channels':512,'out_channels':512,'kernel_size':3,'padding':1}),
+            (
+                Conv2dNode,
+                {
+                    "in_channels": 512,
+                    "out_channels": 512,
+                    "kernel_size": 3,
+                    "padding": 1,
+                },
+            ),
             ReLUNode,
-            (Conv2dNode,{'in_channels':512,'out_channels':512,'kernel_size':3,'padding':1}),
+            (
+                Conv2dNode,
+                {
+                    "in_channels": 512,
+                    "out_channels": 512,
+                    "kernel_size": 3,
+                    "padding": 1,
+                },
+            ),
             ReLUNode,
-            (MaxPool2dNode,{'kernel_size':2}),
-            '\n',
+            (MaxPool2dNode, {"kernel_size": 2}),
+            "\n",
             FlattenNode,
-            (LinearNode,{'in_features':512*7*7,'out_features':4096}),
+            (LinearNode, {"in_features": 512 * 7 * 7, "out_features": 4096}),
             ReLUNode,
-            (LinearNode,{'in_features':4096,'out_features':4096}),
+            (LinearNode, {"in_features": 4096, "out_features": 4096}),
             ReLUNode,
-            (LinearNode,{'in_features':4096,'out_features':1000})
+            (LinearNode, {"in_features": 4096, "out_features": 1000}),
         ]
         x0, y0 = ctx.mouse_pos
-        nodes, x, y = self.create_sequential(ctx.mouse_pos[0],ctx.mouse_pos[1],node_types,gap=3)
+        nodes, x, y = self.create_sequential(
+            ctx.mouse_pos[0], ctx.mouse_pos[1], node_types, gap=3
+        )
 
-        inputs = {'image':cast(InputPort,nodes[0].in_ports[0])}
-        outputs = {'class pred':cast(OutputPort,nodes[-1].out_ports[0])}
+        inputs = {"image": cast(InputPort, nodes[0].in_ports[0])}
+        outputs = {"class pred": cast(OutputPort, nodes[-1].out_ports[0])}
 
-        self.wrap_with_network(inputs,outputs,x0,y0,x,y,'VGG16')
+        self.wrap_with_network(inputs, outputs, x0, y0, x, y, "VGG16")
 
-    @command('Create network: VGG16-BN')
-    def create_vgg16_bn(self,ctx:CommandCtx):
+    @command("Create network: VGG16-BN")
+    def create_vgg16_bn(self, ctx: CommandCtx):
         node_types = [
-            (Conv2dNode,{'in_channels':3,'out_channels':64,'kernel_size':3,'padding':1}),
-            (BatchNorm2dNode,{'num_features':64}),
+            (
+                Conv2dNode,
+                {"in_channels": 3, "out_channels": 64, "kernel_size": 3, "padding": 1},
+            ),
+            (BatchNorm2dNode, {"num_features": 64}),
             LeakyReLUNode,
-            (Conv2dNode,{'in_channels':64,'out_channels':64,'kernel_size':3,'padding':1}),
-            (BatchNorm2dNode,{'num_features':64}),
+            (
+                Conv2dNode,
+                {"in_channels": 64, "out_channels": 64, "kernel_size": 3, "padding": 1},
+            ),
+            (BatchNorm2dNode, {"num_features": 64}),
             LeakyReLUNode,
-            (MaxPool2dNode,{'kernel_size':2}),
-            (Conv2dNode,{'in_channels':64,'out_channels':128,'kernel_size':3,'padding':1}),
-            (BatchNorm2dNode,{'num_features':128}),
+            (MaxPool2dNode, {"kernel_size": 2}),
+            (
+                Conv2dNode,
+                {
+                    "in_channels": 64,
+                    "out_channels": 128,
+                    "kernel_size": 3,
+                    "padding": 1,
+                },
+            ),
+            (BatchNorm2dNode, {"num_features": 128}),
             LeakyReLUNode,
-            (Conv2dNode,{'in_channels':128,'out_channels':128,'kernel_size':3,'padding':1}),
-            (BatchNorm2dNode,{'num_features':128}),
+            (
+                Conv2dNode,
+                {
+                    "in_channels": 128,
+                    "out_channels": 128,
+                    "kernel_size": 3,
+                    "padding": 1,
+                },
+            ),
+            (BatchNorm2dNode, {"num_features": 128}),
             LeakyReLUNode,
-            (MaxPool2dNode,{'kernel_size':2}),
-            (Conv2dNode,{'in_channels':128,'out_channels':256,'kernel_size':3,'padding':1}),
-            (BatchNorm2dNode,{'num_features':256}),
+            (MaxPool2dNode, {"kernel_size": 2}),
+            (
+                Conv2dNode,
+                {
+                    "in_channels": 128,
+                    "out_channels": 256,
+                    "kernel_size": 3,
+                    "padding": 1,
+                },
+            ),
+            (BatchNorm2dNode, {"num_features": 256}),
             LeakyReLUNode,
-            (Conv2dNode,{'in_channels':256,'out_channels':256,'kernel_size':3,'padding':1}),
-            (BatchNorm2dNode,{'num_features':256}),
+            (
+                Conv2dNode,
+                {
+                    "in_channels": 256,
+                    "out_channels": 256,
+                    "kernel_size": 3,
+                    "padding": 1,
+                },
+            ),
+            (BatchNorm2dNode, {"num_features": 256}),
             LeakyReLUNode,
-            (Conv2dNode,{'in_channels':256,'out_channels':256,'kernel_size':3,'padding':1}),
-            (BatchNorm2dNode,{'num_features':256}),
+            (
+                Conv2dNode,
+                {
+                    "in_channels": 256,
+                    "out_channels": 256,
+                    "kernel_size": 3,
+                    "padding": 1,
+                },
+            ),
+            (BatchNorm2dNode, {"num_features": 256}),
             LeakyReLUNode,
-            (MaxPool2dNode,{'kernel_size':2}),
-            '\n',
-            (Conv2dNode,{'in_channels':256,'out_channels':512,'kernel_size':3,'padding':1}),
-            (BatchNorm2dNode,{'num_features':512}),
+            (MaxPool2dNode, {"kernel_size": 2}),
+            "\n",
+            (
+                Conv2dNode,
+                {
+                    "in_channels": 256,
+                    "out_channels": 512,
+                    "kernel_size": 3,
+                    "padding": 1,
+                },
+            ),
+            (BatchNorm2dNode, {"num_features": 512}),
             LeakyReLUNode,
-            (Conv2dNode,{'in_channels':512,'out_channels':512,'kernel_size':3,'padding':1}),
-            (BatchNorm2dNode,{'num_features':512}),
+            (
+                Conv2dNode,
+                {
+                    "in_channels": 512,
+                    "out_channels": 512,
+                    "kernel_size": 3,
+                    "padding": 1,
+                },
+            ),
+            (BatchNorm2dNode, {"num_features": 512}),
             LeakyReLUNode,
-            (Conv2dNode,{'in_channels':512,'out_channels':512,'kernel_size':3,'padding':1}),
-            (BatchNorm2dNode,{'num_features':512}),
+            (
+                Conv2dNode,
+                {
+                    "in_channels": 512,
+                    "out_channels": 512,
+                    "kernel_size": 3,
+                    "padding": 1,
+                },
+            ),
+            (BatchNorm2dNode, {"num_features": 512}),
             LeakyReLUNode,
-            (MaxPool2dNode,{'kernel_size':2}),
-            (Conv2dNode,{'in_channels':512,'out_channels':512,'kernel_size':3,'padding':1}),
-            (BatchNorm2dNode,{'num_features':512}),
+            (MaxPool2dNode, {"kernel_size": 2}),
+            (
+                Conv2dNode,
+                {
+                    "in_channels": 512,
+                    "out_channels": 512,
+                    "kernel_size": 3,
+                    "padding": 1,
+                },
+            ),
+            (BatchNorm2dNode, {"num_features": 512}),
             LeakyReLUNode,
-            (Conv2dNode,{'in_channels':512,'out_channels':512,'kernel_size':3,'padding':1}),
-            (BatchNorm2dNode,{'num_features':512}),
+            (
+                Conv2dNode,
+                {
+                    "in_channels": 512,
+                    "out_channels": 512,
+                    "kernel_size": 3,
+                    "padding": 1,
+                },
+            ),
+            (BatchNorm2dNode, {"num_features": 512}),
             LeakyReLUNode,
-            (Conv2dNode,{'in_channels':512,'out_channels':512,'kernel_size':3,'padding':1}),
-            (BatchNorm2dNode,{'num_features':512}),
+            (
+                Conv2dNode,
+                {
+                    "in_channels": 512,
+                    "out_channels": 512,
+                    "kernel_size": 3,
+                    "padding": 1,
+                },
+            ),
+            (BatchNorm2dNode, {"num_features": 512}),
             LeakyReLUNode,
-            (MaxPool2dNode,{'kernel_size':2}),
-            '\n',
+            (MaxPool2dNode, {"kernel_size": 2}),
+            "\n",
             FlattenNode,
-            (LinearNode,{'in_features':512*7*7,'out_features':4096}),
+            (LinearNode, {"in_features": 512 * 7 * 7, "out_features": 4096}),
             LeakyReLUNode,
-            (LinearNode,{'in_features':4096,'out_features':4096}),
+            (LinearNode, {"in_features": 4096, "out_features": 4096}),
             LeakyReLUNode,
-            (LinearNode,{'in_features':4096,'out_features':1000})
+            (LinearNode, {"in_features": 4096, "out_features": 1000}),
         ]
         x0, y0 = ctx.mouse_pos
-        nodes, x, y = self.create_sequential(ctx.mouse_pos[0],ctx.mouse_pos[1],node_types,gap=3)
+        nodes, x, y = self.create_sequential(
+            ctx.mouse_pos[0], ctx.mouse_pos[1], node_types, gap=3
+        )
 
-        inputs = {'image':cast(InputPort,nodes[0].in_ports[0])}
-        outputs = {'class pred':cast(OutputPort,nodes[-1].out_ports[0])}
-        
-        self.wrap_with_network(inputs,outputs,x0,y0,x,y,'VGG16-BN')
+        inputs = {"image": cast(InputPort, nodes[0].in_ports[0])}
+        outputs = {"class pred": cast(OutputPort, nodes[-1].out_ports[0])}
+
+        self.wrap_with_network(inputs, outputs, x0, y0, x, y, "VGG16-BN")
 
     @command("Create network: ResNet18")
     def create_resnet_18(self, ctx: CommandCtx):
@@ -324,8 +548,15 @@ class MnistDatasetNode(SourceNode):
         super().build_node()
         self.label.set("MNIST Dataset")
         self.out = self.add_out_port("MNIST Dataset")
-        self.include_labels = self.add_option_control(name='include_labels',options=['True','False'], value= 'True',label='Include labels')
-        self.size = self.add_slider_control(label="size",min=1,max=60000,int_mode=True,name="size")
+        self.include_labels = self.add_option_control(
+            name="include_labels",
+            options=["True", "False"],
+            value="True",
+            label="Include labels",
+        )
+        self.size = self.add_slider_control(
+            label="size", min=1, max=60000, int_mode=True, name="size"
+        )
 
     def task(self):
         transform = transforms.Compose(
@@ -342,21 +573,18 @@ class MnistDatasetNode(SourceNode):
             )
 
         size = self.size.get_int()
-            
+
         ds = []
         for i in range(size):
             ds.append(raw_ds[i])
 
-        if self.include_labels.get() == 'False':
+        if self.include_labels.get() == "False":
             ds = [x[0] for x in ds]
 
         self.out.push(ds)
 
-import aiofiles
 
-
-
-class ImageDataset(torch.utils.data.Dataset): # type: ignore
+class ImageDataset(torch.utils.data.Dataset):  # type: ignore
     """
     Loads all images from a directory into memory
     """
