@@ -281,88 +281,40 @@ class GrapycalTorch(Extension):
         
         self.wrap_with_network(inputs,outputs,x0,y0,x,y,'VGG16-BN')
 
-    @command('Create network: ResNet18')
+    @command("Create network: ResNet18")
     def create_resnet_18(self, ctx: CommandCtx):
         """Create a ResNet18 network using basic blocks without pre-built residual blocks,
         and manually perform skip connections with AdditionNode.
-        
+
         Args:
             ctx (CommandCtx): Command context.
         """
-        print("Create ResNet18")
-        name = self.net.next_name('ResNet18')
+        name = self.net.next_name("ResNet18")
 
         x, y = ctx.mouse_pos
-        inputs = {}
-        outputs = {}
 
-        # Initial Convolution
-        init_conv = self.create_node(Conv2dNode, [x, y], in_channels=3, out_channels=64, kernel_size=7, stride=2, padding=3)
-        x += GRID * 12
-        bn = self.create_node(BatchNorm2dNode, [x, y], num_features=64)
-        x += GRID * 12
-        relu = self.create_node(ReLUNode, [x, y])
-        x += GRID * 12
-        maxpool = self.create_node(MaxPool2dNode, [x, y], kernel_size=3)
+        resnet = ResNet(
+            grapycal_torch=self,
+            layers=[2, 2, 2, 2],
+            start_x_pos=x,
+            start_y_pos=y,
+            spacing=5,
+        )
+        resnet.connect_internal()
 
-        prev_output = maxpool.out_ports[0]
-        inputs['image'] = init_conv.in_ports[0]
-
-        # Define helper function for creating a basic block
-        def create_basic_block(x, y, in_channels, out_channels, stride=1):
-            conv1 = self.create_node(Conv2dNode, [x, y], in_channels=in_channels, out_channels=out_channels, kernel_size=3, stride=stride, padding=1)
-            x += GRID * 12
-            bn1 = self.create_node(BatchNorm2dNode, [x, y], num_features=out_channels)
-            x += GRID * 12
-            relu1 = self.create_node(ReLUNode, [x, y])
-            x += GRID * 12
-            conv2 = self.create_node(Conv2dNode, [x, y], in_channels=out_channels, out_channels=out_channels, kernel_size=3, padding=1)
-            x += GRID * 12
-            bn2 = self.create_node(BatchNorm2dNode, [x, y], num_features=out_channels)
-
-            return conv1, bn1, relu1, conv2, bn2
-
-        # Sequence of layers/blocks for ResNet18
-        layer_configs = [(64, 64, 2), (64, 128, 2), (128, 256, 2), (256, 512, 2)]
-
-        for idx, (in_channels, out_channels, stride) in enumerate(layer_configs):
-            # Adjust position for next layer
-            x = ctx.mouse_pos[0] + (GRID * 15) * (idx + 1)
-            y = ctx.mouse_pos[1]
-
-            # Create two basic blocks per layer config
-            for block_idx in range(2):
-                if block_idx > 0:
-                    stride = 1  # Only the first block in each layer may have stride > 1
-
-                block = create_basic_block(x, y, in_channels, out_channels, stride)
-                for node in block:
-                    self.create_edge(prev_output, node.in_ports[0]) # TODO, the previous output should be also connected to same addition node with the block's output
-                    prev_output = node.out_ports[0]
-                y += GRID * 20  # Adjust y position for visual clarity in the graph
-
-                # Addition Node for Skip Connection
-                if in_channels != out_channels:
-                    # If in_channels and out_channels differ, adaptation is needed (e.g., through a Conv2dNode)
-                    # This part is simplified for clarity
-                    pass
-                else:
-                    addition_node = self.create_node(AdditionNode, [x, y])
-                    # self.create_edge(block[0].in_ports[0], addition_node.in_ports[0])  # TODO: Skip connection start, the previous output should be also connected to same addition node with the block's output
-                    self.create_edge(prev_output, addition_node.in_ports[0])  # Block output
-                    prev_output = addition_node.out_ports[0]
-
-        # Final layers
-        avg_pool = self.create_node(MaxPool2dNode, [x + GRID * 12, y], kernel_size=7)
-        self.create_edge(prev_output, avg_pool.in_ports[0])
-        prev_output = avg_pool.out_ports[0]
-
-        fc = self.create_node(LinearNode, [x + GRID * 24, y], in_features=512, out_features=1000)
-        self.create_edge(prev_output, fc.in_ports[0])
-        outputs['class pred'] = fc.out_ports[0]
+        inputs = {"image": cast(InputPort, resnet.conv1.in_ports[0])}
+        outputs = {"class pred": cast(OutputPort, resnet.layer4[-1].relu2.out_ports[0])}
 
         # Wrap with network
-        self.wrap_with_network(inputs, outputs, ctx.mouse_pos[0], ctx.mouse_pos[1], x, y, name)
+        self.wrap_with_network(
+            inputs,
+            outputs,
+            ctx.mouse_pos[0],
+            ctx.mouse_pos[1],
+            resnet.x,
+            resnet.y,
+            name,
+        )
 
 
 class MnistDatasetNode(SourceNode):
