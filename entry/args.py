@@ -1,45 +1,35 @@
 import argparse
+from typing import Any
 import usersettings
-import os
-
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Grapycal backend server")
     parser.add_argument(
         "path", type=str, help="path to workspace file", nargs="?", default=None
     )
-    parser.add_argument("--backend-path", type=str, help="path to backend code")
-    parser.add_argument("--frontend-path", type=str, help="path to frontend code")
+    parser.add_argument("--backend-path", type=str, help="path to backend code", required=True)
+    parser.add_argument("--frontend-path", type=str, help="path to frontend code", required=True)
+    parser.add_argument("--extensions-path", type=str, help="path to extensions folder")
     parser.add_argument("--port", type=int, help="port to listen on")
-    parser.add_argument(
-        "--http-port", type=int, help="http port to listen on (to serve webpage)"
-    )
     parser.add_argument("--host", type=str, help="host to listen on")
-    parser.add_argument(
-        "--no-http",
-        action="store_true",
-        help="if set, the server does not serve the webpage",
-    )
-    parser.add_argument(
-        "--restart",
-        action="store_true",
-        help="if set, the workspace restarts when it exits. Convenient for development",
-    )
     args = parser.parse_args()
+
+    sync_args_with_usersettings(args, {
+        "path": "workspace.grapycal",
+        "port": 7943,
+        "host": "localhost"
+    })
+
+    return args
+
+def sync_args_with_usersettings(args: argparse.Namespace, defaults: dict[str, Any]):
     s = usersettings.Settings("Grapycal")
-    s.add_setting("port", int, default=8765)  # type: ignore
-    s.add_setting("http_port", int, default=9001)  # type: ignore
-    s.add_setting("host", str, default="localhost")  # type: ignore
-    s.add_setting("path", str, default=os.path.join("workspace.grapycal"))  # type: ignore
-
     s.load_settings()
-    for name in ["port", "host", "path", "http_port"]:
-        if getattr(args, name):
+    
+    for name, default in defaults.items():
+        if getattr(args, name) is not None:
             s[name] = getattr(args, name)
+        else:
+            setattr(args, name, s.get(name, default))
     s.save_settings()
-
-    for name in ["backend_path", "frontend_path", "no_http", "restart"]:
-        if getattr(args, name):
-            s[name] = getattr(args, name)
-
-    return s
+    return args

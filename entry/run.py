@@ -1,8 +1,6 @@
-from contextlib import asynccontextmanager
 import threading
 from typing import Awaitable, Callable
 from fastapi.staticfiles import StaticFiles
-from grapycal.core import workspace
 from args import parse_args
 from fastapi import FastAPI, WebSocket
 from fastapi.responses import HTMLResponse
@@ -72,14 +70,17 @@ def main():
         print("Exiting")
         sys.exit(1)
 
+    # make extensions available
+    if args.extensions_path is not None:
+        sys.path.append(args.extensions_path)
+
+    # before importing workspace, we need to add the backend path to sys.path
     sys.path.append(args.backend_path)
     from grapycal.core.workspace import Workspace
-
     workspace = Workspace(args.path, "")
 
-    app = make_app(workspace, args.get("frontend_path", None))
-    thread = threading.Thread(target=run_uvicorn, args=(app, args.host, args.port),daemon=True)
-    thread.start()
+    app = make_app(workspace, args.frontend_path)
+    threading.Thread(target=run_uvicorn, args=(app, args.host, args.port),daemon=True).start()
 
     try:
         workspace.run()

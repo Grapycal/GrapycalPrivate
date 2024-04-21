@@ -24,9 +24,6 @@ if TYPE_CHECKING:
 class ExtensionManager:
     def __init__(self,objectsync_server:objectsync.Server) -> None:
         self._objectsync = objectsync_server
-        cwd = sys.path[0]
-        self._local_extension_dir = join(cwd,'.grapycal','extensions')
-        sys.path.append(self._local_extension_dir)
         self._extensions: Dict[str, Extension] = {}
 
         # Use this topic to inform the client about the extensions
@@ -195,6 +192,7 @@ class ExtensionManager:
                 if pkg.name not in self._extensions:
                     # find pyproject.toml and get package version
                     available_extensions.append(get_extension_info(pkg.name))
+        
         return available_extensions
     
     async def _check_extension_compatible(self, extension_name: str):
