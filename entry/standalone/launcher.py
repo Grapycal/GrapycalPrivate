@@ -18,8 +18,13 @@ if __name__ == '__main__':
     here = os.path.dirname(os.path.abspath(__file__))
     # Run the server
     server = subprocess.Popen(['python', os.path.join(here, 'run.py')] + sys.argv[1:])
-    # Capture SIGINT and close the server with SIGTERM
-    signal.signal(signal.SIGINT, sigint_handler)
+    
+    if os.name == 'nt':
+        # If Windows, capture SIGINT and close the server with SIGTERM because SIGINT is used for interrupting the runner on Windows
+        signal.signal(signal.SIGINT, sigint_handler)
+    else:
+        # If Unix, just wait for the server to finish
+        signal.signal(signal.SIGINT, signal.SIG_IGN)
 
     # this while loop is necessary to catch the SIGINT in Windows. Not sure why.
     while server.poll() is None:

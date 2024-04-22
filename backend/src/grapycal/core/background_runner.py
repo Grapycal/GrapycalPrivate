@@ -2,12 +2,13 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+import queue
+import signal
 from collections import deque
 from contextlib import contextmanager
 from queue import Queue
-import queue
 from typing import Callable, Iterator, Tuple
-import signal
+
 from .stdout_helper import orig_print
 
 '''
@@ -119,11 +120,14 @@ class BackgroundRunner:
                     if isinstance(ret, Iterator):
                         self._stack.append(TaskInfo(iter(ret), exception_callback))
 
-            except RunnerInterrupt as e:
+            except RunnerInterrupt:
                 logger.info("Runner interrupted")
-            except KeyboardInterrupt as e:
+            except KeyboardInterrupt:
+                signal.signal(RUNNER_INTERRUPT_SIGNAL, signal.SIG_DFL) # restore default signal handler when runner exits
                 logger.info("Keyboard interrupt")
                 raise
             except Exception as e:
                 self.clear_tasks()
                 orig_print('Runner error', e)
+
+        

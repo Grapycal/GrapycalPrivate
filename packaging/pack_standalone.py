@@ -1,7 +1,7 @@
+import argparse
 import os
 import pathlib
 import shutil
-import argparse
 
 ignores = [
     '.git',
@@ -14,7 +14,7 @@ ignores = [
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('dist', type=str, help='The name of the distribution.')
-    parser.add_argument('--template', type=str, default='source', help='The template folder to be the base of the distribution. The folder can have install scripts and other necessary files.')
+    parser.add_argument('--template', type=str, default='standalone', help='The template folder to be the base of the distribution. The folder can have install scripts and other necessary files.')
     args = parser.parse_args()
     
     root = pathlib.Path(__file__).parent
@@ -45,7 +45,7 @@ if __name__ == '__main__':
     copy('submodules/objectsync/', 'objectsync')
     copy('frontend/dist', 'frontend')
     copy('extensions/grapycal_builtin')
-    copy('entry')
+    copy('entry/standalone', 'entry')
 
     print(f'Packaged to {dst_root} with {__file__.split(os.sep)[-1]}')
     size = sum(f.stat().st_size for f in dst_root.rglob('*') if f.is_file())
