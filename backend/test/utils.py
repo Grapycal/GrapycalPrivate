@@ -1,12 +1,13 @@
 
+import pytest
 from grapycal.core.workspace import Workspace
 from grapycal.sobjects.editor import Editor
 from grapycal.stores import main_store
-import pytest
+
 
 @pytest.fixture
 def setup_workspace():
-    workspace = Workspace(port=8766, host="localhost", path="workspace.grapycal", workspace_id=0)
+    workspace = Workspace(port=8766, host="localhost", path="workspace.grapycal")
     workspace.run(run_runner=False)
 
     # Import test extension, so we can create test nodes

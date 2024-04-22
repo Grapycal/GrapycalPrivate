@@ -8,11 +8,19 @@ from args import parse_args
 from fastapi import FastAPI, WebSocket
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
+from grapycal import OpenAnotherWorkspaceStrategy
 from topicsync.server.client_manager import (
     ClientCommProtocol,
     ConnectionClosedException,
 )
 
+
+class MyOpenAnotherWorkspaceStrategy(OpenAnotherWorkspaceStrategy):
+    def __init__(self):
+        super().__init__()
+        self.path = None
+    def open(self, path: str):
+        self.path = path
 
 class Client(ClientCommProtocol):
     def __init__(
@@ -98,7 +106,9 @@ def main():
     sys.path.append(args.backend_path)
     from grapycal.core.workspace import Workspace
 
-    workspace = Workspace(args.file, "")
+    open_another = MyOpenAnotherWorkspaceStrategy()
+
+    workspace = Workspace(args.file, open_another)
 
     app = make_app(workspace, args.frontend_path)
     threading.Thread(
@@ -110,6 +120,10 @@ def main():
     except KeyboardInterrupt:
         print("Exiting")
         sys.exit(1)
+
+    if open_another.path is not None:
+        print(f"User wants to open another workspace: {open_another.path}.")
+        raise NotImplementedError("Opening another workspace is not implemented yet.")
 
 
 if __name__ == "__main__":

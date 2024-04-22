@@ -15,6 +15,7 @@ from objectsync import (
     Topic,
 )
 
+from grapycal.core.strategies import OpenAnotherWorkspaceStrategy
 from grapycal.extension.extension import CommandCtx, Extension, command
 from grapycal.extension_api.utils import Bus, to_numpy
 from grapycal.sobjects.controls import (
