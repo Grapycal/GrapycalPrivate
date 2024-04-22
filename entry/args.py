@@ -1,5 +1,6 @@
 import argparse
 from typing import Any
+
 import usersettings
 
 
@@ -19,6 +20,10 @@ def parse_args():
     parser.add_argument("--port", type=int, help="port to listen on")
     parser.add_argument("--host", type=str, help="host to listen on")
     args = parser.parse_args()
+
+    if isinstance(args.file, str):
+        if not args.file.endswith(".grapycal"):
+            args.file += ".grapycal"
 
     sync_args_with_usersettings(
         args, {"file": "workspace.grapycal", "port": 7943, "host": "localhost"}
