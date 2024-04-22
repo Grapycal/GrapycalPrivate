@@ -71,7 +71,8 @@ export class Editor extends CompSObject{
         // disable zooming the webpage when ctrl+mousewheel
         // we can't rely on eventDispatcher.onScroll to prevent default because it's passive.
         this.editor.addEventListener('wheel',(e:WheelEvent)=>{
-            e.preventDefault();
+            if(e.ctrlKey)
+                e.preventDefault();
         },{capture:true})
         
         this.link(this.eventDispatcher.onMoveGlobal,this.mouseMove)

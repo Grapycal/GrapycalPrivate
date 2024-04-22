@@ -1,12 +1,12 @@
-from abc import ABCMeta, abstractmethod
+from abc import abstractmethod
 from typing import TYPE_CHECKING, Any
-from grapycal.extension.utils import NodeInfo
+
+from grapycal import EventTopic
 from grapycal.sobjects.edge import Edge
 from grapycal.sobjects.node import Node
 from grapycal.sobjects.port import InputPort
 from objectsync import StringTopic
 from torch import nn
-from grapycal import EventTopic
 
 from .settings import SettingsNode
 
