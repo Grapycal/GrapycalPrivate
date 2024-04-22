@@ -63,7 +63,7 @@ class Workspace:
     """
 
     def __init__(self, 
-        path, 
+        path: str, 
         open_another_workspace_strategy: OpenAnotherWorkspaceStrategy|None = None, 
     ):
         self.path = path

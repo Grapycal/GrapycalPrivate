@@ -1,13 +1,14 @@
 '''
-For running Grapycal in Windows CLI.
-run_server.py can run the server already, but it can't be ctrl+c'd because the keyboard interrupt is handled by the runner.
-To fix this, we need to capture the SIGINT in this script and close the server with SIGTERM instead of SIGINT.
+Acts as a parent process to the workspace process (run.py). It handles the SIGINT signal and opens another workspace process when
+the user wants to open another workspace. 
 '''
 
+import os
 import signal
 import subprocess
-import os, sys
+import sys
 import time
+
 
 def sigint_handler(signum, frame):
     print("SIGINT received, closing server")
