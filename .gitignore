@@ -29,3 +29,4 @@ test_working_dirs/working_dir_2/pose_landmarker_heavy.task
 /packaging/dist/
 
 /dev_cwd/
+/frontend/last_build_hash.txt

@@ -85,7 +85,7 @@ def main():
     result = sock.connect_ex((args.host, args.port))
     if result == 0:
         print(
-            f"Port {args.port} is already in use. Maybe another instance of grapycal is running?"
+            f"Port {args.port} is already in use. Maybe another instance of grapycal is running? Consider changing the port with the --port argument."
         )
         print("Exiting")
         sys.exit(1)

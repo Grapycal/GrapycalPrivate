@@ -1,35 +1,29 @@
-import {ObjectSyncClient, SObject, StringTopic, DictTopic, IntTopic, SetTopic, FloatTopic, GenericTopic} from 'objectsync-client'
-
-import { Node } from './sobjects/node'
-import { Editor } from './sobjects/editor'
-import { Root } from './sobjects/root'
+import { ObjectSyncClient } from 'objectsync-client'
 import { expose, print } from './devUtils'
-import { Port } from './sobjects/port'
-import { Edge } from './sobjects/edge'
-import { SoundManager } from './ui_utils/soundManager';
-import { NodeLibrary } from './sobjects/nodeLibrary'
-import { WebcamStream, Workspace } from './sobjects/workspace'
-import { ExtensionsSetting } from './ui_utils/extensionsSettings'
-import { TextControl } from './sobjects/controls/textControl'
 import { ButtonControl } from './sobjects/controls/buttonControl'
+import { CodeControl } from "./sobjects/controls/codeControl"
 import { ImageControl } from './sobjects/controls/imageControl'
-import { Footer } from './ui_utils/footer'
-import { Header } from './ui_utils/header'
-import { ThreeControl } from './sobjects/controls/threeControl'
-import { LinePlotControl } from './sobjects/controls/linePlotControl'
-import { Settings } from './sobjects/settings'
-import { FetchWithCache } from './utils'
-import { FileView } from './sobjects/fileView'
-import { LoginApiClient } from './loginApi/loginApi'
-import { OptionControl } from './sobjects/controls/optionControl'
-import { AppNotification } from './ui_utils/appNotification'
 import { KeyboardControl } from './sobjects/controls/keyboardControl'
+import { LinePlotControl } from './sobjects/controls/linePlotControl'
+import { OptionControl } from './sobjects/controls/optionControl'
 import { SliderControl } from './sobjects/controls/sliderControl'
-import {CodeControl} from "./sobjects/controls/codeControl";
+import { TextControl } from './sobjects/controls/textControl'
+import { ThreeControl } from './sobjects/controls/threeControl'
+import { Edge } from './sobjects/edge'
+import { Editor } from './sobjects/editor'
+import { FileView } from './sobjects/fileView'
+import { Node } from './sobjects/node'
+import { NodeLibrary } from './sobjects/nodeLibrary'
+import { Port } from './sobjects/port'
+import { Root } from './sobjects/root'
+import { Settings } from './sobjects/settings'
+import { WebcamStream, Workspace } from './sobjects/workspace'
+import { SoundManager } from './ui_utils/soundManager'
+import { FetchWithCache } from './utils'
 
 export const soundManager = new SoundManager();
 const fetchWithCache = new FetchWithCache().fetch
-export {fetchWithCache}
+export { fetchWithCache }
 
 function tryReconnect(): void{
     if(Workspace.instance != null)
