@@ -1,12 +1,17 @@
+import os
+import sys
 import threading
 from typing import Awaitable, Callable
-from fastapi.staticfiles import StaticFiles
+
+import uvicorn
 from args import parse_args
 from fastapi import FastAPI, WebSocket
 from fastapi.responses import HTMLResponse
-import uvicorn
-import sys
-from topicsync.server.client_manager import ClientCommProtocol, ConnectionClosedException
+from fastapi.staticfiles import StaticFiles
+from topicsync.server.client_manager import (
+    ClientCommProtocol,
+    ConnectionClosedException,
+)
 
 
 class Client(ClientCommProtocol):
@@ -32,7 +37,7 @@ class Client(ClientCommProtocol):
             raise ConnectionClosedException(e)
 
 
-def make_app(workspace, frontend_path:str|None):
+def make_app(workspace, frontend_path: str | None):
     app = FastAPI()
 
     @app.websocket("/ws")
@@ -57,16 +62,31 @@ def run_uvicorn(app, host, port):
     print("uvicorn exited")
     sys.exit(1)
 
+
 def main():
     args = parse_args()
     print(args)
 
+    # because args.backend_path and args.frontend_path are NOT relative to args.cwd,
+    # we need to make them absolute
+    args.backend_path = os.path.abspath(args.backend_path)
+    if args.frontend_path is not None:
+        args.frontend_path = os.path.abspath(args.frontend_path)
+
+    # set cwd to args.cwd
+    if args.cwd is not None:
+        os.makedirs(args.cwd, exist_ok=True)
+        os.chdir(args.cwd)
+
     # make sure port is not in use
     import socket
+
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     result = sock.connect_ex((args.host, args.port))
     if result == 0:
-        print(f"Port {args.port} is already in use. Maybe another instance of grapycal is running?")
+        print(
+            f"Port {args.port} is already in use. Maybe another instance of grapycal is running?"
+        )
         print("Exiting")
         sys.exit(1)
 
@@ -77,16 +97,20 @@ def main():
     # before importing workspace, we need to add the backend path to sys.path
     sys.path.append(args.backend_path)
     from grapycal.core.workspace import Workspace
-    workspace = Workspace(args.path, "")
+
+    workspace = Workspace(args.file, "")
 
     app = make_app(workspace, args.frontend_path)
-    threading.Thread(target=run_uvicorn, args=(app, args.host, args.port),daemon=True).start()
+    threading.Thread(
+        target=run_uvicorn, args=(app, args.host, args.port), daemon=True
+    ).start()
 
     try:
         workspace.run()
     except KeyboardInterrupt:
         print("Exiting")
         sys.exit(1)
+
 
 if __name__ == "__main__":
     main()
