@@ -3,7 +3,7 @@ import { as } from "../utils"
 export class SoundManager {
     click: HTMLAudioElement;
     constructor() {
-        this.click = new Audio("click.mp3");
+        this.click = new Audio("click1.mp3");
         this.click.volume = 0.5;
     }
     playClick() {
