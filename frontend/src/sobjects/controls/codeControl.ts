@@ -1,10 +1,10 @@
-import { EventTopic, IntTopic, StringTopic } from "objectsync-client"
-import { Control } from "./control"
-import {basicSetup, EditorView} from "codemirror"
-import {autocompletion, CompletionResult, Completion, CompletionContext} from "@codemirror/autocomplete"
-import {indentUnit} from "@codemirror/language"
-import {python} from "@codemirror/lang-python"
+import { Completion, CompletionContext, CompletionResult, autocompletion } from "@codemirror/autocomplete"
+import { python } from "@codemirror/lang-python"
+import { indentUnit } from "@codemirror/language"
+import { EditorView, basicSetup } from "codemirror"
+import { IntTopic, StringTopic } from "objectsync-client"
 import { basicDark } from "../../ui_utils/cmDarkTheme"
+import { Control } from "./control"
 
 export class CodeControl extends Control {
 
@@ -135,7 +135,7 @@ export class CodeControl extends Control {
             if(this.editorView.hasFocus && this.editorView.dom.scrollHeight > this.editorView.dom.clientHeight){
                 e.stopPropagation()
             }
-        })
+        }, {passive: true})
 
         // tab is 4 spaces
         this.editorView.dom.addEventListener("keydown", (e) => {

@@ -1,5 +1,4 @@
 import { Componentable } from "../component/componentable"
-import { Transform } from "../component/transform"
 import { Node } from "../sobjects/node"
 import { Vector2 } from "../utils"
 
@@ -59,7 +58,7 @@ export class ErrorPopup extends Componentable{
         this.baseDiv.addEventListener("mousedown",(e)=>{
             this.hide()
             e.stopPropagation()
-        })
+        },{passive:true})
 
         this.transform.pivot = new Vector2(0.,1)
         this.baseDiv.addEventListener("wheel",(e)=>{
@@ -67,7 +66,7 @@ export class ErrorPopup extends Componentable{
             if(this.messageDiv.scrollHeight > this.messageDiv.clientHeight){
                 e.stopPropagation()
             }
-        })
+        },{passive:true})
     }
 
     set(title:string,message: string){

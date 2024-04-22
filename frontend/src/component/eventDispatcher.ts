@@ -1,6 +1,4 @@
-import { print } from "../devUtils"
-import { Editor } from "../sobjects/editor"
-import { Action,ActionDict, Vector2 } from "../utils"
+import { Action, ActionDict, Vector2 } from "../utils"
 import { Component, IComponentable } from "./component"
 import { HtmlItem } from "./htmlItem"
 
@@ -167,7 +165,7 @@ export class EventDispatcher extends Component{
         this.eventElement?.removeEventListener('mouseleave', this.onMouseLeave.invoke);
         this.eventElement = eventElement;
         this.eventElement.addEventListener('mousedown', this._onMouseDown);
-        this.eventElement.addEventListener('wheel', this.onScroll.invoke);
+        this.eventElement.addEventListener('wheel', this.onScroll.invoke,{passive: true}); // passive: true to prevent scroll blocking
         this.eventElement.addEventListener('dblclick', this._onDoubleClick);
         this.eventElement.addEventListener('mouseover', this.onMouseOver.invoke);
         this.eventElement.addEventListener('mouseleave', this.onMouseLeave.invoke);
