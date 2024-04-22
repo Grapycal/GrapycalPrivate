@@ -1,20 +1,18 @@
-from dataclasses import dataclass
 import importlib
 import inspect
+import logging
 import os
 import sys
 from types import ModuleType
 from typing import Any, Callable, Dict, List, TypeVar
 
-from grapycal.sobjects.port import InputPort, OutputPort, Port
-from grapycal.stores import main_store
-if 1+1==3:
-    from grapycal.core.workspace import Workspace
-from grapycal.extension.utils import get_extension_info, snap_node
-
-from grapycal.sobjects.node import Node
 from objectsync import SObject
-import logging
+
+from grapycal.extension.utils import get_extension_info, snap_node
+from grapycal.sobjects.node import Node
+from grapycal.sobjects.port import InputPort, OutputPort
+from grapycal.stores import main_store
+
 logger = logging.getLogger(__name__)
 
 
