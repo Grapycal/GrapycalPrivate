@@ -207,7 +207,7 @@ class Workspace:
         main_store.send_message = self._send_message
         main_store.send_message_to_all = self._send_message_to_all
         grapycal.utils.logging.send_client_msg = main_store.send_message_to_all
-        main_store.clear_edges = self._clear_edges
+        main_store.clear_edges_and_tasks = self._clear_edges_and_tasks
         main_store.open_workspace = self._open_workspace_callback
         main_store.data_yaml = HttpResource(
             "https://github.com/Grapycal/grapycal_data/raw/main/data.yaml", dict
@@ -370,10 +370,11 @@ class Workspace:
         self.grapycal_id_count += 1
         return self.grapycal_id_count
 
-    def _clear_edges(self):
+    def _clear_edges_and_tasks(self):
         edges = self._workspace_object.top_down_search(type=Edge)
         for edge in edges:
             edge.clear()
+        main_store.runner.clear_tasks()
 
     def _vars(self) -> Dict[str, Any]:
         return self.running_module.__dict__

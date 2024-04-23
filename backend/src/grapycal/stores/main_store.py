@@ -1,20 +1,22 @@
 
-from typing import TYPE_CHECKING, Any, Callable, Dict, Optional, Protocol, Union
+from typing import TYPE_CHECKING, Any, Callable, Dict, Protocol
 
 from grapycal.core.slash_command import SlashCommandManager
 
 if TYPE_CHECKING:
-    from contextlib import _GeneratorContextManager
     import asyncio
-    from grapycal.extension.utils import Clock
+    from contextlib import _GeneratorContextManager
+
     from objectsync import DictTopic
+
     from grapycal.core.background_runner import BackgroundRunner
+    from grapycal.core.workspace import ClientMsgTypes
+    from grapycal.extension.utils import Clock
     from grapycal.sobjects.editor import Editor
+    from grapycal.sobjects.nodeLibrary import NodeLibrary
     from grapycal.sobjects.settings import Settings
     from grapycal.sobjects.workspaceObject import WebcamStream
     from grapycal.utils.httpResource import HttpResource
-    from grapycal.sobjects.nodeLibrary import NodeLibrary
-    from grapycal.core.workspace import ClientMsgTypes
 
     class SendMessageProtocol(Protocol):
         def __call__(self, message: str, client_id: int, type: ClientMsgTypes = ...) -> None:
@@ -35,7 +37,7 @@ class MainStore:
         self.runner: BackgroundRunner
         self.send_message: SendMessageProtocol
         self.send_message_to_all: SendMessageToAllProtocol
-        self.clear_edges: Callable[[],None]
+        self.clear_edges_and_tasks: Callable[[],None]
         self.data_yaml: HttpResource
         self.next_id: Callable[[],int]
         self.vars: Callable[[],Dict[str,Any]]
