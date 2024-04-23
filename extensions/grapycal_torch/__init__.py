@@ -34,9 +34,10 @@ from .tensor_operations import *
 from .transform import *
 
 matplotlib.use("agg")  # use non-interactive backend
+import aiofiles
+import aiohttp
 import matplotlib.pyplot as plt
-
-torch.set_printoptions(threshold=20)
+import numpy as np
 
 
 class GrapycalTorch(Extension):
@@ -540,18 +541,16 @@ class GrapycalTorch(Extension):
             name,
         )
 
-import aiofiles
-
-
 class ImageDataset(torch.utils.data.Dataset): # type: ignore
     """
     Loads all images from a directory into memory
     """
 
-    def __init__(self, directory: str, transform=None, max_size=None):
+    def __init__(self, directory: str, transform=None, max_size=None, format="jpg"):
         super().__init__()
         self.directory = directory
         self.transform = transform
+        self.format = format
         if self.transform is None:
             # to tensor and minus 0.5 and crop to 208*SNAP6
             self.transform = transforms.Compose(
@@ -568,7 +567,7 @@ class ImageDataset(torch.utils.data.Dataset): # type: ignore
         # concurrent loading from disk using aiofiles
         async def load_image(path):
             async with aiofiles.open(path, "rb") as f:
-                return plt.imread(io.BytesIO(await f.read()), format="jpg")
+                return plt.imread(io.BytesIO(await f.read()), format=self.format)
 
         tasks = []
         n = 0
@@ -604,6 +603,7 @@ class ImageDatasetNode(SourceNode):
         self.out = self.add_out_port("Image Dataset")
         self.dir = self.add_text_control("", "folder", name="folder")
         self.max_size = self.add_text_control("", "max_size", name="max_size")
+        self.format = self.add_text_control("", "format", name="image_format")
 
     def init_node(self):
         super().init_node()
@@ -617,6 +617,121 @@ class ImageDatasetNode(SourceNode):
         if self.ds is None or self.ds.directory != self.dir.get():
             self.ds = ImageDataset(self.dir.get(), max_size=int(self.max_size.get()))
 
+        self.out.push(self.ds)
+
+class CatDogDataset(torch.utils.data.Dataset):
+    """
+    Crawl Cat and Dog images and load them into memory
+    - https://cataas.com/cat
+        - response is : `image/*`
+    - https://dog.ceo/api/breeds/image/random Fetch!
+        - response is : `application/json`
+            ```
+            {
+                "message": "https://images.dog.ceo/breeds/terrier-tibetan/n02097474_5996.jpg",
+                "status": "success"
+            }
+            ```
+    - Reference:
+    - https://hackmd.io/@lido2370/S1aX6e1nN?type=view
+
+    TODO:
+    - return : torch.utils.data.Dataset[(image, label)]
+    - reference : MNIST Dataset
+    """
+
+    def __init__(self, transform=None,cat_size=500,dog_size=500):
+        super().__init__()
+        self.cat_size = cat_size
+        self.dog_size = dog_size
+        self.cat_url = "https://cataas.com/cat"
+        self.dog_url = "https://dog.ceo/api/breeds/image/random"
+        self.transform = transform
+        if self.transform is None:
+            # to tensor and minus 0.5 and crop to 208*SNAP6
+            self.transform = transforms.Compose(
+                [
+                    transforms.ToTensor(),
+                    transforms.Lambda(lambda x: x - 0.5),
+                    transforms.Lambda(lambda x: x[:, 5:-5, 1:-1]),
+                ]
+            )
+        self.ds = asyncio.run(self.load_dataset())
+
+    async def load_dataset(self):
+        # concurrent loading from disk using aiofiles
+        async def fetch_dog():
+            async with aiohttp.ClientSession() as session:
+                async with session.get(self.dog_url) as response:
+                    data = await response.json()
+                    url = data["message"]
+                    async with session.get(url) as response:
+                        content_type = response.headers.get("content-type")
+                        content_type = content_type.split("/")[1]
+                        return plt.imread(io.BytesIO(await response.read()), format=content_type)
+                
+        async def fetch_cat():
+            async with aiohttp.ClientSession() as session:
+                async with session.get(self.cat_url) as response:
+                    content_type = response.headers.get("content-type")
+                    content_type = content_type.split("/")[1]
+                    return plt.imread(io.BytesIO(await response.read()), format=content_type)
+                
+        async def fetch_image(type):
+            image = await fetch_cat() if type == 0 else await fetch_dog()
+            return image, type
+                
+        # cat:0
+        # dog:1
+        # random sequence of cat_size of 0 and dog_size of 1
+        sequence = [0] * self.cat_size + [1] * self.dog_size
+        np.random.shuffle(sequence)
+        tasks = []
+
+        for type in sequence:
+            tasks.append(fetch_image(type))
+
+        return await asyncio.gather(*tasks)
+
+    def __len__(self):
+        return len(self.ds)
+
+    def __getitem__(self, idx):
+        img,label = self.ds[idx]
+        if self.transform:
+            img = self.transform(img)
+        return img,label
+
+class CatDogDatasetNode(SourceNode):
+    """
+    Crawl Cat and Dog images from:
+    - https://cataas.com/cat
+        - response is : `image/*`
+    - https://dog.ceo/api/breeds/image/random Fetch!
+        - response is : `application/json`
+            ```
+            {
+                "message": "https://images.dog.ceo/breeds/terrier-tibetan/n02097474_5996.jpg",
+                "status": "success"
+            }
+            ```
+    """
+
+    category = "torch/dataset"
+    
+    def build_node(self):
+        super().build_node()
+        self.label.set("Cat Dog Dataset")
+        self.cat_size = self.add_text_control("500", "cat_size", name="cat_size")
+        self.dog_size = self.add_text_control("500", "dog_size", name="dog_size")
+        self.out = self.add_out_port("Image Dataset")
+
+    def init_node(self):
+        super().init_node()
+        self.ds = None
+
+    def task(self):
+        self.ds = CatDogDataset(cat_size=int(self.cat_size.get()),dog_size=int(self.dog_size.get()))
         self.out.push(self.ds)
 
 
