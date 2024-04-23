@@ -1,7 +1,16 @@
+import io
+import pprint
+
 from grapycal.sobjects.controls import TextControl
 from grapycal.sobjects.edge import Edge
-from grapycal.sobjects.node import RESTORE_FROM, Node
+from grapycal.sobjects.node import Node
 from grapycal.sobjects.port import InputPort
+
+
+def get_pprint_str(data):
+    output = io.StringIO(newline="")
+    pprint.pprint(data, stream=output)
+    return output.getvalue()
 
 
 class PrintNode(Node):
@@ -24,13 +33,13 @@ class PrintNode(Node):
     def edge_activated(self, edge, port):
         self.flash_running_indicator()
         data = edge.get()
-        self.text_control.text.set(str(data))
+        self.text_control.text.set(get_pprint_str(data))
 
     def input_edge_added(self, edge: Edge, port: InputPort):
         if edge.is_data_ready():
             self.flash_running_indicator()
             data = edge.get()
-            self.text_control.text.set(str(data))
+            self.text_control.text.set(get_pprint_str(data))
 
     def input_edge_removed(self, edge: Edge, port: InputPort):
         self.text_control.text.set('')

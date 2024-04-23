@@ -23,6 +23,7 @@ class NetworkCallNode(Node):
     def build_node(self,name:str="Network"):
         self.label.set('')
         self.shape.set('normal')
+        self.icon_path.set('nn')
         self.network_name = self.add_attribute('network name',StringTopic,editor_type='text',init_value=name)
         self.network_name.add_validator(lambda x,_: x != '') # empty name may confuse users
         self.mode_control = self.add_option_control(name='mode',options=['train','eval'],value='train',label='Mode')
@@ -142,6 +143,7 @@ class NetworkInNode(Node):
             inputs = ['x']
             
         self.shape.set('normal')
+        self.icon_path.set('nn')
 
         # setup attributes
         # The self.outs attribute is actually "inputs" of the network, but it was mistakenly named "outs" and I didn't want to change it to avoid breaking backwards compatibility
@@ -229,6 +231,7 @@ class NetworkOutNode(Node):
         if outputs is None:
             outputs = ['y']
         self.shape.set('normal')
+        self.icon_path.set('nn')
 
         # setup attributes
         self.ins = self.add_attribute('ins',ListTopic,editor_type='list',init_value=outputs,display_name='outputs')

@@ -12,6 +12,7 @@ class AccuracyNode(FunctionNode):
         super().build_node()
         self.label.set('Accuracy')
         self.shape.set('simple')
+        self.icon_path.set('metrics')
 
     def calculate(self, prediction, target) -> Any:
         #TODO: if target is one-hot encoded, convert it to class labels

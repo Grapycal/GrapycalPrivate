@@ -1,11 +1,12 @@
-from ast import pattern
 from typing import Any
-from grapycal import FunctionNode, IntTopic, StringTopic
-from grapycal.extension.utils import NodeInfo
-from grapycal.sobjects.controls.textControl import TextControl
+
+import einops
 import torch
 import torch.nn.functional as F
-import einops
+from grapycal import FunctionNode, IntTopic
+from grapycal.extension.utils import NodeInfo
+from grapycal.sobjects.controls.textControl import TextControl
+
 
 class CatNode(FunctionNode):
     category = 'torch/operations'

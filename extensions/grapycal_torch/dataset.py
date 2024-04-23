@@ -33,9 +33,10 @@ class MnistDatasetNode(SourceNode):
             
         ds = []
         for i in range(size):
-            ds.append(raw_ds[i])
+            pair = raw_ds[i]
+            ds.append({'image': pair[0], 'label': pair[1]})
 
         if self.include_labels.get() == 'False':
-            ds = [x[0] for x in ds]
+            ds = [x['image'] for x in ds]
 
         self.out.push(ds)

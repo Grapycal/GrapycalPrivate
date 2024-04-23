@@ -60,11 +60,10 @@ def render_from_fig(
     return buf
 
 @contextmanager
-def open_fig() -> Generator[Tuple[Figure, Axes], None, None]:
+def open_fig(equal=False) -> Generator[Tuple[Figure, Axes], None, None]:
     fig = plt.figure()
     ax = fig.gca()
     ax.set_facecolor("black")
-    ax.set_aspect("equal")
     try:
         yield fig, ax
     finally:
@@ -153,7 +152,7 @@ class ImageDisplayNode(Node):
         self.cmap = self.add_attribute(
             "cmap",
             StringTopic,
-            "gray",
+            "viridis",
             editor_type="options",
             options=[
                 "gray",
@@ -412,7 +411,7 @@ class ScatterPlotNode(Node):
         return data
 
     def update_image(self, data):
-        with open_fig() as (fig, ax):
+        with open_fig(equal=True) as (fig, ax):
             for d in data:
                 if len(d.shape) == 3:
                     for slice in d:

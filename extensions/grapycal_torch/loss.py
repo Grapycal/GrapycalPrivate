@@ -11,6 +11,7 @@ class BCEWithLogitsLossNode(SimpleModuleNode):
     def build_node(self):
         super().build_node()
         self.label.set('BCEWithLogitsLoss')
+        self.icon_path.set('metrics')
 
     def create_module(self) -> nn.Module:
         return nn.BCEWithLogitsLoss()
@@ -29,6 +30,7 @@ class CrossEntropyLossNode(SimpleModuleNode):
     def build_node(self):
         super().build_node()
         self.label.set('CrossEntropyLoss')
+        self.icon_path.set('metrics')
 
     def create_module(self) -> nn.Module:
         return nn.CrossEntropyLoss()
@@ -47,6 +49,7 @@ class MSELossNode(SimpleModuleNode):
     def build_node(self):
         super().build_node()
         self.label.set('MSELoss')
+        self.icon_path.set('metrics')
 
     def create_module(self) -> nn.Module:
         return nn.MSELoss()
