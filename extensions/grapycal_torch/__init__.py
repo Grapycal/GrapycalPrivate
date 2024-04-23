@@ -3,10 +3,13 @@ import io
 from pathlib import Path
 from typing import Literal, Sequence, Tuple, Type, cast
 
+import matplotlib
 import torch
+from grapycal import GRID, CommandCtx, Edge, Extension, InputPort, Node, command
 from grapycal.extension.utils import NodeInfo
 from grapycal.sobjects.edge import Edge
 from grapycal.sobjects.port import InputPort, Port
+from torchvision import transforms
 
 from grapycal_torch.manager import MNManager, NetManager
 
@@ -24,21 +27,16 @@ from .networkDef import *
 from .normalize import *
 from .optimizerNode import *
 from .pooling import *
+from .resnet import ResNet
 from .settings import *
 from .tensor import *
 from .tensor_operations import *
 from .transform import *
 
-torch.set_printoptions(threshold=20)
-
-import matplotlib
-import torchvision
-from grapycal import GRID, CommandCtx, Edge, Extension, InputPort, Node, command
-from torchvision import transforms
-
 matplotlib.use("agg")  # use non-interactive backend
 import matplotlib.pyplot as plt
-import numpy as np
+
+torch.set_printoptions(threshold=20)
 
 
 class GrapycalTorch(Extension):

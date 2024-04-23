@@ -1,6 +1,8 @@
 from grapycal import FloatTopic
-from .moduleNode import SimpleModuleNode
 from torch import nn
+
+from .moduleNode import SimpleModuleNode
+
 
 class ReLUNode(SimpleModuleNode):
     category = 'torch/neural network'
