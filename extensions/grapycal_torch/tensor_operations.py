@@ -167,7 +167,6 @@ class FConv2DNode(FunctionNode):
     def calculate(self, x:torch.Tensor, kernel:torch.Tensor):
         is_c1hw = False
         orig_x = x
-        orig_kernel = kernel
         if len(x.shape) == 2:
             x = x.unsqueeze(0)
         if len(kernel.shape) == 2:

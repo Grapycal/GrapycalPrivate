@@ -1,12 +1,10 @@
-from grapycal import Node, StringTopic
-from grapycal.extension.utils import NodeInfo
-from grapycal.sobjects.sourceNode import SourceNode
-import numpy as np
+import math
 
 # ported from https://github.com/pvigier/perlin-numpy/blob/master/perlin2d.py
-
 import torch
-import math
+from grapycal import FunctionNode, StringTopic
+from grapycal.extension.utils import NodeInfo
+from grapycal.sobjects.sourceNode import SourceNode
 
 from .settings import SettingsNode
 
@@ -200,7 +198,6 @@ class ArangeNode(SourceNode):
         self.out_port.push(torch.arange(start, stop, step, device=device))
 
 
-from grapycal import FunctionNode
 
 
 class Arange2Node(FunctionNode):

@@ -2,6 +2,7 @@ import io
 from contextlib import contextmanager
 from typing import Generator, Tuple
 
+import matplotlib
 from grapycal import FloatTopic, StringTopic, to_numpy
 from grapycal.sobjects.edge import Edge
 from grapycal.sobjects.node import Node
@@ -10,12 +11,6 @@ from grapycal.sobjects.sourceNode import SourceNode
 from matplotlib import pyplot as plt
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
-
-plt.style.use("dark_background")
-import matplotlib
-
-matplotlib.use("Agg")
-
 
 try:
     import torch
@@ -35,6 +30,10 @@ try:
     HAS_PIL = True
 except ImportError:
     HAS_PIL = False
+
+
+plt.style.use("dark_background")
+matplotlib.use("Agg")
 
 def render_from_fig(
         fig: Figure,
@@ -395,7 +394,7 @@ class ScatterPlotNode(Node):
             unsliced_data = data
             try:
                 data = eval(f"unsliced_data[{slice_string}]", globals(), locals())
-            except:
+            except Exception:
                 self.slice.text.set(":")
             
             if data.ndim == 2:

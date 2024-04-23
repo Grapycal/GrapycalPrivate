@@ -243,7 +243,7 @@ class NetworkOutNode(Node):
         self.network_name.add_validator(lambda x,_: x != '') # empty name may confuse users
         try:
             self.restore_attributes('network name')
-        except:
+        except Exception:
             self.network_name.set(name)
             
         self.network_name.set(find_next_valid_name(self.network_name.get(),self.ext.net.outs))

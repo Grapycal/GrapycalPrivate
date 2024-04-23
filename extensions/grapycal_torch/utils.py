@@ -1,7 +1,8 @@
 
+from typing import TYPE_CHECKING, Iterable
+
 from grapycal import OptionControl
 
-from typing import TYPE_CHECKING, Iterable
 if TYPE_CHECKING:
     from grapycal_torch import GrapycalTorch
 
@@ -51,7 +52,7 @@ def find_next_valid_name(name:str, invalids:Iterable[str]):
         number = name[name.rfind('(')+1:-1]
         try:
             number = int(number)
-        except:
+        except Exception:
             base = name
             number = 1
 
