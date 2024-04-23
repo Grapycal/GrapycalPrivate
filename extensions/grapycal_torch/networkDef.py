@@ -1,7 +1,7 @@
 from collections import defaultdict
 from typing import TYPE_CHECKING, List
 
-from grapycal import ListTopic, Node, StringTopic
+from grapycal import GRID, ListTopic, Node, StringTopic
 from grapycal.sobjects.edge import Edge
 from grapycal.sobjects.port import InputPort, OutputPort
 from objectsync.sobject import SObjectSerialized
@@ -144,16 +144,18 @@ class NetworkInNode(Node):
         self.shape.set('normal')
 
         # setup attributes
-        self.outs = self.add_attribute('outs',ListTopic,editor_type='list',init_value=inputs)
+        # The self.outs attribute is actually "inputs" of the network, but it was mistakenly named "outs" and I didn't want to change it to avoid breaking backwards compatibility
+        self.outs = self.add_attribute('outs',ListTopic,editor_type='list',init_value=inputs,display_name='inputs')
         self.outs.add_validator(ListTopic.unique_validator)
         self.device_control = self.add_option_control(name='device',options=['default','cpu','cuda'],value='default',label='Device')
+        self.create_reference_btn = self.add_button_control(name='create_reference',label='Create reference')
         
         self.network_name = self.add_attribute('network name',StringTopic,editor_type='text',init_value=name)
         self.network_name.add_validator(lambda x,_: x not in self.ext.net.ins) # function name must be unique
         self.network_name.add_validator(lambda x,_: x != '') # empty name may confuse users
         try:
             self.restore_attributes('network name')
-        except:
+        except Exception:
             self.network_name.set(name)
             
         self.network_name.set(find_next_valid_name(self.network_name.get(),self.ext.net.ins))
@@ -175,6 +177,7 @@ class NetworkInNode(Node):
         
         if not self.is_preview.get():
             self.ext.net.add_in(self.network_name.get(),self)     
+        self.create_reference_btn.on_click.add_auto(self._create_reference)
 
     def post_create(self):
         for call in self.ext.net.calls.get(self.network_name.get()):
@@ -202,7 +205,6 @@ class NetworkInNode(Node):
 
     def on_output_set(self, new):
         if not self.is_preview.get():
-            print(self.ext.net.calls.get(self.network_name.get()),self.network_name.get())
             for call in self.ext.net.calls.get(self.network_name.get()):
                 call.update_input_ports()
 
@@ -211,6 +213,9 @@ class NetworkInNode(Node):
         for key, value in args.items():
             self.get_out_port(key).push(value)
         self.flash_running_indicator()
+
+    def _create_reference(self):
+        self.ext.create_node(NetworkCallNode,name=self.network_name.get(),translation=self.get_position([GRID,GRID*6]))
 
     def destroy(self) -> SObjectSerialized:
         if not self.is_preview.get():
@@ -226,7 +231,7 @@ class NetworkOutNode(Node):
         self.shape.set('normal')
 
         # setup attributes
-        self.ins = self.add_attribute('ins',ListTopic,editor_type='list',init_value=outputs)
+        self.ins = self.add_attribute('ins',ListTopic,editor_type='list',init_value=outputs,display_name='outputs')
         self.ins.add_validator(ListTopic.unique_validator)
         self.restore_attributes('ins')
         

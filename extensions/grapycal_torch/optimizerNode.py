@@ -1,20 +1,19 @@
 from typing import TYPE_CHECKING, List
+
+import torch
+from grapycal import FloatTopic
 from grapycal.extension.utils import NodeInfo
 from grapycal.sobjects.controls.buttonControl import ButtonControl
 from grapycal.sobjects.controls.optionControl import OptionControl
 from grapycal.sobjects.controls.textControl import TextControl
 from grapycal.sobjects.edge import Edge
-from grapycal.sobjects.functionNode import FunctionNode
 from grapycal.sobjects.node import Node, deprecated
 from grapycal.sobjects.port import InputPort
-from grapycal import FloatTopic, StringTopic
 from grapycal.stores import main_store
-from objectsync import ObjSetTopic, SObject
-import torch
 from torch import nn
 
-from .utils import setup_net_name_ctrl
 from .moduleNode import ModuleNode
+from .utils import setup_net_name_ctrl
 
 if TYPE_CHECKING:
     from grapycal_torch import GrapycalTorch
@@ -124,7 +123,6 @@ class TrainNode(Node):
 
     def build_node(self):
         self.label.set("Train")
-        self.css_classes.append("fit-content")
         self.network_port = self.add_in_port(
             "network", control_type=OptionControl
         )

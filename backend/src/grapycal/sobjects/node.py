@@ -695,6 +695,7 @@ class Node(SObject, metaclass=NodeMeta):
     def add_slider_control(
         self,
         label: str = "",
+        value: float = 0,
         min: float = 0,
         max: float = 1,
         step: float = 0.01,
@@ -707,6 +708,7 @@ class Node(SObject, metaclass=NodeMeta):
         control = self.add_control(
             SliderControl,
             label=label,
+            value=value,
             min=min,
             max=max,
             step=step,
@@ -910,6 +912,13 @@ class Node(SObject, metaclass=NodeMeta):
                 self.output.set([])
                 self.output.insert(["error", "Too many output lines. Cleared.\n"])
             self.output.insert(["output", data])
+
+    def get_position(self, translation: list[float]):
+        """
+        Get the position of the node.
+        """
+        position = self.translation.get().split(",")
+        return [float(position[0]) + translation[0], float(position[1]) + translation[1]]
 
     """
     Run tasks in the background or foreground, redirecting stdout to the node's output stream.

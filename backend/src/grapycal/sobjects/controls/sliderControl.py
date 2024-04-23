@@ -1,6 +1,6 @@
-from typing import Any, Dict
+from objectsync import DictTopic, FloatTopic, StringTopic
+
 from grapycal.sobjects.controls.control import ValuedControl
-from objectsync import DictTopic, FloatTopic, StringTopic, EventTopic
 
 
 class SliderControl(ValuedControl[None]):
@@ -11,9 +11,9 @@ class SliderControl(ValuedControl[None]):
     ```
     '''
     frontend_type = 'SliderControl'
-    def build(self, label:str='', min:float=0, max:float=1, step:float=0.01, int_mode:bool=False):
+    def build(self, label:str='', value:float=0, min:float=0, max:float=1, step:float=0.01, int_mode:bool=False):
         self.label = self.add_attribute('label', StringTopic, label, is_stateful=False)
-        self.value = self.add_attribute('value', FloatTopic, 0, is_stateful=False)
+        self.value = self.add_attribute('value', FloatTopic, value, is_stateful=False)
         self.config = self.add_attribute('config', DictTopic, {'min': min, 'max': max, 'step': step, 'int_mode': int_mode}, is_stateful=False)
         
     def init(self):

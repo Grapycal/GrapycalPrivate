@@ -1,41 +1,45 @@
 import asyncio
 from pathlib import Path
 from typing import Literal, Sequence, Tuple, Type, cast
+
+import torch
 from grapycal.extension.utils import NodeInfo
 from grapycal.sobjects.edge import Edge
 from grapycal.sobjects.port import InputPort, Port
+
 from grapycal_torch.manager import MNManager, NetManager
+
+from .activation import *
 from .basic import *
 from .cnn import *
-from .activation import *
-from .tensor_operations import *
-from .tensor import *
-from .optimizerNode import *
-from .transform import *
-from .dataloader import *
-from .normalize import *
-from .loss import *
-from .generative import *
-from .networkDef import *
-from .settings import *
 from .configureNode import *
-from .pooling import *
 from .conversion import *
+from .dataloader import *
+from .dataset import *
+from .generative import *
+from .loss import *
+from .metrics import *
+from .networkDef import *
+from .normalize import *
+from .optimizerNode import *
+from .pooling import *
+from .settings import *
+from .tensor import *
+from .tensor_operations import *
+from .transform import *
 
-
-import torch
 torch.set_printoptions(threshold=20)
-import torchvision
-from torchvision import transforms
-
-from grapycal import GRID, Node, Edge, InputPort, Extension, command, CommandCtx
-
 import io
+
 import matplotlib
+import torchvision
+from grapycal import GRID, CommandCtx, Edge, Extension, InputPort, Node, command
+from torchvision import transforms
 
 matplotlib.use("agg")  # use non-interactive backend
 import matplotlib.pyplot as plt
 import numpy as np
+
 
 class GrapycalTorch(Extension):
 
@@ -280,44 +284,7 @@ class GrapycalTorch(Extension):
         
         self.wrap_with_network(inputs,outputs,x0,y0,x,y,'VGG16-BN')
 
-
-class MnistDatasetNode(SourceNode):
-    category = "torch/dataset"
-
-    def build_node(self):
-        super().build_node()
-        self.label.set("MNIST Dataset")
-        self.out = self.add_out_port("MNIST Dataset")
-        self.include_labels = self.add_option_control(name='include_labels',options=['True','False'], value= 'True',label='Include labels')
-        self.size = self.add_slider_control(label="size",min=1,max=60000,int_mode=True,name="size")
-
-    def task(self):
-        transform = transforms.Compose(
-            [
-                transforms.ToTensor(),
-            ]
-        )
-
-        with self._redirect_output():
-            raw_ds = torchvision.datasets.mnist.MNIST(
-                root=main_store.settings.data_path.get(),
-                download=True,
-                transform=transform,
-            )
-
-        size = self.size.get_int()
-            
-        ds = []
-        for i in range(size):
-            ds.append(raw_ds[i])
-
-        if self.include_labels.get() == 'False':
-            ds = [x[0] for x in ds]
-
-        self.out.push(ds)
-
 import aiofiles
-
 
 
 class ImageDataset(torch.utils.data.Dataset): # type: ignore
