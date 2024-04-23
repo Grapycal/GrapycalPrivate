@@ -115,9 +115,10 @@ class BackgroundRunner:
                         ret = task()
                     except Exception as e:
                         on_exception(e, exception_callback)
-                    # if ret is a generator, push it to stack
-                    if isinstance(ret, Iterator):
-                        self._stack.append(TaskInfo(iter(ret), exception_callback))
+                    else:
+                        # if ret is a generator, push it to stack
+                        if isinstance(ret, Iterator):
+                            self._stack.append(TaskInfo(iter(ret), exception_callback))
 
             except RunnerInterrupt:
                 logger.info("Runner interrupted")
