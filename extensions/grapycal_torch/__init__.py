@@ -1,7 +1,7 @@
 import asyncio
 import io
 from pathlib import Path
-from typing import Literal, Sequence, Tuple, Type, cast
+from typing import Dict, Literal, Sequence, Tuple, Type, cast
 
 import matplotlib
 import torch
