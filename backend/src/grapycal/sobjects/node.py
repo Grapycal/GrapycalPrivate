@@ -1050,7 +1050,6 @@ class Node(SObject, metaclass=NodeMeta):
                 f"Exception occured in a destroyed node {self.get_id()}: {message}"
             )
         else:
-            self.decr_n_running_tasks()
             if len(self.output) > 100:
                 self.output.set([])
                 self.output.insert(["error", "Too many output lines. Cleared.\n"])

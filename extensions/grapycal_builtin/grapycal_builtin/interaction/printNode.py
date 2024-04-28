@@ -9,7 +9,10 @@ from grapycal.sobjects.port import InputPort
 
 def get_pprint_str(data):
     output = io.StringIO(newline="")
-    pprint.pprint(data, stream=output)
+    if isinstance(data, str):
+        output.write(data)
+    else:
+        pprint.pprint(data, stream=output)
     return output.getvalue()
 
 

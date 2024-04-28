@@ -1,11 +1,17 @@
+import re
 from typing import Any, Dict
+
+from grapycal import ListTopic, StringTopic
 from grapycal.extension.utils import NodeInfo
-from grapycal.sobjects.sourceNode import SourceNode
 from grapycal.sobjects.controls import TextControl
+from grapycal.sobjects.controls.buttonControl import ButtonControl
 from grapycal.sobjects.edge import Edge
+from grapycal.sobjects.functionNode import FunctionNode
 from grapycal.sobjects.node import Node, deprecated
 from grapycal.sobjects.port import InputPort
-from grapycal import ListTopic, StringTopic
+from grapycal.sobjects.sourceNode import SourceNode
+from grapycal.utils.nodeGen import FunctionNodeGenerator
+
 
 class VariableNode(SourceNode):
     '''
@@ -168,3 +174,200 @@ class SplitDictNode(Node):
         for out_port in self.out_ports:
             key = out_port.name.get()
             out_port.push(data[key])
+
+class BuildStringNode(Node):
+    category = 'data'
+    def build_node(self):
+        self.out_port = self.add_out_port('output')
+        self.label.set('Build String')
+        self.shape.set('normal')
+        self.keys = self.add_attribute('keys', ListTopic, editor_type='list')
+        self.add_button = self.add_control(ButtonControl,name='add',label='Add')
+
+        if not self.is_new:
+            for key in self.keys:
+                self.add_item(key,-1)
+        else:
+            self.keys.insert('1')
+
+    def init_node(self):
+        self.keys.on_insert.add_auto(self.add_item)
+        self.keys.on_pop.add_auto(self.remove_item)
+        self.add_button.on_click.add_auto(self.add_pressed)
+
+    def add_item(self, key, position):
+        self.add_in_port(key,1,display_name="",control_type=TextControl,activation_mode=TextControl.ActivationMode.NO_ACTIVATION)
+
+    def remove_item(self, key, position):
+        self.remove_in_port(key)
+
+    def add_pressed(self):
+        new_key = 0
+        for key in self.keys:
+            if re.match(r'[0-9]+', key):
+                new_key = max(new_key, int(key))
+        new_key += 1
+        self.keys.insert(str(new_key))
+
+    def double_click(self):
+        self.task()
+
+    def edge_activated(self, edge: Edge, port: InputPort):
+        self.task()
+
+    def task(self):
+        result = ''
+        for key in self.keys:
+            result += self.get_in_port(key).get()
+        self.out_port.push(result)
+        self.flash_running_indicator()
+
+class BuildDictNode(Node):
+    category = 'data'
+    def build_node(self):
+        self.out_port = self.add_out_port('output')
+        self.label.set('Build Dict')
+        self.shape.set('normal')
+        self.keys = self.add_attribute('keys', ListTopic, editor_type='list')
+
+        if not self.is_new:
+            for key in self.keys:
+                self.add_item(key,-1)
+
+    def init_node(self):
+        self.keys.on_insert.add_auto(self.add_item)
+        self.keys.on_pop.add_auto(self.remove_item)
+
+    def add_item(self, key, position):
+        self.add_in_port(key,1,control_type=TextControl,activation_mode=TextControl.ActivationMode.NO_ACTIVATION)
+
+    def remove_item(self, key, position):
+        self.remove_in_port(key)
+        
+    def double_click(self):
+        self.task()
+
+    def edge_activated(self, edge: Edge, port: InputPort):
+        self.task()
+
+    def task(self):
+        if not all([port.is_all_ready() for port in self.in_ports]):
+            return
+        result = {}
+        for key in self.keys:
+            result[key] = self.get_in_port(key).get()
+        self.out_port.push(result)
+        self.flash_running_indicator()
+
+class RegexFindAllNode(Node):
+    '''
+    ReFindAllNode is used to find all occurrences of a regular expression in a string.
+
+    :inputs:
+        - string: the string to be searched
+        - pattern: the regular expression pattern
+
+    :outputs:
+        - matches: a list of all matches
+    '''
+    category = 'data'
+
+    def build_node(self):
+        self.in_port = self.add_in_port('string',1,control_type=TextControl,activation_mode=TextControl.ActivationMode.NO_ACTIVATION)
+        self.pattern_port = self.add_in_port('pattern',1,control_type=TextControl,activation_mode=TextControl.ActivationMode.NO_ACTIVATION)
+        self.out_port = self.add_out_port('matches')
+        self.label.set('Regex Find All')
+        self.shape.set('normal')
+        self.css_classes.append('fit-content')
+
+    def edge_activated(self, edge: Edge, port: InputPort):
+        self.task()
+
+    def double_click(self):
+        self.task()
+        
+    def task(self):
+        for port in [self.in_port, self.pattern_port]:
+                    if not port.is_all_ready():
+                        return
+        string = self.in_port.get()
+        pattern = self.pattern_port.get()
+        self.out_port.push(re.findall(pattern,string))
+        self.flash_running_indicator()
+
+class ZipNode(Node):
+    '''
+    ZipNode is used to combine multiple lists into a single list.
+
+    :inputs:
+        - list1: the first list
+        - list2: the second list
+        etc.
+
+    :outputs:
+        - list: the combined list
+    '''
+    category = 'data'
+    def build_node(self):
+        self.out_port = self.add_out_port('output')
+        self.label.set('Zip')
+        self.shape.set('normal')
+        self.items = self.add_attribute('items', ListTopic, editor_type='list')
+        self.add_button = self.add_control(ButtonControl,name='add',label='Add')
+        self.required_length = self.add_control(TextControl,name='required_length',label='Required Length')
+
+        if not self.is_new:
+            for item in self.items:
+                self.add_item(item,-1)
+        else:
+            self.items.insert('1')
+
+    def init_node(self):
+        self.items.on_insert.add_auto(self.add_item)
+        self.items.on_pop.add_auto(self.remove_item)
+        self.add_button.on_click.add_auto(self.add_pressed)
+
+    def add_item(self, item, position):
+        self.add_in_port(item,1,display_name="") #TODO: add control 
+
+    def remove_item(self, item, position):
+        self.remove_in_port(item)
+
+    def add_pressed(self):
+        new_item = 0
+        for item in self.items:
+            if re.match(r'[0-9]+', item):
+                new_item = max(new_item, int(item))
+        new_item += 1
+        self.items.insert(str(new_item))
+
+    def double_click(self):
+        self.task()
+
+    def edge_activated(self, edge: Edge, port: InputPort):
+        self.task()
+
+    def task(self):
+        if not all([port.is_all_ready() for port in self.in_ports]):
+            return
+        inputs = []
+        required_length_str = self.required_length.text.get()
+        try:
+            required_length = int(required_length_str)
+        except ValueError:
+            required_length = None
+        for item in self.items:
+            inputs.append(self.get_in_port(item).get())
+
+        if required_length is not None:
+            for input_list in inputs:
+                if len(input_list) != required_length:
+                    self.print_exception(f'Length of input lists must be {required_length}')
+                    return
+                
+        try:
+            result = list(zip(*inputs))
+        except ValueError:
+            self.print_exception('Input lists must have the same length')
+            return
+        self.out_port.push(result)

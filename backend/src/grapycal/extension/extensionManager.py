@@ -1,25 +1,24 @@
 import asyncio
 import logging
 import pkgutil
-
 import subprocess
-from unittest import skip
+
 from grapycal.extension.extensionSearch import get_remote_extensions
-from grapycal.extension.utils import get_extension_info, get_package_version, list_to_dict, snap_node
+from grapycal.extension.utils import get_extension_info, list_to_dict, snap_node
 from grapycal.stores import main_store
+
 logger = logging.getLogger(__name__)
 
-from typing import TYPE_CHECKING, Dict, List, Tuple
-import sys
-from os.path import join, dirname
-import shutil
-from grapycal.extension.extension import Extension, CommandCtx, get_extension
-from grapycal.sobjects.node import Node
-from grapycal.sobjects.port import Port
+from typing import TYPE_CHECKING, Dict, List
+
 import objectsync
 
+from grapycal.extension.extension import CommandCtx, Extension, get_extension
+from grapycal.sobjects.node import Node
+from grapycal.sobjects.port import Port
+
 if TYPE_CHECKING:  
-    from grapycal.core.workspace import Workspace
+    pass
 
 class ExtensionManager:
     def __init__(self,objectsync_server:objectsync.Server) -> None:
@@ -70,14 +69,7 @@ class ExtensionManager:
         added_node_types = new_node_types - old_node_types
         changed_node_types = old_node_types & new_node_types
 
-        existing_nodes = main_store.main_editor.get_children_of_type(Node) + main_store.node_library.get_children_of_type(Node)
-
-        # Ensure there are no nodes of removed types
-        for node in existing_nodes:
-            type_name_without_extension = node.get_type_name().split('.')[1]
-            if type_name_without_extension in removed_node_types:
-                self._unload_extension(extension_name)
-                raise Exception(f'Cannot update extension {extension_name} because there are still nodes of type {type_name_without_extension} in the workspace.')
+        logger.info(f'Updating extension {extension_name}: removed {removed_node_types}, added {added_node_types}')
 
         # Find nodes of changed types
         def hit(node:objectsync.SObject) -> bool:

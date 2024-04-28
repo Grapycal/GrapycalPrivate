@@ -92,6 +92,9 @@ def write_workspace(path:str,metadata,data:Any,compress=False):
     else:
         open_func = partial(gzip.open,path,'wt')
 
+    if os.path.dirname(path) != '':
+        os.makedirs(os.path.dirname(path),exist_ok=True)
+
     with open_func() as f:
         f.write(grapycal.__version__+'\n')
         json.dump(metadata,f)

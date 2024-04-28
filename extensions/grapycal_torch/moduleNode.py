@@ -74,7 +74,7 @@ class ModuleNode(Node):
         self.label.set(self.generate_label())
         num_params = sum(p.numel() for p in self.module.parameters() if p.requires_grad)
         if num_params >= 1000000:
-            param_str = f'{num_params/1000000:.1f}self.ext'
+            param_str = f'{num_params/1000000:.1f}M'
         elif num_params >= 1000:
             param_str = f'{num_params/1000:.1f}K'
         else:

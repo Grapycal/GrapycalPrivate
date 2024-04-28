@@ -7,7 +7,7 @@ class SliderControl(ValuedControl[None]):
     '''
     To add a slider control to a node, use the following code in the node:
     ```python
-    self.add_control(SliderControl, label='slider', min=0, max=1, step=0.01, int_mode=False)
+    self.add_control(SliderControl, label='slider', value=0, min=0, max=1, step=0.01, int_mode=False)
     ```
     '''
     frontend_type = 'SliderControl'
