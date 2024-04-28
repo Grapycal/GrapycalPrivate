@@ -39,6 +39,11 @@ class ExtensionMeta(type):
 
 class Extension(metaclass=ExtensionMeta):
 
+    dependencies: List[str] = []
+    '''List of extension names that this extension depends on. When they reload, this extension will also reload.
+    #TODO: check dependencies when loading extensions 
+    '''
+
     node_types: List[type[Node]]|None = None
     '''Specify this list with all the Node types that the extension provides. 
 
@@ -152,6 +157,30 @@ class Extension(metaclass=ExtensionMeta):
     
     def get_data_path(self, path:str)->str:
         return os.path.join(main_store.settings.data_path.get(),path)
+    
+    T = TypeVar('T')
+    def get_store(self, store_type: type[T]) -> T:
+        return main_store.get_store(store_type)
+    
+    def provide_stores(self)->List[Any]:
+        '''
+        Override this method to return a list of stores that the extension provides.
+        A store is any type of object that can be accessed by other extensions. Stores are identified by their type, so please make sure that the type is unique.
+
+        A store will be replaced if the extension that provides it is reloaded.
+
+        Example:
+        ```
+        class MyExtension(Extension):
+            def provide_stores(self):
+                return [MyStore()]
+
+        class SomeNode(Node): # this node may be in a different extension
+            def init_node(self):
+                self.my_store = self.get_store(MyStore) # can access the store like this to exchange data with other nodes
+        ```
+        '''
+        return []
 
 def load_or_reload_module(module_name:str):
     if module_name not in sys.modules:

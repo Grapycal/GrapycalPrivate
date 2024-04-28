@@ -1,0 +1,10 @@
+[tool.poetry]
+name = "grapycal-itri"
+version = "0.0.0"
+authors = ["eri24816 <a931eric@gmail.com>"]
+readme = "README.md"
+packages = [
+    { include = "grapycal_itri", from=".."}
+]
+
+[dependencies]

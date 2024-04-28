@@ -8,6 +8,8 @@ from grapycal.sobjects.port import InputPort
 from objectsync import StringTopic
 from torch import nn
 
+from grapycal_torch.store import GrapycalTorchStore
+
 from .settings import SettingsNode
 
 if TYPE_CHECKING:
@@ -63,11 +65,12 @@ class ModuleNode(Node):
         self.state_dict_id = self.add_attribute('state_dict_id',StringTopic,'',editor_type='text')
 
     def init_node(self):
+        self.torch_store = self.get_store(GrapycalTorchStore)
         self.module: nn.Module|None = None
         self.create_module_topic.on_emit.add_manual(lambda:self.run(self.create_module_and_update_name))
         self.module_mover = ModuleMover()
-        self.ext.mn.add(self)
-
+        self.torch_store.mn.add(self)
+        
     def create_module_and_update_name(self):
         self.module = self.create_module()
         self.module_mover.set_actual_device('cpu')
@@ -143,7 +146,7 @@ class ModuleNode(Node):
         self.module.load_state_dict(state_dict)
 
     def destroy(self):
-        self.ext.mn.remove(self)
+        self.torch_store.mn.remove(self)
         return super().destroy()
 
 class SimpleModuleNode(ModuleNode):

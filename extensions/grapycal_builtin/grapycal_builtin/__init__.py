@@ -1,17 +1,20 @@
-import numpy 
+import numpy
+
 numpy.set_printoptions(threshold=20)
 
-from grapycal import command
-from grapycal import CommandCtx
-from .interaction import *
+from grapycal import CommandCtx, command
+
+from .container import *
 from .data import *
 from .function import *
+from .interaction import *
 from .procedural import *
-from .container import *
+from .system import *
 
 del FunctionNode, SourceNode, Node
 
 from grapycal import Extension
+
 
 class GrapycalBuiltin(Extension):
 

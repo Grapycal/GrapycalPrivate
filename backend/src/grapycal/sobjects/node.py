@@ -1075,7 +1075,14 @@ class Node(SObject, metaclass=NodeMeta):
         Get the variables of the running module.
         """
         return main_store.vars()
-
+    
+    T = TypeVar('T')
+    def get_store(self, store_type: type[T]) -> T:
+        '''
+        Get a store provided by any extension.
+        '''
+        return main_store.get_store(store_type)
+    
     """
     Node events
     """

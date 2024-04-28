@@ -1,7 +1,7 @@
 import re
-from grapycal.extension.utils import NodeInfo
+
+from grapycal import ButtonControl, Edge, InputPort, ListTopic
 from grapycal.sobjects.node import Node
-from grapycal import ListTopic, Edge, InputPort, ButtonControl
 
 
 class ProcedureNode(Node):
@@ -18,16 +18,16 @@ class ProcedureNode(Node):
         self.css_classes.append('fit-content')
         self.icon_path.set('steps')
 
+        if self.is_new:
+            self.steps.insert('1')
+        else:
+            for step in self.steps:
+                self.add_step(step,-1)
+
     def init_node(self):
         self.steps.add_validator(ListTopic.unique_validator)
         self.steps.on_insert.add_auto(self.add_step)
         self.steps.on_pop.add_auto(self.remove_step)
-        if self.is_new:
-            self.steps.insert('1')
-
-    def restore_from_version(self, version, old: NodeInfo):
-        super().restore_from_version(version, old)
-        self.steps.set(old['steps'])
 
     def add_pressed(self):
         new_step = 0

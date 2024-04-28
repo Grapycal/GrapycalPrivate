@@ -12,6 +12,7 @@ from grapycal.sobjects.port import InputPort, Port
 from torchvision import transforms
 
 from grapycal_torch.manager import MNManager, NetManager
+from grapycal_torch.store import GrapycalTorchStore
 
 from .activation import *
 from .basic import *
@@ -41,10 +42,11 @@ import numpy as np
 
 
 class GrapycalTorch(Extension):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def provide_stores(self):
         self.mn = MNManager()
         self.net = NetManager(self)
+        self.store = GrapycalTorchStore(self.mn, self.net)
+        return [self.store]
 
     @command("Create network: empty")
     def create_network(self, ctx: CommandCtx):
