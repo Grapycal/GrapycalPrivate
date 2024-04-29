@@ -1,5 +1,5 @@
 {
-  "name": "grapycal-standalone",
+  "name": "Grapycal",
   "version": "0.11.3",
   "main": "main.js",
   "devDependencies": {
@@ -11,6 +11,7 @@
     "test": "electron ."
   },
   "dependencies": {
+    "await-spawn": "^4.0.2",
     "ctrlc-windows": "^2.1.0"
   }
 }
