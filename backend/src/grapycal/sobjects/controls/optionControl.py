@@ -1,5 +1,6 @@
+from objectsync import ListTopic, StringTopic
+
 from grapycal.sobjects.controls.control import ValuedControl
-from objectsync import ListTopic, StringTopic, IntTopic
 
 
 class OptionControl(ValuedControl[str]):
@@ -37,7 +38,7 @@ class OptionControl(ValuedControl[str]):
             return True
         return False
     
-    def set_with_value_from_edge(self, value):
-        assert value in self.options.get(), f'Value {value} is not a valid option'
-        if value != self.value.get():
-            self.set(value)
+    # def set_with_value_from_edge(self, value):
+    #     assert value in self.options.get(), f'Value {value} is not a valid option'
+    #     if value != self.value.get():
+    #         self.set(value)

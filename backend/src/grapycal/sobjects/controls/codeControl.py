@@ -1,9 +1,11 @@
 from enum import Enum
+
+from objectsync import IntTopic, StringTopic
+
 from grapycal.sobjects.controls.control import ValuedControl
 from grapycal.stores import main_store
 from grapycal.utils.misc import Action
 from grapycal.utils.suggestion import get_autocomplete_suggestions
-from objectsync import StringTopic, IntTopic
 
 
 class CodeControl(ValuedControl[str]):
@@ -85,8 +87,8 @@ class CodeControl(ValuedControl[str]):
             return True
         return False
 
-    def set_with_value_from_edge(self, value):
-        self.set(str(value))  # TODO find more proper way to handle this
+    # def set_with_value_from_edge(self, value):
+    #     self.set(str(value))  # TODO find more proper way to handle this
 
     def get_auto_complete_suggestions(self, text: str):
         s = get_autocomplete_suggestions(text,main_store.vars())

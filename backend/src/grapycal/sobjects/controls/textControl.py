@@ -82,5 +82,5 @@ class TextControl(ValuedControl[str]):
             return True
         return False
 
-    def set_with_value_from_edge(self, value):
-        self.set(str(value))  # TODO find more proper way to handle this
+    # def set_with_value_from_edge(self, value):
+    #     self.set(str(value))  # TODO find more proper way to handle this
