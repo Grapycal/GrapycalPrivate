@@ -1,5 +1,7 @@
 import numpy
 
+from grapycal_builtin.FuncDefManager import FuncDefManager
+
 numpy.set_printoptions(threshold=20)
 
 from grapycal import CommandCtx, command

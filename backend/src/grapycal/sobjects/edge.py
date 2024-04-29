@@ -108,9 +108,11 @@ class Edge(SObject):
         else:
             label = ''
             if HAS_TORCH and isinstance(data, torch.Tensor):
-                label = str(list(data.shape)) if list(data.shape)!=[] else 'scalar'
+                label = f'T{list(data.shape)}' if list(data.shape)!=[] else 'scalar'
             elif HAS_NUMPY and isinstance(data, np.ndarray):
-                label = str(list(data.shape)) if list(data.shape)!=[] else 'scalar'
+                label = f'N{list(data.shape)}' if list(data.shape)!=[] else 'scalar'
+            elif isinstance(data, list):
+                label = f'[{len(data)}]'
 
             self.label.set(label)
 

@@ -1,13 +1,12 @@
 from collections import defaultdict
-from os import remove
-from typing import TYPE_CHECKING, Dict, Generic, List, TypeVar
-from grapycal import Node, ListTopic, StringTopic
-from grapycal.extension.utils import NodeInfo
+from typing import TYPE_CHECKING
+
+from grapycal import ListTopic, Node, StringTopic
 from grapycal.sobjects.edge import Edge
 from grapycal.sobjects.port import InputPort, OutputPort
-from grapycal_builtin.FuncDefManager import FuncDefManager
-from ..utils import find_next_valid_name
 from objectsync.sobject import SObjectSerialized
+
+from ..utils import find_next_valid_name
 
 if TYPE_CHECKING:
     from grapycal_builtin import GrapycalBuiltin

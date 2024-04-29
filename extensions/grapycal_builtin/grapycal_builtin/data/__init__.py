@@ -11,6 +11,7 @@ from grapycal.sobjects.node import Node, deprecated
 from grapycal.sobjects.port import InputPort
 from grapycal.sobjects.sourceNode import SourceNode
 from grapycal.utils.nodeGen import FunctionNodeGenerator
+from topicsync.topic import FloatTopic, IntTopic
 
 
 class VariableNode(SourceNode):
@@ -189,6 +190,7 @@ class BuildStringNode(Node):
                 self.add_item(key,-1)
         else:
             self.keys.insert('1')
+            self.add_item('1',-1)
 
     def init_node(self):
         self.keys.on_insert.add_auto(self.add_item)
@@ -216,6 +218,8 @@ class BuildStringNode(Node):
         self.task()
 
     def task(self):
+        if not all([port.is_all_ready() for port in self.in_ports]):
+            return
         result = ''
         for key in self.keys:
             result += self.get_in_port(key).get()
@@ -371,3 +375,86 @@ class ZipNode(Node):
             self.print_exception('Input lists must have the same length')
             return
         self.out_port.push(result)
+
+
+class EmaNode(Node):
+    """
+    Exponential moving average
+    """
+
+    category = "data/dynamics"
+
+    def build_node(self):
+        super().build_node()
+        self.label.set("EMA")
+        self.reset_port = self.add_in_port("reset")
+        self.in_port = self.add_in_port("input")
+        self.out_port = self.add_out_port("output")
+        self.alpha = self.add_attribute("alpha", FloatTopic, 0.1, editor_type="float")
+        self.output_interval = self.add_attribute(
+            "output_interval", IntTopic, 1, editor_type="int"
+        )
+
+    def init_node(self):
+        super().init_node()
+        self.ema = None
+        self.count = 0
+
+    def edge_activated(self, edge: Edge, port: InputPort):
+        if port == self.reset_port:
+            self.ema = None
+            return
+        if port == self.in_port:
+            self.run(self.task, data=edge.get())
+
+    def task(self, data):
+        if self.ema is None:
+            self.ema = data
+        else:
+            self.ema = self.alpha.get() * data + (1 - self.alpha.get()) * self.ema
+        self.count += 1
+        if self.count % self.output_interval.get() == 0:
+            self.out_port.push(self.ema)
+
+
+class MeanNode(Node):
+    """
+    Average
+    """
+
+    category = "data/dynamics"
+
+    def build_node(self):
+        super().build_node()
+        self.label.set("Average")
+        self.reset_port = self.add_in_port("reset")
+        self.in_port = self.add_in_port("input")
+        self.out_port = self.add_out_port("output")
+        self.output_interval = self.add_attribute(
+            "output_interval", IntTopic, 1, editor_type="int"
+        )
+        self.reset_when_output = self.add_attribute(
+            "reset_when_output", StringTopic, "No", editor_type="options", options=["Yes", "No"]
+        )
+
+    def init_node(self):
+        super().init_node()
+        self.sum = 0
+        self.num = 0
+
+    def edge_activated(self, edge: Edge, port: InputPort):
+        if port == self.reset_port:
+            self.sum = 0
+            self.num = 0
+            return
+        if port == self.in_port:
+            self.run(self.task, data=edge.get())
+
+    def task(self, data):
+        self.sum += data
+        self.num += 1
+        if self.num % self.output_interval.get() == 0:
+            self.out_port.push(self.sum / self.num)
+            if self.reset_when_output.get() == "Yes":
+                self.sum = 0
+                self.num = 0

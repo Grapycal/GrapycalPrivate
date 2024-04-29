@@ -1,10 +1,12 @@
 from typing import Iterable
+
 from grapycal import Node
-from grapycal.extension.utils import NodeInfo
 from grapycal.sobjects.edge import Edge
 from grapycal.sobjects.port import InputPort
 from grapycal.sobjects.sourceNode import SourceNode
 from objectsync import IntTopic
+from topicsync.topic import StringTopic
+
 
 class ForNode(Node):
     '''
@@ -19,7 +21,7 @@ class ForNode(Node):
         self.item_port = self.add_out_port('item')
         self.label.set('For')
         self.shape.set('simple')
-
+        self.shuffle =self.add_attribute('shuffle',StringTopic,editor_type='options',init_value='No',options=['No','Yes'])
 
     def init_node(self):
         self.iterator:Iterable|None = None
@@ -28,7 +30,12 @@ class ForNode(Node):
         self.run(self.task)
 
     def task(self):
-        self.iterator = iter(self.iterable_port.get()) #type: ignore
+        iterable = self.iterable_port.get()
+        if self.shuffle.get() == 'Yes':
+            import random
+            iterable = list(iterable)
+            random.shuffle(iterable)
+        self.iterator = iter(iterable) #type: ignore
         self.run(self.next,to_queue=False)
 
     def next(self):

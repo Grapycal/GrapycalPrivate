@@ -5,7 +5,9 @@ import torch
 import torch.nn.functional as F
 from grapycal import FunctionNode, IntTopic
 from grapycal.extension.utils import NodeInfo
+from grapycal.sobjects.controls.sliderControl import SliderControl
 from grapycal.sobjects.controls.textControl import TextControl
+from topicsync.topic import StringTopic
 
 
 class CatNode(FunctionNode):
@@ -265,3 +267,50 @@ class GatherNode(FunctionNode):
 
     def calculate(self, inp,index):
         return torch.gather(inp,dim=self.dim.get(),index=index)
+    
+class ChooseFromTopNode(FunctionNode):
+    category = 'torch/operations'
+    inputs = ['inp']
+    outputs = ['result']
+    max_in_degree = [1,1]
+    def build_node(self):
+        super().build_node()
+        self.label.set('ChooseFromTop')
+        self.shape.set('normal')
+        self.mode = self.add_attribute('mode',StringTopic,'probs',editor_type='options',options=['probs','logits'])
+        self.n = self.add_in_port('n',1,control_type=SliderControl,value=20,min=1,max=40,int_mode = True)
+
+    def init_node(self):
+        super().init_node()
+        self.mode.on_set.add_manual(self.mode_changed)
+        self.mode_changed(self.mode.get())
+
+    def mode_changed(self,mode):
+        self.get_in_port('inp').display_name.set(mode)
+
+    def calculate(self, inp):
+        if self.mode.get() == 'logits':
+            probs = torch.softmax(inp,dim=0)
+        else:
+            probs = inp
+
+        n = self.n.get()
+        ind = torch.topk(probs, n).indices
+        top_prob = probs[ind]
+        top_prob = top_prob / (top_prob).sum() # Normalize
+        choice = torch.multinomial(top_prob,1)[0]
+        token_id = ind[choice]
+        return int(token_id)
+
+class SoftmaxNode(FunctionNode):
+    category = 'torch/operations'
+    inputs = ['inp']
+    outputs = ['result']
+    max_in_degree = [1]
+    def build_node(self):
+        super().build_node()
+        self.label.set('Softmax')
+        self.shape.set('normal')
+
+    def calculate(self, inp):
+        return torch.softmax(inp,dim=0)

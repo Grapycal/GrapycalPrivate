@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING, List
 from grapycal import GRID, ListTopic, Node, StringTopic
 from grapycal.sobjects.edge import Edge
 from grapycal.sobjects.port import InputPort, OutputPort
+from grapycal.stores import main_store
 from objectsync.sobject import SObjectSerialized
 
 from .utils import find_next_valid_name
@@ -162,14 +163,11 @@ class NetworkInNode(Node):
             
         self.network_name.set(find_next_valid_name(self.network_name.get(),self.ext.net.ins))
 
-        # add callbacks to attributes
-        self.outs.on_insert.add_auto(self.on_output_added)
-        self.outs.on_pop.add_auto(self.on_output_removed)
-        self.outs.on_set.add_auto(self.on_output_set)
+        self.file_path = self.add_attribute('file path',StringTopic,editor_type='text',init_value=f'{name}.pt')
+        self.save_btn = self.add_button_control(name='save',label='Save')
+        self.load_btn = self.add_button_control(name='load',label='Load')
 
-        self.network_name.on_set2.add_manual(self.on_network_name_changed)
-        self.network_name.on_set.add_auto(self.on_network_name_changed_auto)
-
+        
         self.update_label()
 
         for out in self.outs.get():
@@ -180,6 +178,28 @@ class NetworkInNode(Node):
         if not self.is_preview.get():
             self.ext.net.add_in(self.network_name.get(),self)     
         self.create_reference_btn.on_click.add_auto(self._create_reference)
+
+
+        self.save_btn.on_click.add_manual(lambda: self.run(self.save))
+        self.load_btn.on_click.add_manual(lambda: self.run(self.load))
+
+        # add callbacks to attributes
+        self.outs.on_insert.add_auto(self.on_output_added)
+        self.outs.on_pop.add_auto(self.on_output_removed)
+        self.outs.on_set.add_auto(self.on_output_set)
+
+        self.network_name.on_set2.add_manual(self.on_network_name_changed)
+        self.network_name.on_set.add_auto(self.on_network_name_changed_auto)
+        
+    def save(self):
+        self.ext.net.save_network(self.network_name.get(),self.file_path.get())
+        self.flash_running_indicator()
+        main_store.send_message_to_all(f"Saved {self.network_name.get()} to {self.file_path.get()}.")
+    
+    def load(self):
+        self.ext.net.load_network(self.network_name.get(),self.file_path.get(),self)
+        self.flash_running_indicator()
+        main_store.send_message_to_all(f"Loaded {self.network_name.get()} from {self.file_path.get()}.")
 
     def post_create(self):
         for call in self.ext.net.calls.get(self.network_name.get()):

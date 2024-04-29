@@ -8,6 +8,7 @@ from grapycal.sobjects.port import InputPort
 
 # from grapycal_torch.moduleNode import SimpleModuleNode
 from grapycal_torch.moduleNode import SimpleModuleNode
+from grapycal_torch.store import GrapycalTorchStore
 from openai import AsyncOpenAI, OpenAI
 from torch.nn.modules import Module
 from torch.utils.data import Dataset
@@ -169,7 +170,8 @@ class BertTokenizerEncodeNode(FunctionNode):
     def calculate(self, text):
         if self.tokenizer is None:
             self.tokenizer = BertTokenizer.from_pretrained('uer/gpt2-distil-chinese-cluecorpussmall')
-        return self.tokenizer.encode(text)
+        encoded = self.tokenizer.encode(text)[1:-1] # remove the [CLS] and [SEP] tokens
+        return self.get_store(GrapycalTorchStore).to_tensor(encoded)
     
 class BertTokenizerDecodeNode(FunctionNode):
     category = 'torch/nlp'
@@ -215,5 +217,25 @@ class GPT2ChineseNode(SimpleModuleNode):
     def forward(self, inp):
         res = self.module(inp,labels=inp)
         return res.logits, res.loss
+    
+class VectorDbMockNode(FunctionNode):
+    category = 'data'
+    inputs = ['query']
+    outputs = ['response']
+    max_in_degree = [1]
+
+    def build_node(self):
+        super().build_node()
+        self.label.set('Vector DB (mock)')
+        self.shape.set('normal')
+
+    def calculate(self, query):
+        if "圖書館" in query:
+            return "圖書館空調設備因為必須顧慮到保存藏書的品質，所以必須兼顧空氣中的濕度與溫度。一般而言，高溫高濕時會加速纖維氧化分解，也會增加黴菌等微生物的活性而危害紙張，因此溫度20℃、濕度50％為書籍理想保存條件。"
+        if "濾網" in query:
+            return "許多空調機只有很普通的濾網，過濾灰塵及阻止黴菌滋生效果非常有限，因此灰塵及黴菌會堆積在空調機的風道、熱交換器及風扇上，而多數空調機有許多地方必須由專業人士拆機才能洗到（市面上有許多空調機清洗劑，但這種方法洗不到空調機深處，因此效益有限），若沒有定期由專人清洗（常開啟空調的家庭，清洗間隔可能要低於一年），空調機反而會劣化空氣品質。"
+        if "壓縮機" in query:
+            return "壓縮機主要有兩種分類方式：第一種分類方式以壓縮機方式分類，可分為容積式 (positive displacement)和動力式(dynamic)兩大類。 容積式壓縮機將輸入功以壓縮機構傳輸，透過改變壓縮室的相對容積，造成冷媒蒸氣容積減少、壓力上升，此類型的壓縮機又可分為往復式、迴轉式、螺旋式和渦捲式；動力式壓縮機利用外力驅動旋轉機構，迫使冷媒蒸氣接收角動量引起分子推擠，從而造成蒸氣相對容積減少，產生壓縮效果，此類壓縮機之代表為離心式壓縮機。圖一所示為以壓縮方式分類之冷媒壓縮機類型。"
+        return "空氣調節，簡稱空調，是包含溫度、濕度、空氣清淨度以及空氣循環的控制系統。這與冷氣機／空調供應冷氣、暖氣或除濕的作用原理均類似，大部分利用冷媒在壓縮機的作用下，發生蒸發或凝結，從而引發週遭空氣的蒸發或凝結，以達到改變溫、濕度的目的。冷氣機及暖氣機的效率會用性能係數來表示，是輸入功和提供熱能（或抽出熱能）的比例值，一般來說，直流馬達比交流省電，變頻比傳統壓縮機省電，因為能夠節省大量的電費，直流變頻型態逐漸成為市場主流。"
     
 del SimpleModuleNode, Node, FunctionNode

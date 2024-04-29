@@ -4,7 +4,7 @@ from grapycal import ButtonControl, Edge, InputPort, ListTopic
 from grapycal.sobjects.node import Node
 
 
-class ProcedureNode(Node):
+class StepsNode(Node):
     category = 'procedural'
 
     def build_node(self):
@@ -20,6 +20,7 @@ class ProcedureNode(Node):
 
         if self.is_new:
             self.steps.insert('1')
+            self.add_step('1',-1)
         else:
             for step in self.steps:
                 self.add_step(step,-1)
