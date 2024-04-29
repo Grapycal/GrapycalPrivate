@@ -151,7 +151,7 @@ class OpenAINode(Node):
         )
         self.response.push(response.choices[0].message.content)
 
-class BertTokenizerEncodeNode(FunctionNode):
+class GPT2ChineseEncodeNode(FunctionNode):
     category = 'torch/nlp'
 
     inputs = ['text']
@@ -160,7 +160,7 @@ class BertTokenizerEncodeNode(FunctionNode):
 
     def build_node(self):
         super().build_node()
-        self.label.set('Bert Tokenizer Encode')
+        self.label.set('GPT2 Chinese: Encode')
         self.shape.set('normal')
 
     def init_node(self):
@@ -173,7 +173,7 @@ class BertTokenizerEncodeNode(FunctionNode):
         encoded = self.tokenizer.encode(text)[1:-1] # remove the [CLS] and [SEP] tokens
         return self.get_store(GrapycalTorchStore).to_tensor(encoded)
     
-class BertTokenizerDecodeNode(FunctionNode):
+class GPT2ChineseDecodeNode(FunctionNode):
     category = 'torch/nlp'
 
     inputs = ['tokens']
@@ -182,7 +182,7 @@ class BertTokenizerDecodeNode(FunctionNode):
 
     def build_node(self):
         super().build_node()
-        self.label.set('Bert Tokenizer Decode')
+        self.label.set('GPT2 Chinese: Decode')
         self.shape.set('normal')
 
     def init_node(self):

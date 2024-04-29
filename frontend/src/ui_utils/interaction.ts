@@ -1,7 +1,6 @@
 import { Action, ObjectSyncClient, StringTopic } from "objectsync-client"
 import { Component, IComponentable } from "../component/component"
 import { Linker } from "../component/linker"
-import { print } from "../devUtils"
 import { TextBox } from "../utils"
 
 export function inputFinished(input: HTMLInputElement){
