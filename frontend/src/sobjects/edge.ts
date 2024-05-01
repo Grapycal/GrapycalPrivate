@@ -1,15 +1,11 @@
-import {ObjectSyncClient, SObject, StringTopic, ObjectTopic, IntTopic} from 'objectsync-client'
-import { Port } from './port'
-import { HtmlItem } from '../component/htmlItem'
-import { CompSObject } from './compSObject'
+import { ObjectSyncClient, ObjectTopic, SObject, StringTopic } from 'objectsync-client'
 import { soundManager } from '../app'
-import { Vector2, as } from '../utils'
-import { print } from '../devUtils'
-import { Transform } from '../component/transform'
-import { EventDispatcher } from '../component/eventDispatcher'
+import { HtmlItem } from '../component/htmlItem'
 import { MouseOverDetector } from '../component/mouseOverDetector'
+import { Vector2, as } from '../utils'
+import { CompSObject } from './compSObject'
 import { Editor } from './editor'
-import { Selectable } from '../component/selectable'
+import { Port } from './port'
 import { Workspace } from './workspace'
 
 enum EdgeState {
@@ -388,7 +384,7 @@ export class Edge extends CompSObject {
             //head_orientation = Math.atan2(tail.y - head.y, tail.x - head.x)
             head_orientation = Math.PI
         }else {
-            if(!this.tail.getValue() || !this.head.getValue()) {throw Error;return null}
+            if(!this.tail.getValue() || !this.head.getValue()) {throw Error;}
             tail = this.transform.worldToLocal(this.tail.getValue().transform.worldCenter)
             head = this.transform.worldToLocal(this.head.getValue().transform.worldCenter)
             tail_orientation = this.tail.getValue().orientation
@@ -406,10 +402,11 @@ export class Edge extends CompSObject {
         let dx = head.x - tail.x
         let dy = head.y - tail.y
         let d = Math.sqrt(dx*dx + dy*dy)
-        let r = Math.min(50, d/3)
-        if(isNaN(r) || isNaN(tail_orientation) || isNaN(head_orientation)) throw new Error('NaN')
-        let mp1 = new Vector2(tail.x + Math.cos(tail_orientation)*r, tail.y + Math.sin(tail_orientation)*r)
-        let mp2 = new Vector2(head.x + Math.cos(head_orientation)*r, head.y + Math.sin(head_orientation)*r)
+        let r1 = Math.min(50, d/3) + 4*Math.sqrt(Math.max(0,- (dx*Math.cos(tail_orientation) + dy*Math.sin(tail_orientation))))
+        let r2 = Math.min(50, d/3) + 4*Math.sqrt(Math.max(0,(dx*Math.cos(head_orientation) + dy*Math.sin(head_orientation))))
+        if(isNaN(r1+r2) || isNaN(tail_orientation) || isNaN(head_orientation)) throw new Error('NaN')
+        let mp1 = new Vector2(tail.x + Math.cos(tail_orientation)*r1, tail.y + Math.sin(tail_orientation)*r1)
+        let mp2 = new Vector2(head.x + Math.cos(head_orientation)*r2, head.y + Math.sin(head_orientation)*r2)
         let path = `M ${tail.x} ${tail.y} C ${mp1.x} ${mp1.y} ${mp2.x} ${mp2.y} ${head.x} ${head.y}`
 
         this.pathResult = {
