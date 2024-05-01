@@ -74,6 +74,8 @@ class DefaultTestNode(DVfunctionNode):
 
     def calculate(self, **kwargs):
         return kwargs
+
+
     
 class TemplateNode(Node):
     def build_node(self):

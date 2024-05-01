@@ -87,28 +87,32 @@ class ExtensionManager:
         logger.info(f'Updating extension {[ext.name for ext in old_exts]}: removed {removed_node_types}, added {added_node_types}')
 
         # Find nodes of changed types and serialize them
-        def hit(node:objectsync.SObject) -> bool:
-            # Only update nodess...
-            if not isinstance(node,Node):
-                return False
-            if node.is_preview.get():
-                return False
-            
-            # of the changed types.
-            # Node type name format: grapycal_packagename.node_type_name
-            return node.get_type_name() in changed_node_types
+        def get_node_of_types(types:set[str]) -> List[Node]:
+            def hit(node:objectsync.SObject) -> bool:
+                # Only update nodess...
+                if not isinstance(node,Node):
+                    return False
+                if node.is_preview.get():
+                    return False
+                
+                # of the changed types.
+                # Node type name format: grapycal_packagename.node_type_name
+                return node.get_type_name() in types
 
-        nodes_to_update = main_store.main_editor.top_down_search(
-            accept=hit,
-            stop=hit,
-            type=Node
-        )
+            return main_store.main_editor.top_down_search(
+                accept=hit,
+                stop=hit,
+                type=Node
+            )
+        
+        nodes_to_update = get_node_of_types(changed_node_types)
+        nodes_to_remove = get_node_of_types(removed_node_types)
         
         nodes_to_recover:List[objectsync.sobject.SObjectSerialized] = []
         edges_to_recover:List[objectsync.sobject.SObjectSerialized] = []
         
+        # serialize nodes and edges to recover
         for node in nodes_to_update:
-            # First serialize the node
             nodes_to_recover.append(node.serialize())
             ports: List[Port] = node.in_ports.get() + node.out_ports.get() # type: ignore
             for port in ports:
@@ -116,7 +120,13 @@ class ExtensionManager:
                     edges_to_recover.append(edge.serialize())
                     self._objectsync.destroy_object(edge.get_id())
 
-
+        # destroy nodes and edges to be removed
+        for node in nodes_to_remove:
+            ports: List[Port] = node.in_ports.get() + node.out_ports.get() # type: ignore
+            for port in ports:
+                for edge in port.edges.copy():
+                    self._objectsync.destroy_object(edge.get_id())
+            
         '''
         Now, the old nodes, ports and edges are destroyed. Their information is stored in nodes_to_recover and edges_to_recover.
         '''
