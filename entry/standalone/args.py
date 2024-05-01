@@ -13,7 +13,7 @@ def parse_args():
         "--backend-path", type=str, help="path to backend code", required=True
     )
     parser.add_argument(
-        "--frontend-path", type=str, help="path to frontend code", required=True
+        "--frontend-path", type=str, help="path to frontend code", required=False
     )
     parser.add_argument("--extensions-path", type=str, help="path to extensions folder")
     parser.add_argument("--cwd", type=str, help="working directory")
