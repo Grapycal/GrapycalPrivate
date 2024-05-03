@@ -2,6 +2,8 @@
   "name": "Grapycal",
   "version": "0.11.3",
   "main": "main.js",
+  "description": "A visual programming language based on Python",
+  "license": "UNLICENSED",
   "devDependencies": {
     "@electron-forge/cli": "^7.4.0",
     "@electron-forge/maker-deb": "^7.4.0",
