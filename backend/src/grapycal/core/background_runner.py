@@ -1,7 +1,4 @@
 import logging
-
-logger = logging.getLogger(__name__)
-
 import queue
 import signal
 from collections import deque
@@ -10,6 +7,8 @@ from queue import Queue
 from typing import Callable, Iterator, Tuple
 
 from .stdout_helper import orig_print
+
+logger = logging.getLogger(__name__)
 
 '''
 On Unix, SIGUSR1 is used to interrupt the runner so ctrl-c will not be mistaken as a runner interrupt.
@@ -116,9 +115,10 @@ class BackgroundRunner:
                         ret = task()
                     except Exception as e:
                         on_exception(e, exception_callback)
-                    # if ret is a generator, push it to stack
-                    if isinstance(ret, Iterator):
-                        self._stack.append(TaskInfo(iter(ret), exception_callback))
+                    else:
+                        # if ret is a generator, push it to stack
+                        if isinstance(ret, Iterator):
+                            self._stack.append(TaskInfo(iter(ret), exception_callback))
 
             except RunnerInterrupt:
                 logger.info("Runner interrupted")

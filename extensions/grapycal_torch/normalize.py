@@ -1,7 +1,9 @@
+from grapycal import FloatTopic, IntTopic
 from grapycal.extension.utils import NodeInfo
-from .moduleNode import SimpleModuleNode
 from torch import nn
-from grapycal import IntTopic, Node, FloatTopic
+
+from .moduleNode import SimpleModuleNode
+
 
 class BatchNorm2dNode(SimpleModuleNode):
     category = 'torch/neural network'

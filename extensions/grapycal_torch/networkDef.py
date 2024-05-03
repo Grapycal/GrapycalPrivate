@@ -1,9 +1,10 @@
 from collections import defaultdict
 from typing import TYPE_CHECKING, List
 
-from grapycal import ListTopic, Node, StringTopic
+from grapycal import GRID, ListTopic, Node, StringTopic
 from grapycal.sobjects.edge import Edge
 from grapycal.sobjects.port import InputPort, OutputPort
+from grapycal.stores import main_store
 from objectsync.sobject import SObjectSerialized
 
 from .utils import find_next_valid_name
@@ -23,6 +24,7 @@ class NetworkCallNode(Node):
     def build_node(self,name:str="Network"):
         self.label.set('')
         self.shape.set('normal')
+        self.icon_path.set('nn')
         self.network_name = self.add_attribute('network name',StringTopic,editor_type='text',init_value=name)
         self.network_name.add_validator(lambda x,_: x != '') # empty name may confuse users
         self.mode_control = self.add_option_control(name='mode',options=['train','eval'],value='train',label='Mode')
@@ -142,30 +144,30 @@ class NetworkInNode(Node):
             inputs = ['x']
             
         self.shape.set('normal')
+        self.icon_path.set('nn')
 
         # setup attributes
-        self.outs = self.add_attribute('outs',ListTopic,editor_type='list',init_value=inputs)
+        # The self.outs attribute is actually "inputs" of the network, but it was mistakenly named "outs" and I didn't want to change it to avoid breaking backwards compatibility
+        self.outs = self.add_attribute('outs',ListTopic,editor_type='list',init_value=inputs,display_name='inputs')
         self.outs.add_validator(ListTopic.unique_validator)
         self.device_control = self.add_option_control(name='device',options=['default','cpu','cuda'],value='default',label='Device')
+        self.create_reference_btn = self.add_button_control(name='create_reference',label='Create reference')
         
         self.network_name = self.add_attribute('network name',StringTopic,editor_type='text',init_value=name)
         self.network_name.add_validator(lambda x,_: x not in self.ext.net.ins) # function name must be unique
         self.network_name.add_validator(lambda x,_: x != '') # empty name may confuse users
         try:
             self.restore_attributes('network name')
-        except:
+        except Exception:
             self.network_name.set(name)
             
         self.network_name.set(find_next_valid_name(self.network_name.get(),self.ext.net.ins))
 
-        # add callbacks to attributes
-        self.outs.on_insert.add_auto(self.on_output_added)
-        self.outs.on_pop.add_auto(self.on_output_removed)
-        self.outs.on_set.add_auto(self.on_output_set)
+        self.file_path = self.add_attribute('file path',StringTopic,editor_type='text',init_value=f'{name}.pt')
+        self.save_btn = self.add_button_control(name='save',label='Save')
+        self.load_btn = self.add_button_control(name='load',label='Load')
 
-        self.network_name.on_set2.add_manual(self.on_network_name_changed)
-        self.network_name.on_set.add_auto(self.on_network_name_changed_auto)
-
+        
         self.update_label()
 
         for out in self.outs.get():
@@ -175,6 +177,29 @@ class NetworkInNode(Node):
         
         if not self.is_preview.get():
             self.ext.net.add_in(self.network_name.get(),self)     
+        self.create_reference_btn.on_click.add_auto(self._create_reference)
+
+
+        self.save_btn.on_click.add_manual(lambda: self.run(self.save))
+        self.load_btn.on_click.add_manual(lambda: self.run(self.load))
+
+        # add callbacks to attributes
+        self.outs.on_insert.add_auto(self.on_output_added)
+        self.outs.on_pop.add_auto(self.on_output_removed)
+        self.outs.on_set.add_auto(self.on_output_set)
+
+        self.network_name.on_set2.add_manual(self.on_network_name_changed)
+        self.network_name.on_set.add_auto(self.on_network_name_changed_auto)
+        
+    def save(self):
+        self.ext.net.save_network(self.network_name.get(),self.file_path.get())
+        self.flash_running_indicator()
+        main_store.send_message_to_all(f"Saved {self.network_name.get()} to {self.file_path.get()}.")
+    
+    def load(self):
+        self.ext.net.load_network(self.network_name.get(),self.file_path.get(),self)
+        self.flash_running_indicator()
+        main_store.send_message_to_all(f"Loaded {self.network_name.get()} from {self.file_path.get()}.")
 
     def post_create(self):
         for call in self.ext.net.calls.get(self.network_name.get()):
@@ -202,7 +227,6 @@ class NetworkInNode(Node):
 
     def on_output_set(self, new):
         if not self.is_preview.get():
-            print(self.ext.net.calls.get(self.network_name.get()),self.network_name.get())
             for call in self.ext.net.calls.get(self.network_name.get()):
                 call.update_input_ports()
 
@@ -211,6 +235,9 @@ class NetworkInNode(Node):
         for key, value in args.items():
             self.get_out_port(key).push(value)
         self.flash_running_indicator()
+
+    def _create_reference(self):
+        self.ext.create_node(NetworkCallNode,name=self.network_name.get(),translation=self.get_position([GRID,GRID*6]))
 
     def destroy(self) -> SObjectSerialized:
         if not self.is_preview.get():
@@ -224,9 +251,10 @@ class NetworkOutNode(Node):
         if outputs is None:
             outputs = ['y']
         self.shape.set('normal')
+        self.icon_path.set('nn')
 
         # setup attributes
-        self.ins = self.add_attribute('ins',ListTopic,editor_type='list',init_value=outputs)
+        self.ins = self.add_attribute('ins',ListTopic,editor_type='list',init_value=outputs,display_name='outputs')
         self.ins.add_validator(ListTopic.unique_validator)
         self.restore_attributes('ins')
         
@@ -235,7 +263,7 @@ class NetworkOutNode(Node):
         self.network_name.add_validator(lambda x,_: x != '') # empty name may confuse users
         try:
             self.restore_attributes('network name')
-        except:
+        except Exception:
             self.network_name.set(name)
             
         self.network_name.set(find_next_valid_name(self.network_name.get(),self.ext.net.outs))

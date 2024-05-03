@@ -1,13 +1,15 @@
-import logging
-
-import importlib.util
-from typing import Any, Callable, Dict, Generic, List, TypeVar
-from grapycal.utils.misc import Action
-from objectsync.sobject import SObjectSerialized
 import asyncio
-
+import importlib.util
+import logging
 from pathlib import Path
+from typing import TYPE_CHECKING, Any, Callable, Dict, Generic, List, TypeVar
+
 import pkg_resources
+from objectsync.sobject import SObjectSerialized
+
+if TYPE_CHECKING:
+    from grapycal.extension.extension import Extension
+from grapycal.utils.misc import Action
 
 logger = logging.getLogger(__name__)
 
@@ -221,3 +223,19 @@ def get_extension_info(name) -> dict:
 
 def snap_node(value: float, grid_size: float=17) -> float:
     return round(value / grid_size) * grid_size
+
+def get_all_dependents(target:'Extension',extensions:List['Extension']) -> List['Extension']:
+    """
+    Returns all extensions that depend on the target and the target itself. The order is from the target to the dependents
+    """
+    res_q = [target]
+    search_q = [target]
+    while search_q:
+        dependency = search_q.pop()
+        for e in extensions:
+            if dependency.name in e.dependencies:
+                if e in res_q:
+                    raise ValueError(f"Extension {e.name} has circular dependency with {dependency.name}")
+                res_q.append(e)
+                search_q.append(e)
+    return res_q

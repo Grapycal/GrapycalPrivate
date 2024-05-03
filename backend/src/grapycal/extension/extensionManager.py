@@ -1,25 +1,29 @@
 import asyncio
 import logging
 import pkgutil
-
 import subprocess
-from unittest import skip
+
 from grapycal.extension.extensionSearch import get_remote_extensions
-from grapycal.extension.utils import get_extension_info, get_package_version, list_to_dict, snap_node
+from grapycal.extension.utils import (
+    get_all_dependents,
+    get_extension_info,
+    list_to_dict,
+    snap_node,
+)
 from grapycal.stores import main_store
+
 logger = logging.getLogger(__name__)
 
-from typing import TYPE_CHECKING, Dict, List, Tuple
-import sys
-from os.path import join, dirname
-import shutil
-from grapycal.extension.extension import Extension, CommandCtx, get_extension
-from grapycal.sobjects.node import Node
-from grapycal.sobjects.port import Port
+from typing import TYPE_CHECKING, Dict, List
+
 import objectsync
 
+from grapycal.extension.extension import CommandCtx, Extension, get_extension
+from grapycal.sobjects.node import Node
+from grapycal.sobjects.port import Port
+
 if TYPE_CHECKING:  
-    from grapycal.core.workspace import Workspace
+    pass
 
 class ExtensionManager:
     def __init__(self,objectsync_server:objectsync.Server) -> None:
@@ -44,12 +48,13 @@ class ExtensionManager:
 
     def import_extension(self, extension_name: str, create_nodes=True, log=True) -> None:
         extension = self._load_extension(extension_name)
+        main_store.set_stores(extension.provide_stores())
         if create_nodes:
             try:
                 self.create_preview_nodes(extension_name)
             except Exception:
-                self._unload_extension(extension_name)
-                raise
+                self._unload_extension(extension_name) #TODO: prevent unloading fail
+                raise 
             self._instantiate_singletons(extension_name)
         self._update_available_extensions_topic()
         main_store.slash.register(f'reload: {extension_name}',lambda _: self.update_extension(extension_name),source=extension_name)
@@ -60,51 +65,54 @@ class ExtensionManager:
         self._objectsync.clear_history_inclusive()
 
     def update_extension(self, extension_name: str) -> None:
-        old_version = self._extensions[extension_name]
-        old_node_types = set(old_version.node_types_d_without_extension_name.keys())
-        new_version = get_extension(extension_name,set(self._objectsync.get_all_node_types().values())-set(old_version.node_types_d.values()))
+
+        old_exts:list[Extension] = get_all_dependents(self._extensions[extension_name],list(self._extensions.values()))
+        new_exts:list[Extension] = []
+        for ext in old_exts:
+            new_exts.append(get_extension(ext.name,set(self._objectsync.get_all_node_types().values())-set(ext.node_types_d.values())))
+
+        old_node_types = set()
+        for ext in old_exts:
+            old_node_types.update(ext.node_types_d.keys())
+
+        new_node_types = set()
+        for ext in new_exts:
+            new_node_types.update(ext.node_types_d.keys())
 
         # Get diff between old and new version
-        new_node_types = set(new_version.node_types_d_without_extension_name.keys())
         removed_node_types = old_node_types - new_node_types
         added_node_types = new_node_types - old_node_types
         changed_node_types = old_node_types & new_node_types
 
-        existing_nodes = main_store.main_editor.get_children_of_type(Node) + main_store.node_library.get_children_of_type(Node)
+        logger.info(f'Updating extension {[ext.name for ext in old_exts]}: removed {removed_node_types}, added {added_node_types}')
 
-        # Ensure there are no nodes of removed types
-        for node in existing_nodes:
-            type_name_without_extension = node.get_type_name().split('.')[1]
-            if type_name_without_extension in removed_node_types:
-                self._unload_extension(extension_name)
-                raise Exception(f'Cannot update extension {extension_name} because there are still nodes of type {type_name_without_extension} in the workspace.')
+        # Find nodes of changed types and serialize them
+        def get_node_of_types(types:set[str]) -> List[Node]:
+            def hit(node:objectsync.SObject) -> bool:
+                # Only update nodess...
+                if not isinstance(node,Node):
+                    return False
+                if node.is_preview.get():
+                    return False
+                
+                # of the changed types.
+                # Node type name format: grapycal_packagename.node_type_name
+                return node.get_type_name() in types
 
-        # Find nodes of changed types
-        def hit(node:objectsync.SObject) -> bool:
-            # Only update nodes that are not previews...
-            if not isinstance(node,Node):
-                return False
-            if node.is_preview.get():
-                return False
-            
-            # ... and are of the changed types.
-            # Node type name format: grapycal_packagename.node_type_name
-            node_type_name = node.get_type_name() 
-            node_extension_name,node_type_name_without_extension = node_type_name.split('.')
-            return node_extension_name == extension_name and node_type_name_without_extension in changed_node_types
-
-        nodes_to_update = main_store.main_editor.top_down_search(
-            accept=hit,
-            stop=hit,
-            type=Node
-        )
+            return main_store.main_editor.top_down_search(
+                accept=hit,
+                stop=hit,
+                type=Node
+            )
         
-        # Remove nodes of the changed types
+        nodes_to_update = get_node_of_types(changed_node_types)
+        nodes_to_remove = get_node_of_types(removed_node_types)
+        
         nodes_to_recover:List[objectsync.sobject.SObjectSerialized] = []
         edges_to_recover:List[objectsync.sobject.SObjectSerialized] = []
         
+        # serialize nodes and edges to recover
         for node in nodes_to_update:
-            # First serialize the node
             nodes_to_recover.append(node.serialize())
             ports: List[Port] = node.in_ports.get() + node.out_ports.get() # type: ignore
             for port in ports:
@@ -112,33 +120,35 @@ class ExtensionManager:
                     edges_to_recover.append(edge.serialize())
                     self._objectsync.destroy_object(edge.get_id())
 
-            # Then destroy the node
-            self._objectsync.destroy_object(node.get_id())
-
-        type_map = {}
-        for type_name in changed_node_types:
-            type_map[old_version.add_extension_name_to_node_type(type_name)] = new_version.add_extension_name_to_node_type(type_name)
+        # destroy nodes and edges to be removed
+        for node in nodes_to_remove:
+            ports: List[Port] = node.in_ports.get() + node.out_ports.get() # type: ignore
+            for port in ports:
+                for edge in port.edges.copy():
+                    self._objectsync.destroy_object(edge.get_id())
             
-        for node in nodes_to_recover:
-            node.update_type_names(type_map)
-
         '''
         Now, the old nodes, ports and edges are destroyed. Their information is stored in nodes_to_recover and edges_to_recover.
         '''
-
+        
         # Unimport old version
-        self._destroy_nodes(old_version.name)
-        self.unimport_extension(old_version.name,log=False)
-        self.import_extension(new_version.name,create_nodes=False,log=False)
+        
+        for old_version in reversed(old_exts): # Unimport dependents first, then dependencies
+            self._destroy_nodes(old_version.name)
+            self.unimport_extension(old_version.name,log=False)
+
+        for new_version in new_exts:
+            self.import_extension(new_version.name,create_nodes=False,log=False)
 
         main_store.main_editor.restore(nodes_to_recover,edges_to_recover)
 
-        self.create_preview_nodes(new_version.name)
-        self._instantiate_singletons(new_version.name)
+        for new_version in new_exts:
+            self.create_preview_nodes(new_version.name)
+            self._instantiate_singletons(new_version.name)
+
         self._update_available_extensions_topic()
 
-        logger.info(f'Reloaded extension {extension_name}')
-        main_store.send_message_to_all(f'Reloaded extension {extension_name} {new_version.version}')
+        main_store.send_message_to_all(f'Reloaded extension {[ext.name for ext in old_exts]}')
         self._objectsync.clear_history_inclusive()
 
     def unimport_extension(self, extension_name: str, log=True) -> None:

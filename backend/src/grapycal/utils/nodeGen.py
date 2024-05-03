@@ -1,8 +1,10 @@
-from grapycal import FunctionNode
 import inspect
 import re
-from typing import Any, Callable
 from types import ModuleType
+from typing import Any, Callable
+
+from grapycal import FunctionNode
+
 
 def doc_prettify(doc: str) -> str:
     if doc is None:
@@ -317,7 +319,7 @@ class FuncionNodeGenerator:
         if self.in_ports is None:
             self.in_ports = []
             for _parameters in _signature:
-                if _parameters is '*':
+                if _parameters == '*':
                     pass
                 elif _parameters.default == inspect.Parameter.empty:
                     if _parameters.kind == inspect.Parameter.VAR_POSITIONAL:    

@@ -1,16 +1,15 @@
-import abc
-from hmac import new
-from typing import TYPE_CHECKING, Any, List, Literal
 import typing
+from typing import TYPE_CHECKING, Any, List
+
+from objectsync import IntTopic, SObject, StringTopic
+
 from grapycal.sobjects.controls.control import ValuedControl
 from grapycal.sobjects.controls.nullControl import NullControl
-from objectsync import SObject, StringTopic, IntTopic
-
 from grapycal.utils.misc import Action
 
 if TYPE_CHECKING:
-    from grapycal.sobjects.node import Node
     from grapycal.sobjects.edge import Edge
+    from grapycal.sobjects.node import Node
 
 
 class Port(SObject):

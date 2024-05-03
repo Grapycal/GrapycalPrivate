@@ -1,15 +1,17 @@
+import asyncio
 import gzip
+import io
+import json
 import logging
 import os
+import threading
+from functools import partial
+from typing import Any, Callable, Tuple
 
 import grapycal
+
 logger = logging.getLogger(__name__)
 
-import json
-import asyncio
-import io
-import threading
-from typing import Any, Callable, Tuple
 
 class OutputStream:
     def __init__(self, on_flush:Callable[[str],None], hz=20):
@@ -82,12 +84,16 @@ class OutputStream:
         self._exit_flag = True
         self._enable_flush_event.set()
 
-from functools import partial
+
+
 def write_workspace(path:str,metadata,data:Any,compress=False):
     if not compress:
         open_func = partial(open,path,'w',encoding='utf-8')
     else:
         open_func = partial(gzip.open,path,'wt')
+
+    if os.path.dirname(path) != '':
+        os.makedirs(os.path.dirname(path),exist_ok=True)
 
     with open_func() as f:
         f.write(grapycal.__version__+'\n')
@@ -129,7 +135,7 @@ def read_workspace(path,metadata_only=False) -> Tuple[str,Any,Any]:
     
 def file_exists(path):
     try:
-        with open(path,'r') as f:
+        with open(path,'r'):
             return True
     except FileNotFoundError:
         return False

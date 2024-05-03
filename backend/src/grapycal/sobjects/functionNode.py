@@ -1,7 +1,10 @@
 import asyncio
 from typing import Any
+
 from grapycal.sobjects.edge import Edge
 from grapycal.sobjects.node import Node
+
+
 class FunctionNode(Node):
     inputs = []
     max_in_degree = []
@@ -34,10 +37,11 @@ class FunctionNode(Node):
     def _pre_task(self) -> dict:
         inputs = {}
         for port in self._get_func_ins():
+            arg_name = port.get_name().replace(' ','_')
             if port.max_edges.get() == 1:
-                inputs[port.get_name()] = port.edges[0].get()
+                inputs[arg_name] = port.edges[0].get()
             else:
-                inputs[port.get_name()] = [edge.get() for edge in port.edges]
+                inputs[arg_name] = [edge.get() for edge in port.edges]
         return inputs
     
     def _post_task(self, result):

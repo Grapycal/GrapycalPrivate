@@ -91,7 +91,14 @@ class Editor(SObject):
     ) -> Edge:
         # Check the tail and head have space for the edge
         if tail.is_full() or head.is_full():
-            raise Exception("A port is full")
+            full_ports = []
+            if tail.is_full():
+                full_ports.append(f"tail({tail})")
+            if head.is_full():
+                full_ports.append(f"head({head})")
+            full_ports_str = ", ".join(full_ports)  # Join descriptions of full ports
+            exception_detail = f"Edge from {tail!r} to {head!r} cannot be created because {full_ports_str} is full."
+            raise Exception(exception_detail)
         return self.add_child(Edge, tail=tail, head=head, id=new_edge_id)
 
     def create_edge_from_port_id(

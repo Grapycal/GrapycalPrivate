@@ -1,18 +1,16 @@
 import io
+from contextlib import contextmanager
+from typing import Generator, Tuple
 
-from grapycal import FloatTopic, StringTopic
-from grapycal.extension.utils import NodeInfo
+import matplotlib
+from grapycal import FloatTopic, StringTopic, to_numpy
 from grapycal.sobjects.edge import Edge
 from grapycal.sobjects.node import Node
 from grapycal.sobjects.port import InputPort
 from grapycal.sobjects.sourceNode import SourceNode
 from matplotlib import pyplot as plt
-
-plt.style.use("dark_background")
-import matplotlib
-
-matplotlib.use("Agg")
-
+from matplotlib.axes import Axes
+from matplotlib.figure import Figure
 
 try:
     import torch
@@ -33,6 +31,42 @@ try:
 except ImportError:
     HAS_PIL = False
 
+
+plt.style.use("dark_background")
+matplotlib.use("Agg")
+
+def render_from_fig(
+        fig: Figure,
+        x_range: tuple[float, float]|None = None,
+        y_range: tuple[float, float]|None = None,
+    ) -> io.BytesIO:
+    if x_range is not None:
+        plt.xlim(x_range)
+    if y_range is not None:
+        plt.ylim(y_range)
+
+    plt.axis("off")
+
+    buf = io.BytesIO()
+    plt.savefig(
+        buf,
+        format="jpg",
+        bbox_inches="tight",
+        pad_inches=0,
+        facecolor=fig.get_facecolor(),
+    )
+    plt.close(fig)
+    return buf
+
+@contextmanager
+def open_fig(equal=False) -> Generator[Tuple[Figure, Axes], None, None]:
+    fig = plt.figure()
+    ax = fig.gca()
+    ax.set_facecolor("black")
+    try:
+        yield fig, ax
+    finally:
+        plt.close(fig)
 
 class ImagePasteNode(SourceNode):
     category = "interaction"
@@ -117,7 +151,7 @@ class ImageDisplayNode(Node):
         self.cmap = self.add_attribute(
             "cmap",
             StringTopic,
-            "gray",
+            "viridis",
             editor_type="options",
             options=[
                 "gray",
@@ -258,7 +292,7 @@ class ImageDisplayNode(Node):
             unsliced_data = data
             try:
                 data = eval(f"unsliced_data[{slice_string}]", globals(), locals())
-            except:
+            except Exception:
                 self.slice.text.set(":")
                 pass
             if data.ndim == 2:
@@ -301,20 +335,39 @@ class ImageDisplayNode(Node):
     def input_edge_removed(self, edge: Edge, port: InputPort):
         self.img.set(None)
 
+class BarPlotNode(Node):
+    category = "interaction"
+
+    def build_node(self):
+        self.label.set("Bar Plot")
+        self.shape.set("simple")
+        self.img = self.add_image_control(name="img")
+        self.in_port = self.add_in_port("data", 64, "")
+
+    def port_activated(self, port: InputPort):
+        self.run(self.render,data=port.get())
+
+    def render(self, data):
+        data = to_numpy(data)
+        while data.ndim > 1 and data.shape[0] == 1:
+            data = data[0]
+        if data.ndim != 1:
+            raise ValueError(f"Cannot plot with shape {data.shape}")
+        with open_fig() as (fig, ax):
+            ax.bar(range(len(data)), data*50)
+            buf = render_from_fig(fig)
+        self.img.set(buf)
+
 
 class ScatterPlotNode(Node):
     category = "interaction"
 
     def build_node(self):
-        self.label.set("-------Scatter Plot--------")
+        self.label.set("Scatter Plot")
         self.shape.set("simple")
         self.img = self.add_image_control(name="img")
         self.slice = self.add_text_control(label="slice: ", name="slice", text=":")
         self.in_port = self.add_in_port("data", 64, "")
-
-    def restore_from_version(self, version: str, old: NodeInfo):
-        super().restore_from_version(version, old)
-        self.restore_controls("img", "slice")
 
     def edge_activated(self, edge: Edge, port: InputPort):
         if self.in_port.is_all_ready():
@@ -341,7 +394,7 @@ class ScatterPlotNode(Node):
             unsliced_data = data
             try:
                 data = eval(f"unsliced_data[{slice_string}]", globals(), locals())
-            except:
+            except Exception:
                 self.slice.text.set(":")
             
             if data.ndim == 2:
@@ -357,16 +410,7 @@ class ScatterPlotNode(Node):
         return data
 
     def update_image(self, data):
-
-        # use plt to convert to jpg
-        buf = io.BytesIO()
-        fig = plt.figure()
-        x_min = -4
-        x_max = 4
-        try:
-            ax = fig.gca()
-            ax.set_facecolor("black")
-            ax.set_aspect("equal")
+        with open_fig(equal=True) as (fig, ax):
             for d in data:
                 if len(d.shape) == 3:
                     for slice in d:
@@ -375,19 +419,9 @@ class ScatterPlotNode(Node):
                 else:
                     d = self.preprocess_data(d)
                     ax.scatter(d[:, 0], d[:, 1], alpha=0.5)
-            plt.xlim(x_min, x_max)
-            plt.ylim(x_min, x_max)
-            plt.axis("off")
 
-            plt.savefig(
-                buf,
-                format="jpg",
-                bbox_inches="tight",
-                pad_inches=0,
-                facecolor=fig.get_facecolor(),
-            )
-        finally:
-            plt.close(fig)
+            buf = render_from_fig(fig, (-4, 4), (-4, 4))
+        
         self.img.set(buf)
 
     def input_edge_removed(self, edge: Edge, port: InputPort):
@@ -434,6 +468,7 @@ class LinePlotNode(Node):
 
         if self.is_new:
             self.line_plot.lines.insert("line", 0)
+            self.add_line("line", None)
         else:
             for name in self.line_plot.lines:
                 self.add_line(name, None)

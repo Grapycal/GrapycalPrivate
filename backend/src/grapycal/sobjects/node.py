@@ -7,44 +7,44 @@ from grapycal.sobjects.controls.keyboardControl import KeyboardControl
 from grapycal.sobjects.controls.sliderControl import SliderControl
 
 logger = logging.getLogger(__name__)
-from typing import TYPE_CHECKING, Awaitable, Callable, Literal, Self, TypeVar
-
-from abc import ABCMeta
 import asyncio
 import enum
-import io
-from itertools import count
-from contextlib import contextmanager
 import functools
+import io
 import traceback
+from abc import ABCMeta
+from contextlib import contextmanager
+from itertools import count
+from typing import TYPE_CHECKING, Awaitable, Callable, Literal, Self, TypeVar
 
+from objectsync import (
+    DictTopic,
+    FloatTopic,
+    IntTopic,
+    ListTopic,
+    ObjDictTopic,
+    ObjListTopic,
+    SetTopic,
+    SObject,
+    StringTopic,
+    Topic,
+)
+from objectsync.sobject import SObjectSerialized, WrappedTopic
+
+from grapycal.extension.utils import NodeInfo
 from grapycal.sobjects.controls.buttonControl import ButtonControl
+from grapycal.sobjects.controls.codeControl import CodeControl
+from grapycal.sobjects.controls.control import Control, ValuedControl
 from grapycal.sobjects.controls.imageControl import ImageControl
 from grapycal.sobjects.controls.linePlotControl import LinePlotControl
 from grapycal.sobjects.controls.nullControl import NullControl
 from grapycal.sobjects.controls.optionControl import OptionControl
 from grapycal.sobjects.controls.textControl import TextControl
-from grapycal.sobjects.controls.codeControl import CodeControl
-from grapycal.stores import main_store
-from grapycal.utils.logging import error_extension, user_logger, warn_extension
-from grapycal.extension.utils import NodeInfo
-from grapycal.sobjects.controls.control import Control, ValuedControl
 from grapycal.sobjects.edge import Edge
 from grapycal.sobjects.port import InputPort, OutputPort
+from grapycal.stores import main_store
 from grapycal.utils.io import OutputStream
-from objectsync import (
-    DictTopic,
-    SObject,
-    StringTopic,
-    IntTopic,
-    ListTopic,
-    ObjListTopic,
-    FloatTopic,
-    Topic,
-    ObjDictTopic,
-    SetTopic,
-)
-from objectsync.sobject import SObjectSerialized, WrappedTopic
+from grapycal.utils.logging import error_extension, user_logger, warn_extension
 
 if TYPE_CHECKING:
     from grapycal.extension.extension import Extension
@@ -282,7 +282,7 @@ class Node(SObject, metaclass=NodeMeta):
     def init(self):
         from grapycal.sobjects.editor import (
             Editor,
-        )  # import here to avoid circular import
+        )
 
         parent = self.get_parent()
         if isinstance(parent, Editor):
@@ -297,7 +297,6 @@ class Node(SObject, metaclass=NodeMeta):
         self._output_stream.set_event_loop(main_store.event_loop)
         main_store.event_loop.create_task(self._output_stream.run())
 
-        from grapycal.sobjects.workspaceObject import WorkspaceObject
 
         self.globally_exposed_attributes.on_add.add_auto(
             lambda k, v: main_store.settings.entries.add(k, v)
@@ -384,7 +383,7 @@ class Node(SObject, metaclass=NodeMeta):
                 continue
             self._already_restored_controls.add(new_name)
 
-            if not (new_name in self.controls):
+            if new_name not in self.controls:
                 warn_extension(
                     self,
                     f"Control {new_name} does not exist in {self}",
@@ -393,7 +392,7 @@ class Node(SObject, metaclass=NodeMeta):
                     },
                 )
                 continue
-            if not (old_name in self.old_node_info.controls):
+            if old_name not in self.old_node_info.controls:
                 warn_extension(
                     self,
                     f"Control {old_name} does not exist in the old node of {self}",
@@ -406,7 +405,7 @@ class Node(SObject, metaclass=NodeMeta):
                 self.controls[new_name].restore_from(
                     self.old_node_info.controls[old_name]
                 )
-            except Exception as e:
+            except Exception:
                 self.efagrwthnh = ""
 
     def post_create(self):
@@ -696,6 +695,7 @@ class Node(SObject, metaclass=NodeMeta):
     def add_slider_control(
         self,
         label: str = "",
+        value: float = 0,
         min: float = 0,
         max: float = 1,
         step: float = 0.01,
@@ -708,6 +708,7 @@ class Node(SObject, metaclass=NodeMeta):
         control = self.add_control(
             SliderControl,
             label=label,
+            value=value,
             min=min,
             max=max,
             step=step,
@@ -912,6 +913,13 @@ class Node(SObject, metaclass=NodeMeta):
                 self.output.insert(["error", "Too many output lines. Cleared.\n"])
             self.output.insert(["output", data])
 
+    def get_position(self, translation: list[float]):
+        """
+        Get the position of the node.
+        """
+        position = self.translation.get().split(",")
+        return [float(position[0]) + translation[0], float(position[1]) + translation[1]]
+
     """
     Run tasks in the background or foreground, redirecting stdout to the node's output stream.
     """
@@ -929,13 +937,14 @@ class Node(SObject, metaclass=NodeMeta):
         finally:
             self._output_stream.disable_flush()
 
-    def _on_exception(self, e: Exception):
-        self.print_exception(e, truncate=2)
+    def _on_exception(self, e: Exception, truncate=2):
         if isinstance(e, RunnerInterrupt):
             main_store.send_message_to_all(
                 "Runner interrupted by user.", ClientMsgTypes.BOTH
             )
-        main_store.clear_edges()
+        else:
+            self.print_exception(e, truncate=truncate)
+        main_store.clear_edges_and_tasks()
 
     def _run_in_background(
         self, task: Callable[[], None], to_queue=True, redirect_output=False
@@ -953,9 +962,9 @@ class Node(SObject, metaclass=NodeMeta):
                 else:
                     ret = task()
             except Exception:
-                raise
-            finally:
                 self.decr_n_running_tasks()
+                raise
+            self.decr_n_running_tasks()
             return ret
 
         main_store.runner.push(
@@ -974,7 +983,7 @@ class Node(SObject, metaclass=NodeMeta):
             else:
                 task()
         except Exception as e:
-            self.print_exception(e, truncate=1)
+            self._on_exception(e, truncate=1)
         self.decr_n_running_tasks()
 
     def _run_async(self, task: Callable[[], Awaitable[None]]):
@@ -987,7 +996,7 @@ class Node(SObject, metaclass=NodeMeta):
             try:
                 await task()
             except Exception as e:
-                self.print_exception(e, truncate=1)
+                self._on_exception(e, truncate=1)
             self.decr_n_running_tasks()
 
         main_store.event_loop.create_task(wrapped())
@@ -1041,7 +1050,6 @@ class Node(SObject, metaclass=NodeMeta):
                 f"Exception occured in a destroyed node {self.get_id()}: {message}"
             )
         else:
-            self.decr_n_running_tasks()
             if len(self.output) > 100:
                 self.output.set([])
                 self.output.insert(["error", "Too many output lines. Cleared.\n"])
@@ -1067,7 +1075,14 @@ class Node(SObject, metaclass=NodeMeta):
         Get the variables of the running module.
         """
         return main_store.vars()
-
+    
+    T = TypeVar('T')
+    def get_store(self, store_type: type[T]) -> T:
+        '''
+        Get a store provided by any extension.
+        '''
+        return main_store.get_store(store_type)
+    
     """
     Node events
     """

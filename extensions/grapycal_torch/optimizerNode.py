@@ -1,20 +1,21 @@
 from typing import TYPE_CHECKING, List
+
+import torch
+from grapycal import FloatTopic, IntTopic
 from grapycal.extension.utils import NodeInfo
 from grapycal.sobjects.controls.buttonControl import ButtonControl
 from grapycal.sobjects.controls.optionControl import OptionControl
 from grapycal.sobjects.controls.textControl import TextControl
 from grapycal.sobjects.edge import Edge
-from grapycal.sobjects.functionNode import FunctionNode
 from grapycal.sobjects.node import Node, deprecated
 from grapycal.sobjects.port import InputPort
-from grapycal import FloatTopic, StringTopic
 from grapycal.stores import main_store
-from objectsync import ObjSetTopic, SObject
-import torch
 from torch import nn
 
-from .utils import setup_net_name_ctrl
+from grapycal_torch.store import GrapycalTorchStore
+
 from .moduleNode import ModuleNode
+from .utils import setup_net_name_ctrl
 
 if TYPE_CHECKING:
     from grapycal_torch import GrapycalTorch
@@ -124,11 +125,11 @@ class TrainNode(Node):
 
     def build_node(self):
         self.label.set("Train")
-        self.css_classes.append("fit-content")
         self.network_port = self.add_in_port(
             "network", control_type=OptionControl
         )
         self.loss_port = self.add_in_port("loss", 1)
+        self.accumulate_losses = self.add_attribute("accumulate losses", IntTopic, init_value=1, editor_type="int")
 
     def init_node(self):
         self.network_name = self.network_port.default_control.value
@@ -137,12 +138,13 @@ class TrainNode(Node):
         )
         self.optimizing_modules: set[nn.Module] = set()
         self.optimizer_device = None
+        self.accumulate_loss_count = 0
 
     def edge_activated(self, edge: Edge, port: InputPort):
         if port == self.loss_port:
             self.run(self.train_step, loss=edge.get())
             return
-        if port == self.network_port:
+        elif port == self.network_port:
             self.label.set("Train " + self.network_name.get())
 
     def get_module_nodes(self) -> List[ModuleNode]:
@@ -158,23 +160,35 @@ class TrainNode(Node):
     def get_modules(self) -> List[nn.Module]:
         return [mn.get_module() for mn in self.get_module_nodes()]
 
-    def create_optimizer_if_needed(self, loss_device):
+    def create_optimizer_if_needed(self):
+        try:
+            params_device = self.get_modules()[0].parameters().__next__().device
+        except StopIteration | IndexError:
+            params_device = self.get_store(GrapycalTorchStore).settings.default_device.get()
         if (
             self.optimizing_modules != set(self.get_modules())
-            or self.optimizer_device != loss_device
+            or self.optimizer_device != params_device
         ):
             self.optimizing_modules = set(self.get_modules())
             self.optimizer = torch.optim.Adam(
                 [p for m in self.optimizing_modules for p in m.parameters()]
             )
             print("optimizer recreated", len(self.optimizing_modules), " modules")
-            self.optimizer_device = loss_device
+            self.optimizer_device = params_device
 
     def train_step(self, loss: torch.Tensor):
-        self.create_optimizer_if_needed(loss.device)
-        self.optimizer.zero_grad()
-        loss.backward()
-        self.optimizer.step()
+        self.create_optimizer_if_needed()
+        if self.accumulate_losses.get() == 1:
+            self.optimizer.zero_grad()
+            loss.backward()
+            self.optimizer.step()
+        else:
+            loss.backward()
+            self.accumulate_loss_count += 1
+            if self.accumulate_loss_count >= self.accumulate_losses.get():
+                self.optimizer.step()
+                self.optimizer.zero_grad()
+                self.accumulate_loss_count = 0
 
     def destroy(self):
         self.to_unlink()

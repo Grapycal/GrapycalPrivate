@@ -1,5 +1,4 @@
-# python entry/run.py --backend-path "backend/src" --port 7943&\
-# cd frontend && npm run dev
+#!/bin/bash
 
-# (trap 'kill 0' INT; python entry/run.py --backend-path "backend/src" --port 7943&\
-# (cd frontend && npm run dev))
+cd frontend
+npm run dev

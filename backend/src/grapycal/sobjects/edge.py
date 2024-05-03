@@ -1,19 +1,20 @@
-import random
 from typing import Any
-from grapycal.sobjects.port import InputPort, OutputPort, Port
-from objectsync import SObject, StringTopic, ObjTopic, IntTopic
+
+from objectsync import ObjTopic, SObject, StringTopic
 from objectsync.sobject import SObjectSerialized
+
+from grapycal.sobjects.port import InputPort, OutputPort, Port
 
 try:
     import torch
     HAS_TORCH = True
-except:
+except ImportError:
     HAS_TORCH = False
 
 try :
     import numpy as np
     HAS_NUMPY = True
-except:
+except ImportError:
     HAS_NUMPY = False
 
 class Edge(SObject):
@@ -107,9 +108,11 @@ class Edge(SObject):
         else:
             label = ''
             if HAS_TORCH and isinstance(data, torch.Tensor):
-                label = str(list(data.shape)) if list(data.shape)!=[] else 'scalar'
+                label = f'T{list(data.shape)}' if list(data.shape)!=[] else 'scalar'
             elif HAS_NUMPY and isinstance(data, np.ndarray):
-                label = str(list(data.shape)) if list(data.shape)!=[] else 'scalar'
+                label = f'N{list(data.shape)}' if list(data.shape)!=[] else 'scalar'
+            elif isinstance(data, list):
+                label = f'[{len(data)}]'
 
             self.label.set(label)
 

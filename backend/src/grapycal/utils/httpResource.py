@@ -1,15 +1,14 @@
 import json
-from pathlib import Path
-import traceback
-from typing import Any, Generic, Type, TypeVar
-from urllib.parse import ParseResult, urlparse
-import aiohttp
-from grapycal.utils.misc import as_type
-import yaml
 import logging
-import certifi
 import ssl
+from typing import Generic, Type, TypeVar
+
+import aiohttp
+import certifi
+import yaml
 from aiohttp import TCPConnector
+
+from grapycal.utils.misc import as_type
 
 logger = logging.getLogger(__name__)
 
@@ -17,7 +16,7 @@ T = TypeVar("T")
 
 
 class HttpResource(Generic[T]):
-    def __init__(self, url: str, data_type: Type[T] = Any, format=None):
+    def __init__(self, url: str, data_type: Type[T] = type, format=None):
         self.url = url
         self.data: T | None = None
         self.failed = False
@@ -35,7 +34,7 @@ class HttpResource(Generic[T]):
     async def is_avaliable(self):
         try:
             await self.get()
-        except:
+        except Exception:
             return False
         return True
 

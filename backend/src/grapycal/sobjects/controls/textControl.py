@@ -1,8 +1,9 @@
 from enum import Enum
+
+from objectsync import IntTopic, StringTopic
+
 from grapycal.sobjects.controls.control import ValuedControl
 from grapycal.utils.misc import Action
-from grapycal.utils.suggestion import _get_attr_suggestions
-from objectsync import StringTopic, IntTopic
 
 
 class TextControl(ValuedControl[str]):
@@ -81,5 +82,5 @@ class TextControl(ValuedControl[str]):
             return True
         return False
 
-    def set_with_value_from_edge(self, value):
-        self.set(str(value))  # TODO find more proper way to handle this
+    # def set_with_value_from_edge(self, value):
+    #     self.set(str(value))  # TODO find more proper way to handle this

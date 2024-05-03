@@ -1,9 +1,10 @@
-from typing import Any, Dict
+from typing import Any
+
+import torch
+from grapycal import FloatTopic, IntTopic, StringTopic, TextControl
 from grapycal.extension.utils import NodeInfo
 from grapycal.sobjects.functionNode import FunctionNode
 from grapycal.sobjects.sourceNode import SourceNode
-import torch
-from grapycal import Node, TextControl, StringTopic, FloatTopic, IntTopic
 
 
 class ZeroesNode(SourceNode):
