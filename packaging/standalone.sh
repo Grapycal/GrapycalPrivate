@@ -22,7 +22,8 @@ mv electron/submodules/pyarmor_runtime_004553 electron/submodules/objectsync/src
 pyarmor gen -O electron -e 2024-11-01 --recursive extensions
 mv electron/pyarmor_runtime_004553 electron/extensions/pyarmor_runtime_004553
 
-pyarmor gen -O electron  -e 2024-11-01 --recursive entry
+pyarmor gen -O electron  -e 2024-11-01 --recursive entry/standalone
+mv electron/standalone electron/entry
 mv electron/pyarmor_runtime_004553 electron/entry/pyarmor_runtime_004553
 
 cd electron

@@ -22,7 +22,10 @@ move electron\submodules\pyarmor_runtime_004553 electron\submodules\objectsync\s
 pyarmor gen -O electron -e 2024-11-01 --recursive extensions
 move electron\pyarmor_runtime_004553 electron\extensions\
 
-pyarmor gen -O electron  -e 2024-11-01 --recursive entry
+pyarmor gen -O electron  -e 2024-11-01 --recursive entry\standalone
+cd electron
+rename standalone entry
+cd ..
 move electron\pyarmor_runtime_004553 electron\entry\
 
 cd electron
