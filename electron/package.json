@@ -4,14 +4,27 @@
   "main": "main.js",
   "devDependencies": {
     "@electron-forge/cli": "^7.4.0",
-    "electron": "^30.0.1",
-    "portfinder": "1.0.32"
+    "@electron-forge/maker-deb": "^7.4.0",
+    "@electron-forge/maker-rpm": "^7.4.0",
+    "@electron-forge/maker-squirrel": "^7.4.0",
+    "@electron-forge/maker-zip": "^7.4.0",
+    "@electron-forge/plugin-auto-unpack-natives": "^7.4.0",
+    "@electron-forge/plugin-fuses": "^7.4.0",
+    "@electron/asar": "3.2.8",
+    "@electron/fuses": "^1.8.0",
+    "electron": "^30.0.1"
   },
   "scripts": {
-    "test": "electron ."
+    "test": "electron .",
+    "start": "electron-forge start",
+    "package": "electron-forge package",
+    "make": "electron-forge make --clear-cache"
   },
   "dependencies": {
     "await-spawn": "^4.0.2",
-    "ctrlc-windows": "^2.1.0"
+    "ctrlc-windows": "^2.1.0",
+    "electron-progressbar": "^2.2.1",
+    "electron-squirrel-startup": "^1.0.0",
+    "portfinder": "^1.0.32"
   }
 }

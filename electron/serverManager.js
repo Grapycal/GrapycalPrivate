@@ -1,6 +1,7 @@
 const fs = require('node:fs')
 const portfinder = require('portfinder')
-const { spawn } = require('node:child_process')
+const { spawn, execFile } = require('node:child_process')
+const path = require('node:path')
 
 const { currentInterpreter } = require('./interpreterList')
 
@@ -18,42 +19,55 @@ let currentServerProcess = null
 let currentPort = null
 let currentFile = null
 const spawnLocalServer = (port, file) => {
+	console.assert(path.isAbsolute(file));
+
 	currentPort = port
 	currentFile = file
+	fs.writeFileSync(path.join(__dirname, '.last_file').replace('app.asar', 'app.asar.unpacked'), currentFile);
 
 	let interpreter = currentInterpreter()
-	if (interpreter.location == 'builtin') {
-		console.log('create builtin server')
-		currentServerProcess = spawn('../basic_grapycal/run', [
-			file ? file : '',
-			'--backend-path', '../backend', 
-			'--frontend-path', '../frontend/dist', 
-			'--extensions-path', '../extensions', 
+	const backendPath = path.join(__dirname, "backend").replace("app.asar", "app.asar.unpacked")
+	const frontendPath = path.join(__dirname, "frontend", "dist").replace("app.asar", "app.asar.unpacked")
+	const extensionsPath = path.join(__dirname, "extensions").replace("app.asar", "app.asar.unpacked")
+
+	const fileCwd = path.dirname(currentFile)
+	const filename = path.basename(currentFile)
+
+	let finishStartPromiseResolve = null
+	let finishStartPromise = new Promise((resolve, reject) => {
+		finishStartPromiseResolve = resolve
+	})
+
+	console.log(`create server with ${interpreter.location}`)
+	currentServerProcess = spawn(interpreter.location, [path.join(__dirname, 'entry', 'run.py').replace("app.asar", "app.asar.unpacked"),
+			filename ? filename : '',
+			'--cwd', fileCwd,
+			'--backend-path', backendPath, 
+			'--frontend-path', frontendPath, 
+			'--extensions-path', extensionsPath, 
 			'--port', `${port}`, 
 			'--host', 'localhost',
 		], 
 		{
-			shell: process.platform === 'win32',
-			stdio: 'inherit' // so we can check the output of run.py
-		})
-	} else {
-		console.log(`create server with ${interpreter.location}`)
-		currentServerProcess = spawn(interpreter.location, ['../entry/run.py',
-				file ? file : '',
-				'--backend-path', '../backend', 
-				'--frontend-path', '../frontend/dist', 
-				'--extensions-path', '../extensions', 
-				'--port', `${port}`, 
-				'--host', 'localhost',
-			], 
-			{
-				shell: process.platform === 'win32',
-				stdio: 'inherit' // so we can check the output of run.py
-			}
-		)
-	}
-
+			shell: process.platform === 'win32'
+		}
+	)
+	currentServerProcess.stdout.on('data', (data) => {
+		// somehow the Unicorn running message comes out from stderr, I don't know
+		console.log(`err get ${data}`)
+		if (data.includes("Uvicorn running")) {
+			finishStartPromiseResolve()
+		}
+	})
+	currentServerProcess.stderr.on('data', (data) => {
+		// somehow the Unicorn running message comes out from stderr, I don't know
+		console.log(`err get ${data}`)
+		if (data.includes("Uvicorn running")) {
+			finishStartPromiseResolve()
+		}
+	})
 	currentServerProcess.on('exit', onServerExit)
+	return finishStartPromise
 }
 
 let respawn = false
@@ -64,19 +78,20 @@ function onServerExit(code) {
 		return
 	}
 
-	if (!fs.existsSync("grapycal_exit_message_")) {
+	let exitMessagePath = path.resolve(path.dirname(currentFile), "grapycal_exit_message_");
+	if (!fs.existsSync(exitMessagePath)) {
 		currentPort = null
 		currentFile = null
 		currentServerProcess = null
 		return 
 	}
 
-	let content = fs.readFileSync('grapycal_exit_message_', 'utf8')
-	fs.rmSync("grapycal_exit_message_")
+	let content = fs.readFileSync(exitMessagePath, 'utf8')
+	fs.rmSync(exitMessagePath)
 	let firstLine = content.split('\n')[0]
 	let [op, arg] = firstLine.split(" ")
 	if (op == 'open') {
-		spawnLocalServer(currentPort, arg)
+		spawnLocalServer(currentPort, path.resolve(path.dirname(currentFile), arg))
 	}
 }
 
@@ -88,7 +103,7 @@ const spawnServerAutoPort = async (file, onNoFreePortErr) => {
 		onNoFreePortErr(noFreePortErr)
 		return
 	}
-	spawnLocalServer(port, file)
+	await spawnLocalServer(port, file)
 	return port
 }
 

@@ -1,13 +1,24 @@
 const fs = require('node:fs')
+const path = require('node:path')
+
+// .interpreter_list will be put in app.asar.unpacked because we need to modify it
+// during development, since app.asar isn't in the path, the replace won't affect anything
+// after the application is packed, by replacing app.asar with app.asar.unpacked,
+// we can get access to the unpacked file and modify it
+const interpreterListPath = path
+	.join(__dirname, ".interpreter_list")
+	.replace("app.asar", "app.asar.unpacked")
+
 
 const interpreterList = () => 
-	fs.readFileSync(".interpreter_list", 'utf8')
+	fs.readFileSync(interpreterListPath, 'utf8')
 		.split('\n')
+		.filter((line) => line !== '')
 		.map((line) => ({ location: line.slice(1), using: line.charAt(0) == 'O' }))
 
 const updateList = (list) => {
 	fs.writeFileSync(
-		".interpreter_list", 
+		interpreterListPath, 
 		list.map((item) => `${item.using ? 'O' : 'X'}${item.location}`).join('\n')
 	);
 }
