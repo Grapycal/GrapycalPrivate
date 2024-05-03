@@ -1,38 +1,70 @@
 import asyncio
 import io
 from pathlib import Path
-from typing import Dict, Literal, Sequence, Tuple, Type, cast
+from typing import Dict, List, Literal, Sequence, Tuple, Type, cast
 
 import matplotlib
 import torch
-from grapycal import GRID, CommandCtx, Edge, Extension, InputPort, Node, command
+from grapycal import (
+    GRID,
+    CommandCtx,
+    Extension,
+    InputPort,
+    Node,
+    OutputPort,
+    SourceNode,
+    command,
+)
 from grapycal.extension.utils import NodeInfo
-from grapycal.sobjects.edge import Edge
-from grapycal.sobjects.port import InputPort, Port
 from torchvision import transforms
 
+from grapycal_torch.activation import LeakyReLUNode, ReLUNode, SigmoidNode
+from grapycal_torch.basic import CustomModuleNode, FlattenNode, LinearNode
+from grapycal_torch.cnn import Conv2dNode, ConvTranspose2dNode
+from grapycal_torch.conversion import ConvertToNode
+from grapycal_torch.dataloader import DataLoaderNode
+from grapycal_torch.dataset import MnistDatasetNode
+from grapycal_torch.generative import (
+    Arange2Node,
+    ArangeNode,
+    ConvolutionKernelNode,
+    PerlinNoiseNode,
+)
+from grapycal_torch.loss import BCEWithLogitsLossNode, CrossEntropyLossNode, MSELossNode
 from grapycal_torch.manager import MNManager, NetManager
+from grapycal_torch.metrics import AccuracyNode
+from grapycal_torch.networkDef import NetworkCallNode, NetworkInNode, NetworkOutNode
+from grapycal_torch.normalize import BatchNorm2dNode, Dropout2dNode, DropoutNode
+from grapycal_torch.optimizerNode import LoadNode, SaveNode, TrainerNode, TrainNode
+from grapycal_torch.pooling import MaxPool2dNode
+from grapycal_torch.resnet import ResNet
+from grapycal_torch.settings import SettingsNode
 from grapycal_torch.store import GrapycalTorchStore
-
-from .activation import *
-from .basic import *
-from .cnn import *
-from .configureNode import *
-from .conversion import *
-from .dataloader import *
-from .dataset import *
-from .generative import *
-from .loss import *
-from .metrics import *
-from .networkDef import *
-from .normalize import *
-from .optimizerNode import *
-from .pooling import *
-from .resnet import ResNet
-from .settings import *
-from .tensor import *
-from .tensor_operations import *
-from .transform import *
+from grapycal_torch.tensor import (
+    GridNode,
+    OnesNode,
+    RandnLikeNode,
+    RandnNode,
+    RandNode,
+    ZeroesNode,
+)
+from grapycal_torch.tensor_operations import (
+    BackwardNode,
+    CatNode,
+    ChooseFromTopNode,
+    CosNode,
+    CumprodNode,
+    FConv2DNode,
+    GatherNode,
+    RearrangeNode,
+    SinNode,
+    SoftmaxNode,
+    SqueezeNode,
+    StackNode,
+    ToCudaNode,
+    UnsqueezeNode,
+)
+from grapycal_torch.transform import ToTensorNode
 
 matplotlib.use("agg")  # use non-interactive backend
 import aiofiles
@@ -42,6 +74,61 @@ import numpy as np
 
 
 class GrapycalTorch(Extension):
+    node_types = [
+        Arange2Node,
+        GatherNode,
+        RandnLikeNode,
+        SoftmaxNode,
+        BatchNorm2dNode,
+        ReLUNode,
+        NetworkInNode,
+        MnistDatasetNode,
+        DropoutNode,
+        NetworkOutNode,
+        DataLoaderNode,
+        TrainNode,
+        ConvTranspose2dNode,
+        CrossEntropyLossNode,
+        ConvolutionKernelNode,
+        RandnNode,
+        RearrangeNode,
+        ConvertToNode,
+        LoadNode,
+        ArangeNode,
+        ChooseFromTopNode,
+        SaveNode,
+        ToCudaNode,
+        PerlinNoiseNode,
+        GridNode,
+        SigmoidNode,
+        Dropout2dNode,
+        ZeroesNode,
+        AccuracyNode,
+        LeakyReLUNode,
+        MaxPool2dNode,
+        ToTensorNode,
+        CosNode,
+        SinNode,
+        MSELossNode,
+        SqueezeNode,
+        UnsqueezeNode,
+        CatNode,
+        StackNode,
+        TrainerNode,
+        BackwardNode,
+        LinearNode,
+        CustomModuleNode,
+        CumprodNode,
+        FlattenNode,
+        SettingsNode,
+        NetworkCallNode,
+        OnesNode,
+        BCEWithLogitsLossNode,
+        RandNode,
+        Conv2dNode,
+        FConv2DNode,
+    ]
+
     def provide_stores(self):
         self.mn = MNManager()
         self.net = NetManager(self)
@@ -543,7 +630,8 @@ class GrapycalTorch(Extension):
             name,
         )
 
-class ImageDataset(torch.utils.data.Dataset): # type: ignore
+
+class ImageDataset(torch.utils.data.Dataset):  # type: ignore
     """
     Loads all images from a directory into memory
     """
@@ -621,6 +709,7 @@ class ImageDatasetNode(SourceNode):
 
         self.out.push(self.ds)
 
+
 class CatDogDataset(torch.utils.data.Dataset):
     """
     Crawl Cat and Dog images and load them into memory
@@ -642,7 +731,7 @@ class CatDogDataset(torch.utils.data.Dataset):
     - reference : MNIST Dataset
     """
 
-    def __init__(self, transform=None,cat_size=500,dog_size=500):
+    def __init__(self, transform=None, cat_size=500, dog_size=500):
         super().__init__()
         self.cat_size = cat_size
         self.dog_size = dog_size
@@ -670,19 +759,23 @@ class CatDogDataset(torch.utils.data.Dataset):
                     async with session.get(url) as response:
                         content_type = response.headers.get("content-type")
                         content_type = content_type.split("/")[1]
-                        return plt.imread(io.BytesIO(await response.read()), format=content_type)
-                
+                        return plt.imread(
+                            io.BytesIO(await response.read()), format=content_type
+                        )
+
         async def fetch_cat():
             async with aiohttp.ClientSession() as session:
                 async with session.get(self.cat_url) as response:
                     content_type = response.headers.get("content-type")
                     content_type = content_type.split("/")[1]
-                    return plt.imread(io.BytesIO(await response.read()), format=content_type)
-                
+                    return plt.imread(
+                        io.BytesIO(await response.read()), format=content_type
+                    )
+
         async def fetch_image(type):
             image = await fetch_cat() if type == 0 else await fetch_dog()
             return image, type
-                
+
         # cat:0
         # dog:1
         # random sequence of cat_size of 0 and dog_size of 1
@@ -699,10 +792,11 @@ class CatDogDataset(torch.utils.data.Dataset):
         return len(self.ds)
 
     def __getitem__(self, idx):
-        img,label = self.ds[idx]
+        img, label = self.ds[idx]
         if self.transform:
             img = self.transform(img)
-        return img,label
+        return img, label
+
 
 class CatDogDatasetNode(SourceNode):
     """
@@ -720,7 +814,7 @@ class CatDogDatasetNode(SourceNode):
     """
 
     category = "torch/dataset"
-    
+
     def build_node(self):
         super().build_node()
         self.label.set("Cat Dog Dataset")
@@ -733,10 +827,7 @@ class CatDogDatasetNode(SourceNode):
         self.ds = None
 
     def task(self):
-        self.ds = CatDogDataset(cat_size=int(self.cat_size.get()),dog_size=int(self.dog_size.get()))
+        self.ds = CatDogDataset(
+            cat_size=int(self.cat_size.get()), dog_size=int(self.dog_size.get())
+        )
         self.out.push(self.ds)
-
-
-
-
-del ModuleNode, SimpleModuleNode, Node, SourceNode, FunctionNode

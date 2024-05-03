@@ -1,6 +1,6 @@
 :: build latest frontend
 cd frontend
-npm run build:standalone
+run npm run build:standalone
 cd ..
 
 :: copy files
