@@ -1,6 +1,4 @@
 import { Componentable } from "../component/componentable"
-import { Transform } from "../component/transform"
-import { Node } from "../sobjects/node"
 import { Vector2 } from "../utils"
 
 export class InfoPopup extends Componentable{
@@ -55,7 +53,7 @@ export class InfoPopup extends Componentable{
             if(this.baseDiv.scrollHeight > this.baseDiv.clientHeight){
                 e.stopPropagation()
             }
-        })
+        },{passive:true})
         this.link2(this.baseDiv,'mouseenter',()=>{this._mouseOver = true})
         this.link2(this.baseDiv,'mouseleave',()=>{this._mouseOver = false})
     }

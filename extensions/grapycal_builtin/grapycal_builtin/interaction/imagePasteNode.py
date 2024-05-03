@@ -1,11 +1,11 @@
 import io
-from typing import Never
+
+from grapycal import FloatTopic, StringTopic
 from grapycal.extension.utils import NodeInfo
 from grapycal.sobjects.edge import Edge
 from grapycal.sobjects.node import Node
 from grapycal.sobjects.port import InputPort
 from grapycal.sobjects.sourceNode import SourceNode
-from grapycal import StringTopic, FloatTopic
 from matplotlib import pyplot as plt
 
 plt.style.use("dark_background")
@@ -432,16 +432,18 @@ class LinePlotNode(Node):
             options=["from 0", "continue"],
         )
 
-    def init_node(self):
-        
-        self.x_coord = [0]
-        self.line_plot.lines.on_insert.add_auto(self.add_line)
-        self.line_plot.lines.on_pop.add_auto(self.remove_line)
         if self.is_new:
             self.line_plot.lines.insert("line", 0)
         else:
             for name in self.line_plot.lines:
                 self.add_line(name, None)
+
+    def init_node(self):
+        
+        self.x_coord = [0]
+        self.line_plot.lines.on_insert.add_auto(self.add_line)
+        self.line_plot.lines.on_pop.add_auto(self.remove_line)
+        
 
     def add_line(self, name, _):
         self.add_in_port(name, 1)

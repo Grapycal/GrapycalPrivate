@@ -1,4 +1,3 @@
-import { print } from "../devUtils"
 import { Action, Vector2, as } from "../utils"
 import { Component, IComponentable } from "./component"
 import { EventDispatcher, GlobalEventDispatcher } from "./eventDispatcher"
@@ -329,7 +328,7 @@ export class Transform extends Component{
         }else if (this.scroll_behavior == ScrollBehavior.TranslateOrScale){
             if(e.ctrlKey){
                 this.smoothScroll(-0.002*e.deltaY);
-                e.preventDefault();
+                // e.preventDefault();
             }else{
                 this.translate(new Vector2(-e.deltaX,-e.deltaY));
             }

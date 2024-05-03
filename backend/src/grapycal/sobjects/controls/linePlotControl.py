@@ -1,5 +1,6 @@
+from objectsync import EventTopic, ListTopic
+
 from grapycal.sobjects.controls.control import Control
-from objectsync import StringTopic, IntTopic, ListTopic, SetTopic, DictTopic, EventTopic
 
 
 class LinePlotControl(Control):

@@ -1,54 +1,54 @@
-from enum import Enum
-from grapycal.sobjects.controls.keyboardControl import KeyboardControl
-from grapycal.sobjects.controls.sliderControl import SliderControl
-import grapycal.utils.logging
-import logging
-
-grapycal.utils.logging.setup_logging()
-logger = logging.getLogger("workspace")
-
-import os
-import threading
 import asyncio
-import signal
 import importlib.metadata
-from dacite import from_dict
+import logging
+import os
+import signal
+import threading
 from typing import Any, Dict
+
 import objectsync
+from dacite import from_dict
 from objectsync.sobject import SObjectSerialized
 
-""" Import utils from grapycal """
+#Import utils from grapycal
 import grapycal
+import grapycal.utils.logging
+from grapycal.core import running_module, stdout_helper
+from grapycal.core.background_runner import BackgroundRunner
+
+#import all sobject types to register them to the objectsync server
+from grapycal.core.client_msg_types import ClientMsgTypes
 from grapycal.core.slash_command import SlashCommandManager
+from grapycal.core.strategies import OpenAnotherWorkspaceStrategy
 from grapycal.extension.extension import CommandCtx
 from grapycal.extension.extensionManager import ExtensionManager
 from grapycal.extension.utils import Clock
-from grapycal.utils.httpResource import HttpResource
-from grapycal.utils.io import file_exists, read_workspace, write_workspace
-from grapycal.core import stdout_helper, running_module
-from grapycal.core.background_runner import BackgroundRunner
-from grapycal.stores import main_store
-
-""" import all sobject types to register them to the objectsync server """
-from grapycal.sobjects.fileView import LocalFileView, RemoteFileView
-from grapycal.sobjects.settings import Settings
 from grapycal.sobjects.controls import (
     ButtonControl,
+    CodeControl,
     ImageControl,
     LinePlotControl,
     NullControl,
     OptionControl,
     TextControl,
     ThreeControl,
-    CodeControl,
 )
-from grapycal.sobjects.editor import Editor
-from grapycal.sobjects.workspaceObject import WebcamStream, WorkspaceObject
+from grapycal.sobjects.controls.keyboardControl import KeyboardControl
+from grapycal.sobjects.controls.sliderControl import SliderControl
 from grapycal.sobjects.edge import Edge
-from grapycal.sobjects.port import InputPort, OutputPort
-from grapycal.sobjects.nodeLibrary import NodeLibrary
+from grapycal.sobjects.editor import Editor
+from grapycal.sobjects.fileView import LocalFileView, RemoteFileView
 from grapycal.sobjects.node import Node
-from grapycal.core.client_msg_types import ClientMsgTypes
+from grapycal.sobjects.nodeLibrary import NodeLibrary
+from grapycal.sobjects.port import InputPort, OutputPort
+from grapycal.sobjects.settings import Settings
+from grapycal.sobjects.workspaceObject import WebcamStream, WorkspaceObject
+from grapycal.stores import main_store
+from grapycal.utils.httpResource import HttpResource
+from grapycal.utils.io import file_exists, read_workspace, write_workspace
+
+grapycal.utils.logging.setup_logging()
+logger = logging.getLogger("workspace")
 
 class Workspace:
     """
@@ -57,15 +57,18 @@ class Workspace:
     To run a Grapycal workspace:
 
     ```python
-    workspace = Workspace(port=8765, host="localhost", path="workspace.grapycal", workspace_id=0)
+    workspace = Workspace("workspace.grapycal")
     workspace.run()
     ```
     """
 
-    def __init__(self, path, workspace_id) -> None:
+    def __init__(self, 
+        path: str, 
+        open_another_workspace_strategy: OpenAnotherWorkspaceStrategy|None = None, 
+    ):
         self.path = path
 
-        self.workspace_id = workspace_id
+        self._open_another_workspace_strategy = open_another_workspace_strategy
         """used for exit message file"""
 
         self.grapycal_id_count = 0
@@ -159,7 +162,7 @@ class Workspace:
 
         # creates the status message topic so client can subscribe to it
         self._objectsync.create_topic(
-            f"status_message", objectsync.EventTopic, is_stateful=False
+            "status_message", objectsync.EventTopic, is_stateful=False
         )
         self._objectsync.create_topic(
             "meta", objectsync.DictTopic, {"workspace name": self.path}
@@ -334,9 +337,8 @@ class Workspace:
         logger.info(f"Opening workspace {path}...")
         self._send_message_to_all(f"Opening workspace {path}...")
 
-        exit_message_file = f"grapycal_exit_message_{self.workspace_id}"
-        with open(exit_message_file, "w") as f:
-            f.write(f"open {path}")
+        self._open_another_workspace_strategy.open(path)
+
         self._exit()
 
     """

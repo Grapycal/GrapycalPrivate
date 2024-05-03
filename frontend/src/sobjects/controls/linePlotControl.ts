@@ -1,9 +1,7 @@
-import * as THREE from 'three';
-import { Control } from './control'
-import { DictTopic, ListTopic } from 'objectsync-client'
-import { print } from '../../devUtils'
-import { EventDispatcher } from '../../component/eventDispatcher'
+import { ListTopic } from 'objectsync-client'
+import * as THREE from 'three'
 import { Vector2 } from '../../utils'
+import { Control } from './control'
 
 enum YAxisType {
     Linear,
@@ -171,7 +169,6 @@ export class LinePlotControl extends Control{
                 this.baseObject.position.add(delta);
 
                 e.stopPropagation();
-                e.preventDefault();
                 this.fitting = false;
                 this.updateGrid();
                 this.setRenderDirty();

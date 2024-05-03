@@ -1,18 +1,13 @@
-import { ObjSetTopic, ObjectSyncClient, SObject } from "objectsync-client"
-import { ComponentManager } from "../component/component"
-import { EventDispatcher as EventDispatcher, GlobalEventDispatcher } from "../component/eventDispatcher"
-import { HtmlItem } from "../component/htmlItem"
-import { MouseOverDetector } from "../component/mouseOverDetector"
-import { ScrollBehavior, Transform } from "../component/transform"
-import { CompSObject } from "./compSObject"
-import { Linker } from "../component/linker"
-import { Port } from "./port"
-import { print } from "../devUtils"
+import { ObjSetTopic, SObject } from "objectsync-client"
+import { GlobalEventDispatcher } from "../component/eventDispatcher"
+import { ScrollBehavior } from "../component/transform"
 import { SlashCommandMenu } from "../ui_utils/popupMenu/slashCommandMenu"
 import { ActionDict, Vector2, getImageFromClipboard, getSelectionText } from "../utils"
-import { Node } from "./node"
-import { Workspace } from "./workspace"
+import { CompSObject } from "./compSObject"
 import { Edge } from "./edge"
+import { Node } from "./node"
+import { Port } from "./port"
+import { Workspace } from "./workspace"
 
 export class Editor extends CompSObject{
     protected get template(): string { return `
@@ -72,6 +67,13 @@ export class Editor extends CompSObject{
 
         this.eventDispatcher.setEventElement(this.viewport)
         this.mouseOverDetector.eventElement = this.viewport
+
+        // disable zooming the webpage when ctrl+mousewheel
+        // we can't rely on eventDispatcher.onScroll to prevent default because it's passive.
+        this.editor.addEventListener('wheel',(e:WheelEvent)=>{
+            if(e.ctrlKey)
+                e.preventDefault();
+        },{capture:true})
         
         this.link(this.eventDispatcher.onMoveGlobal,this.mouseMove)
         this.link(this.eventDispatcher.onDragStart,this.onDragStart)
@@ -88,6 +90,7 @@ export class Editor extends CompSObject{
         this.link(GlobalEventDispatcher.instance.onKeyDown.slice('ctrl a'),this.selectAll)
         this.link2(document, "keydown", (e: KeyboardEvent) => { if (e.key == "Enter") this.createExecNode() })
         this.link2(document, "paste", this.paste)
+
     }
 
     private preventDefault(e: KeyboardEvent){

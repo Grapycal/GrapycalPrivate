@@ -1,12 +1,11 @@
 import { Action } from "objectsync-client"
-import { print } from "./devUtils"
 
 export { Action } from "objectsync-client"
 
 // from 'typescript-cookie' doesn't work. Maybe a bug of the library?
-import { getCookie, removeCookie, setCookie } from '../node_modules/typescript-cookie'
+import { Buffer } from 'buffer'
 import { Topic } from "objectsync-client"
-import { Buffer } from 'buffer';
+import { getCookie, setCookie } from '../node_modules/typescript-cookie'
 
 export function defined<T>(value: T | undefined| null): T {
     if (value === undefined) {
@@ -197,7 +196,7 @@ export function eatEvents(el:HTMLTextAreaElement|HTMLInputElement){
     }
     for(let key in el){
         if(key.startsWith("on")){
-            el.addEventListener(key.slice(2),f)
+            el.addEventListener(key.slice(2),f,{passive:true})
         }
     }
 }
@@ -321,8 +320,8 @@ export class TextBox{
 
 }
 
-import { keymap, EditorView } from '@codemirror/view';
-import {defaultKeymap} from "@codemirror/commands"
+import { defaultKeymap } from "@codemirror/commands"
+import { EditorView, keymap } from '@codemirror/view'
 
 export class CodeBox {
     private editorView: EditorView;
