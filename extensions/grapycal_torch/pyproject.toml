@@ -3,7 +3,6 @@ name = "grapycal-torch"
 version = "0.3.0"
 description = "A Grapycal extension for PyTorch"
 authors = ["eri24816 <a931eric@gmail.com>"]
-readme = "README.md"
 packages = [
     { include = "grapycal_torch", from=".."}
 ]

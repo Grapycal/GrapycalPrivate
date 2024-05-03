@@ -6,7 +6,7 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import List
 
-TMP_ROOT = Path("packaging/tmp")
+TMP_ROOT = Path("packaging/dist/tmp")
 
 
 class IndentedPrint:
@@ -118,6 +118,15 @@ class Sequential(Module):
         return src
 
 
+class Combine(Module):
+    def __init__(self, parent: Module | None = None, *paths):
+        super().__init__(parent)
+        self.paths = paths
+
+    def run(self, src: Path, dst: Path):
+        return self.paths
+
+
 class Pyarmor(Module):
     def __init__(
         self,
@@ -182,12 +191,15 @@ class PackGrapycal(Module):
         src: Path | str = ".",
         subfolder: Path | str = ".",
         expire_date: str | None = None,
+        name: str = "grapycal",
     ):
         super().__init__(parent, src, subfolder)
         self.expire_date = expire_date
+        self.name = name
 
     def run(self, src: Path, dst: Path):
-        return [
+        pack = Combine(
+            self,
             PackPythonPackage(
                 self,
                 "backend",
@@ -224,10 +236,33 @@ class PackGrapycal(Module):
                 expire_date=self.expire_date,
             )(),
             PackFrontend(self, subfolder="frontend")(),
-        ]
+            Copy(self, "entry/standalone", "entry")(),
+            Copy(self, "packaging/template/main.py")(),
+            Copy(self, "packaging/template/install.py")(),
+        )()
+        return [Zip(self, pack, name=self.name)()]
 
 
+class Zip(Module):
+    def __init__(
+        self,
+        parent: Module | None = None,
+        src: Path | str = ".",
+        subfolder: Path | str = ".",
+        name: str = "archive",
+    ):
+        super().__init__(parent, src, subfolder)
+        self.name = name
+
+    def run(self, src: Path, dst: Path):
+        shutil.make_archive(str(dst / self.name), "zip", src)
+        copied = Copy(self, subfolder=self.name)()
+        return [copied]
+
+
+build_name = "grapycal-0.11.3-240503"
 cmd("pyarmor cfg nts=pool.ntp.org")  # set the time server
 run_pipeline(
-    PackGrapycal(expire_date="2024-11-01"), dst="packaging/dist/grapycal-0.11.3-240503"
+    PackGrapycal(expire_date="2024-11-01", name=build_name),
+    dst="packaging/dist/" + build_name,
 )

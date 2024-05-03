@@ -3,7 +3,6 @@ name = "grapycal-builtin"
 version = "0.11.3"
 description = "Built-in nodes for Grapycal"
 authors = ["eri24816 <a931eric@gmail.com>"]
-readme = "README.md"
 packages = [{include = "grapycal_builtin"}]
 
 [tool.poetry.dependencies]
