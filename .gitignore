@@ -30,3 +30,4 @@ test_working_dirs/working_dir_2/pose_landmarker_heavy.task
 
 /dev_cwd/
 /frontend/last_build_hash.txt
+.pyarmor

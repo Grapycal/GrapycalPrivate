@@ -3,5 +3,8 @@
     "python.testing.unittestEnabled": false,
     "python.testing.pytestArgs": [
         "backend/test"
+    ],
+    "python.analysis.exclude": [
+        "/packaging"
     ]
 }
