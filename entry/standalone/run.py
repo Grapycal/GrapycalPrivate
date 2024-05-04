@@ -19,8 +19,10 @@ class MyOpenAnotherWorkspaceStrategy(OpenAnotherWorkspaceStrategy):
     def __init__(self):
         super().__init__()
         self.path = None
+
     def open(self, path: str):
         self.path = path
+
 
 class Client(ClientCommProtocol):
     def __init__(
@@ -123,7 +125,9 @@ def main():
 
     if open_another.path is not None:
         print(f"User wants to open another workspace: {open_another.path}.")
-        raise NotImplementedError("Opening another workspace is not implemented yet.")
+        here = os.path.dirname(os.path.abspath(__file__))
+        with open(os.path.join(here, "_grapycal_open_another_workspace.txt"), "w") as f:
+            f.write(open_another.path)
 
 
 if __name__ == "__main__":

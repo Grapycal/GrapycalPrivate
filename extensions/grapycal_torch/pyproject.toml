@@ -4,7 +4,7 @@ version = "0.3.0"
 description = "A Grapycal extension for PyTorch"
 authors = ["eri24816 <a931eric@gmail.com>"]
 packages = [
-    { include = "grapycal_torch", from="."}
+    { include = "grapycal_torch"}
 ]
 
 [tool.poetry.dependencies]
@@ -16,13 +16,14 @@ einops = "^0.7.0"
 aiofiles = "^23.2.1"
 
 
-[tool.commitizen]
-name = "cz_conventional_commits"
-tag_format = "v$version"
-version_scheme = "pep440"
-version_provider = "poetry"
-update_changelog_on_bump = true
-major_version_zero = true
+# [tool.commitizen]
+# name = "cz_conventional_commits"
+# tag_format = "v$version"
+# version_scheme = "pep440"
+# version_provider = "poetry"
+# update_changelog_on_bump = true
+# major_version_zero = true
+
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
