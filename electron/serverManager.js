@@ -4,7 +4,7 @@ const { spawn, execFile } = require('node:child_process')
 const path = require('node:path')
 
 const { currentInterpreter } = require('./interpreterList')
-
+const { ctrlc } = require('ctrlc-windows')
 const exitProcess = async (serverProcess) => {
 	if (serverProcess !== null) {
 		if (process.platform === 'win32') {
@@ -47,15 +47,11 @@ const spawnLocalServer = (port, file) => {
 			'--extensions-path', extensionsPath, 
 			'--port', `${port}`, 
 			'--host', 'localhost',
-		], 
-		{
-			shell: process.platform === 'win32'
-		}
+		]
 	)
 	currentServerProcess.stdout.on('data', (data) => {
 		// somehow the Unicorn running message comes out from stderr, I don't know
 		console.log(`out get ${data}`)
-		fs.appendFileSync("/Users/secminhr/Downloads/grapycal.log", `out get ${data}`)
 		if (data.includes("Uvicorn running")) {
 			finishStartPromiseResolve()
 		}
@@ -63,7 +59,6 @@ const spawnLocalServer = (port, file) => {
 	currentServerProcess.stderr.on('data', (data) => {
 		// somehow the Unicorn running message comes out from stderr, I don't know
 		console.log(`err get ${data}`)
-		fs.appendFileSync("/Users/secminhr/Downloads/grapycal.log", `err get ${data}`)
 		if (data.includes("Uvicorn running")) {
 			finishStartPromiseResolve()
 		}
@@ -80,7 +75,7 @@ function onServerExit(code) {
 		return
 	}
 
-	let exitMessagePath = path.join(__dirname, "entry", "_grapycal_open_another_workspace.txt");
+	let exitMessagePath = path.join(__dirname, "entry", "_grapycal_open_another_workspace.txt").replace('app.asar', 'app.asar.unpacked');
 	if (!fs.existsSync(exitMessagePath)) {
 		currentPort = null
 		currentFile = null
@@ -90,11 +85,8 @@ function onServerExit(code) {
 
 	let content = fs.readFileSync(exitMessagePath, 'utf8')
 	fs.rmSync(exitMessagePath)
-	let firstLine = content.split('\n')[0]
-	let [op, arg] = firstLine.split(" ")
-	if (op == 'open') {
-		spawnLocalServer(currentPort, path.resolve(path.dirname(currentFile), arg))
-	}
+	let arg = content.split('\n')[0]
+	spawnLocalServer(currentPort, path.resolve(path.dirname(currentFile), arg))
 }
 
 // there's a forward reference in onServerExit, so we use function here

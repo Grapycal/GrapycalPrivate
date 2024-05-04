@@ -1,3 +1,5 @@
+if (require('electron-squirrel-startup')) return;
+
 const { app, BrowserWindow, Menu, dialog, MenuItem } = require('electron/main')
 const path = require('node:path')
 const { spawn } = require('node:child_process')
@@ -84,7 +86,7 @@ const installGrapycal = async (pythonPath) => {
 
 const syncInterpreterListWithMenu = () => {
 	let template = menuTemplate()
-	template[1].submenu = interpreterList()
+	template.at(-1).submenu = interpreterList()
 		.map((item) => ({ 
 			label: item.location, 
 			type: 'radio', 
@@ -116,7 +118,9 @@ const syncInterpreterListWithMenu = () => {
 
 const createWindow = (port) => {
 	const win = new BrowserWindow({
-		fullscreen: true
+		// fullscreen: true
+		width: 800,
+		height: 600
 	})
 
 	syncInterpreterListWithMenu()

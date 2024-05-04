@@ -29,7 +29,7 @@ cd ..
 move electron\pyarmor_runtime_004553 electron\entry\
 
 cd electron
-call npm run make 
+call npm run test 
 cd ..
 
 rmdir /s/q electron\frontend
