@@ -54,7 +54,8 @@ const spawnLocalServer = (port, file) => {
 	)
 	currentServerProcess.stdout.on('data', (data) => {
 		// somehow the Unicorn running message comes out from stderr, I don't know
-		console.log(`err get ${data}`)
+		console.log(`out get ${data}`)
+		fs.appendFileSync("/Users/secminhr/Downloads/grapycal.log", `out get ${data}`)
 		if (data.includes("Uvicorn running")) {
 			finishStartPromiseResolve()
 		}
@@ -62,6 +63,7 @@ const spawnLocalServer = (port, file) => {
 	currentServerProcess.stderr.on('data', (data) => {
 		// somehow the Unicorn running message comes out from stderr, I don't know
 		console.log(`err get ${data}`)
+		fs.appendFileSync("/Users/secminhr/Downloads/grapycal.log", `err get ${data}`)
 		if (data.includes("Uvicorn running")) {
 			finishStartPromiseResolve()
 		}
@@ -78,7 +80,7 @@ function onServerExit(code) {
 		return
 	}
 
-	let exitMessagePath = path.resolve(path.dirname(currentFile), "grapycal_exit_message_");
+	let exitMessagePath = path.join(__dirname, "entry", "_grapycal_open_another_workspace.txt");
 	if (!fs.existsSync(exitMessagePath)) {
 		currentPort = null
 		currentFile = null

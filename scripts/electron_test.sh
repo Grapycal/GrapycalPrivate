@@ -8,7 +8,7 @@ mkdir electron/frontend
 cp -R frontend/dist electron/frontend/dist
 
 pyarmor cfg data_files=*
-pyarmor cfg nts=pool.ntp.org
+pyarmor cfg nts=local
 
 pyarmor gen -O electron -e 2024-11-01 --recursive backend
 mv electron/pyarmor_runtime_004553 electron/backend/src/pyarmor_runtime_004553
