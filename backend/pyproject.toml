@@ -28,6 +28,7 @@ toml = "^0.10.2"
 certifi = "^2023.11.17"
 fastapi = "^0.110.1"
 uvicorn = "^0.29.0"
+termcolor = "^2.4.0"
 
 [tool.poetry.group.docs]
 optional = true

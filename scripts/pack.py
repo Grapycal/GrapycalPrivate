@@ -1,10 +1,14 @@
+import datetime
 import os
 import shutil
 import subprocess
 from collections import defaultdict
 from contextlib import contextmanager
+from dataclasses import dataclass
 from pathlib import Path
 from typing import List
+
+import toml
 
 TMP_ROOT = Path("packaging/dist/tmp")
 
@@ -127,21 +131,31 @@ class Combine(Module):
         return self.paths
 
 
+@dataclass
+class PyarmorConfig:
+    expire_date: str | None = None
+    platform: str | None = None
+
+
 class Pyarmor(Module):
     def __init__(
         self,
         parent: Module | None = None,
         src: Path | str = ".",
         subfolder: Path | str = ".",
-        expire_date: str | None = None,
+        config: PyarmorConfig | None = None,
     ):
         super().__init__(parent, src, subfolder)
-        self.expire_date = expire_date
+        if config is None:
+            config = PyarmorConfig()
+        self.config = config
 
     def run(self, src: Path, dst: Path):
         command = f"pyarmor gen --recursive -i {src} -O {dst}"
-        if self.expire_date:
-            command += f" -e {self.expire_date} "
+        if self.config.expire_date:
+            command += f" -e {self.config.expire_date} "
+        if self.config.platform:
+            command += f" --platform {self.config.platform}"
         command += f"> {dst / 'pyarmor.log'} 2>&1"
         cmd(command)
         os.remove(dst / "pyarmor.log")
@@ -162,15 +176,17 @@ class PackPythonPackage(Module):
         src: Path | str = ".",
         subfolder: Path | str = ".",
         src_dir: Path | str = ".",
-        expire_date: str | None = None,
+        pyarmor_config: PyarmorConfig | None = None,
     ):
         super().__init__(parent, src, subfolder)
         self.src_dir = Path(src_dir)
-        self.expire_date = expire_date
+        self.pyarmor_config = pyarmor_config
 
     def run(self, src: Path, dst: Path):
         return [
-            Pyarmor(self, self.src_dir, self.src_dir.parent, self.expire_date)(),
+            Pyarmor(
+                self, self.src_dir, self.src_dir.parent, config=self.pyarmor_config
+            )(),
             Copy(self, "pyproject.toml")(),
         ]
 
@@ -190,12 +206,12 @@ class PackGrapycal(Module):
         parent: Module | None = None,
         src: Path | str = ".",
         subfolder: Path | str = ".",
-        expire_date: str | None = None,
         name: str = "grapycal",
+        pyarmor_config: PyarmorConfig | None = None,
     ):
         super().__init__(parent, src, subfolder)
-        self.expire_date = expire_date
         self.name = name
+        self.pyarmor_config = pyarmor_config
 
     def run(self, src: Path, dst: Path):
         pack = Combine(
@@ -205,35 +221,35 @@ class PackGrapycal(Module):
                 "backend",
                 "backend",
                 src_dir="src/grapycal",
-                expire_date=self.expire_date,
+                pyarmor_config=self.pyarmor_config,
             )(),
             PackPythonPackage(
                 self,
                 "submodules/topicsync",
                 "topicsync",
                 src_dir="src/topicsync",
-                expire_date=self.expire_date,
+                pyarmor_config=self.pyarmor_config,
             )(),
             PackPythonPackage(
                 self,
                 "submodules/objectsync",
                 "objectsync",
                 src_dir="src/objectsync",
-                expire_date=self.expire_date,
+                pyarmor_config=self.pyarmor_config,
             )(),
             PackPythonPackage(
                 self,
                 "extensions/grapycal_builtin",
                 "grapycal_builtin",
                 src_dir="grapycal_builtin",
-                expire_date=self.expire_date,
+                pyarmor_config=self.pyarmor_config,
             )(),
             PackPythonPackage(
                 self,
                 "extensions/grapycal_torch",
                 "grapycal_torch",
                 src_dir="grapycal_torch",
-                expire_date=self.expire_date,
+                pyarmor_config=self.pyarmor_config,
             )(),
             PackFrontend(self, subfolder="frontend")(),
             Copy(self, "entry/standalone", "entry")(),
@@ -259,10 +275,33 @@ class Zip(Module):
         return [copied]
 
 
-build_name = "grapycal-0.11.3-240503-linux"
-# cmd("pyarmor cfg nts=pool.ntp.org")  # set the time server
-cmd("pyarmor cfg nts=local")
+nts = "local"
+expire_date = "2024-11-01"
+platform = "linux.x86_64"
+"""
+Options:
+indows.x86
+windows.x86_64
+linux.x86
+linux.x86_64
+linux.arm
+linux.armv6
+linux.armv7
+linux.aarch32
+linux.aarch64
+linux.ppc64
+darwin.x86_64
+darwin.aarch64
+"""
+
+date_str = datetime.datetime.now().strftime("%y%m%d")
+version = toml.load("backend/pyproject.toml")["tool"]["poetry"]["version"]
+build_name = f"grapycal-{version}-{date_str}-{platform}"
+cmd(f"pyarmor cfg nts={nts}")
 run_pipeline(
-    PackGrapycal(expire_date="2024-11-01", name=build_name),
+    PackGrapycal(
+        name=build_name,
+        pyarmor_config=PyarmorConfig(expire_date=expire_date, platform=platform),
+    ),
     dst="packaging/dist/" + build_name,
 )

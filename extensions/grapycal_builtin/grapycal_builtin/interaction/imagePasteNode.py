@@ -35,11 +35,12 @@ except ImportError:
 plt.style.use("dark_background")
 matplotlib.use("Agg")
 
+
 def render_from_fig(
-        fig: Figure,
-        x_range: tuple[float, float]|None = None,
-        y_range: tuple[float, float]|None = None,
-    ) -> io.BytesIO:
+    fig: Figure,
+    x_range: tuple[float, float] | None = None,
+    y_range: tuple[float, float] | None = None,
+) -> io.BytesIO:
     if x_range is not None:
         plt.xlim(x_range)
     if y_range is not None:
@@ -58,6 +59,7 @@ def render_from_fig(
     plt.close(fig)
     return buf
 
+
 @contextmanager
 def open_fig(equal=False) -> Generator[Tuple[Figure, Axes], None, None]:
     fig = plt.figure()
@@ -68,10 +70,11 @@ def open_fig(equal=False) -> Generator[Tuple[Figure, Axes], None, None]:
     finally:
         plt.close(fig)
 
+
 class ImagePasteNode(SourceNode):
     category = "interaction"
 
-    def build_node(self,image: str|None = ''):
+    def build_node(self, image: str | None = ""):
         super().build_node()
         self.shape.set("simple")
         self.label.set("Paste Image")
@@ -86,12 +89,23 @@ class ImagePasteNode(SourceNode):
         self.out_port = self.add_out_port("img")
         self.icon_path.set("image")
         self.preserve_alpha = self.add_attribute(
-            "preserve alpha", StringTopic, "no", editor_type="options", options=["yes", "no"]
+            "preserve alpha",
+            StringTopic,
+            "no",
+            editor_type="options",
+            options=["yes", "no"],
+        )
+        self.gray_scale = self.add_attribute(
+            "gray scale",
+            StringTopic,
+            "no",
+            editor_type="options",
+            options=["yes", "no"],
         )
         if image:
             self.img.set(image)
             self.format.add_validator(self.format_validator)
-            
+
     def init_node(self):
         super().init_node()
 
@@ -116,18 +130,22 @@ class ImagePasteNode(SourceNode):
         if self.format.get() == "torch":
             img = torch.from_numpy(np.array(img))
             img = img.permute(2, 0, 1).to(torch.float32) / 255
-            if (self.preserve_alpha.get() == 'no') and img.shape[0] == 4:
+            if self.gray_scale.get() == "yes":
+                img = img.mean(0, keepdim=True)
+            if (self.preserve_alpha.get() == "no") and img.shape[0] == 4:
                 img = img[:3]
         elif self.format.get() == "numpy":
             img = np.array(img).astype(np.float32).transpose(2, 0, 1) / 255
-            if (self.preserve_alpha.get() == 'no') and img.shape[0] == 4:
-                img = img[:3] 
+            if self.gray_scale.get() == "yes":
+                img = img.mean(0, keepdims=True)
+            if (self.preserve_alpha.get() == "no") and img.shape[0] == 4:
+                img = img[:3]
 
         self.out_port.push(img)
 
 
 class ImageDisplayNode(Node):
-    '''
+    """
     Display an image from the input data
     The input data can be a numpy array or a torch tensor, with one of the following shapes:
     [..., 4 (rgba),h,w]
@@ -141,7 +159,8 @@ class ImageDisplayNode(Node):
 
     If the alpha channel is present, png format will be used, otherwise jpg format will be used.
     Get rid of alpha channel if it is not important to save network bandwidth.
-    '''
+    """
+
     category = "interaction"
 
     def build_node(self):
@@ -256,19 +275,21 @@ class ImageDisplayNode(Node):
         if data.ndim >= 3 and data.shape[-3] == 3:
             return ("0," * (data.ndim - 3))[:-1]
         if data.ndim >= 3 and data.shape[-3] == 4:
-            return ("0," * (data.ndim - 3))[:-1] # ignore alpha channel because the front end does not support it
+            return ("0," * (data.ndim - 3))[
+                :-1
+            ]  # ignore alpha channel because the front end does not support it
         if data.ndim >= 3:
             return ("0," * (data.ndim - 2))[:-1]
         return None
-    
+
     def is_valid_image(self, data: np.ndarray) -> bool:
-        '''
+        """
         Must be one of the following:
         [4 (rgba),h,w]
         [3 (rgb),h,w]
         [1 (grayscale),h,w]
         [h,w]
-        '''
+        """
         if data.ndim == 3 and data.shape[0] in [1, 3, 4]:
             return True
         if data.ndim == 2:
@@ -280,7 +301,9 @@ class ImageDisplayNode(Node):
             data = data.detach().cpu().numpy()
 
         if isinstance(data, list):
-            data = np.array(data) # stack them into array to be compatible with the next if statement
+            data = np.array(
+                data
+            )  # stack them into array to be compatible with the next if statement
 
         if isinstance(data, np.ndarray):
             # Ignore all dimensions with size 1 (except last 2 dimensions)
@@ -314,12 +337,12 @@ class ImageDisplayNode(Node):
         buf = io.BytesIO()
         fig = plt.figure(figsize=(10, 10))
         try:
-            #chw -> hwc
-            form = 'jpg'
+            # chw -> hwc
+            form = "jpg"
             if data.ndim == 3:
                 if data.shape[0] == 4:
-                    form = 'png'
-                
+                    form = "png"
+
                 data = data.transpose(1, 2, 0)
             plt.imshow(
                 data, cmap=self.cmap.get(), vmin=self.vmin.get(), vmax=self.vmax.get()
@@ -335,6 +358,7 @@ class ImageDisplayNode(Node):
     def input_edge_removed(self, edge: Edge, port: InputPort):
         self.img.set(None)
 
+
 class BarPlotNode(Node):
     category = "interaction"
 
@@ -345,7 +369,7 @@ class BarPlotNode(Node):
         self.in_port = self.add_in_port("data", 64, "")
 
     def port_activated(self, port: InputPort):
-        self.run(self.render,data=port.get())
+        self.run(self.render, data=port.get())
 
     def render(self, data):
         data = to_numpy(data)
@@ -354,7 +378,7 @@ class BarPlotNode(Node):
         if data.ndim != 1:
             raise ValueError(f"Cannot plot with shape {data.shape}")
         with open_fig() as (fig, ax):
-            ax.bar(range(len(data)), data*50)
+            ax.bar(range(len(data)), data * 50)
             buf = render_from_fig(fig)
         self.img.set(buf)
 
@@ -396,7 +420,7 @@ class ScatterPlotNode(Node):
                 data = eval(f"unsliced_data[{slice_string}]", globals(), locals())
             except Exception:
                 self.slice.text.set(":")
-            
+
             if data.ndim == 2:
                 pass
 
@@ -421,7 +445,7 @@ class ScatterPlotNode(Node):
                     ax.scatter(d[:, 0], d[:, 1], alpha=0.5)
 
             buf = render_from_fig(fig, (-4, 4), (-4, 4))
-        
+
         self.img.set(buf)
 
     def input_edge_removed(self, edge: Edge, port: InputPort):
@@ -474,18 +498,15 @@ class LinePlotNode(Node):
                 self.add_line(name, None)
 
     def init_node(self):
-        
         self.x_coord = [0]
         self.line_plot.lines.on_insert.add_auto(self.add_line)
         self.line_plot.lines.on_pop.add_auto(self.remove_line)
-        
 
     def add_line(self, name, _):
         self.add_in_port(name, 1)
 
     def remove_line(self, name, _):
         self.remove_in_port(name)
-
 
     def edge_activated(self, edge: Edge, port: InputPort):
         match port:
