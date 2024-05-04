@@ -259,8 +259,9 @@ class Zip(Module):
         return [copied]
 
 
-build_name = "grapycal-0.11.3-240503"
-cmd("pyarmor cfg nts=pool.ntp.org")  # set the time server
+build_name = "grapycal-0.11.3-240503-linux"
+# cmd("pyarmor cfg nts=pool.ntp.org")  # set the time server
+cmd("pyarmor cfg nts=local")
 run_pipeline(
     PackGrapycal(expire_date="2024-11-01", name=build_name),
     dst="packaging/dist/" + build_name,
