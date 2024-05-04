@@ -4,7 +4,7 @@ version = "0.3.0"
 description = "A Grapycal extension for PyTorch"
 authors = ["eri24816 <a931eric@gmail.com>"]
 packages = [
-    { include = "grapycal_torch", from=".."}
+    { include = "grapycal_torch", from="."}
 ]
 
 [tool.poetry.dependencies]

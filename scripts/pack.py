@@ -232,13 +232,12 @@ class PackGrapycal(Module):
                 self,
                 "extensions/grapycal_torch",
                 "grapycal_torch",
-                src_dir=".",
+                src_dir="grapycal_torch",
                 expire_date=self.expire_date,
             )(),
             PackFrontend(self, subfolder="frontend")(),
             Copy(self, "entry/standalone", "entry")(),
-            Copy(self, "packaging/template/main.py")(),
-            Copy(self, "packaging/template/install.py")(),
+            Copy(self, "packaging/template")(),
         )()
         return [Zip(self, pack, name=self.name)()]
 

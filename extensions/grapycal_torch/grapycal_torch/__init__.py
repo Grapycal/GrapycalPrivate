@@ -831,3 +831,8 @@ class CatDogDatasetNode(SourceNode):
             cat_size=int(self.cat_size.get()), dog_size=int(self.dog_size.get())
         )
         self.out.push(self.ds)
+
+
+__all__ = [
+    "GrapycalTorch",
+]
