@@ -76,7 +76,7 @@ jobs:
         uses: actions/setup-python@v2
         with:
           python-version: 3.11
-      - name: Cd into packaging/dist/build/xxx
+      - name: Install and run grapycal
         run: |
           cd packaging/dist/build/grapycal
           python install.py
