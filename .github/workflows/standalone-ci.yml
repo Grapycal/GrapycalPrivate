@@ -71,15 +71,14 @@ jobs:
           name: standalone
           path: packaging/dist/build
       - name: Unzip artifact
-        run: unzip packaging/dist/build/*.zip -d packaging/dist/build
+        run: unzip packaging/dist/build/*.zip -d packaging/dist/build/grapycal
       - name: Set up Python 3.11
         uses: actions/setup-python@v2
         with:
           python-version: 3.11
       - name: Cd into packaging/dist/build/xxx
         run: |
-          cd packaging/dist/build
-          cd $(ls)
+          cd packaging/dist/build/grapycal
           python install.py
           python main.py &
       - name: Wait for 20 seconds
