@@ -285,6 +285,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--nts", default="local")
 parser.add_argument("--expire_date", default=None)
 parser.add_argument("--name", required=True)
+parser.add_argument("--folder_name", default=None)
 parser.add_argument(
     "--platform",
     choices=[
@@ -313,16 +314,20 @@ name = args.name
 
 version = toml.load("backend/pyproject.toml")["tool"]["poetry"]["version"]
 build_name = f"grapycal-{version}-{name}-{platform}"
+
+if args.folder_name:
+    folder_name = args.folder_name
+else:
+    folder_name = build_name
+
 cmd(f"pyarmor cfg nts={nts}")
 run_pipeline(
     PackGrapycal(
         name=build_name,
         pyarmor_config=PyarmorConfig(expire_date=expire_date, platform=platform),
     ),
-    dst="packaging/dist/" + build_name,
+    dst="packaging/dist/" + folder_name,
 )
 
-# create a symlink to the latest build
-if Path("packaging/dist/latest").exists():
-    os.remove("packaging/dist/latest")
-os.symlink(build_name, "packaging/dist/latest")
+with open("packaging/dist/" + build_name + "/build_name.txt", "w") as f:
+    f.write(build_name)

@@ -54,33 +54,30 @@ jobs:
         run: |
           pyarmor reg ~/.pyarmor-regfile-4553.zip && rm ~/.pyarmor-regfile-4553.zip
       - name: Run pack.py with --name 6 digits of commit hash
-        run: python scripts/pack.py --platform linux.x86_64 --name $(echo $GITHUB_SHA | cut -c1-6)
+        run: python scripts/pack.py --platform linux.x86_64 --name $(echo $GITHUB_SHA | cut -c1-6) --folder_name build
       - name: Upload artifact for testing
         uses: actions/upload-artifact@v2
         with:
           name: standalone
-          path: packaging/dist/latest/*.zip
+          path: packaging/dist/build/
 
   test:
     needs: build
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: packaging/dist/latest
     steps:
       - name: Download artifact
         uses: actions/download-artifact@v2
         with:
           name: standalone
-          path: packaging/dist/latest
+          path: packaging/dist/build
       - name: Unzip artifact
-        run: unzip packaging/dist/latest/*.zip -d packaging/dist/latest
+        run: unzip packaging/dist/build/*.zip -d packaging/dist/build
       - name: Set up Python 3.11
         uses: actions/setup-python@v2
         with:
           python-version: 3.11
-      - name: Cd into packaging/dist/latest/xxx
-        run: cd packaging/dist/latest && cd $(ls -d */|head -n 1)
+      - name: Cd into packaging/dist/build/xxx
+        run: cd packaging/dist/build && cd $(ls -d */|head -n 1)
       - name: Install Grapycal
         run: python install.py
       - name: Run Grapycal for 20 seconds
