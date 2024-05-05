@@ -13,9 +13,21 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       # checkout with submodules
-      - uses: actions/checkout@v2
+      - name: Get token from Github App
+        uses: actions/create-github-app-token@v1
+        id: app_token
         with:
-          submodules: 'recursive'
+          app-id: ${{ secrets.CI_APP_ID }}
+          private-key: ${{ secrets.CI_APP_PEM }}
+          # owner is required, otherwise the creds will fail the checkout step
+          owner: ${{ github.repository_owner }}
+      
+      - name: Checkout from GitHub
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+          token: ${{ steps.app_token.outputs.token }}
+
       - name: Set up Python 3.11
         uses: actions/setup-python@v2
         with:
