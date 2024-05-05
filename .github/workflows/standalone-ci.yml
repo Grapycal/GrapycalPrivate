@@ -35,6 +35,14 @@ jobs:
       - name: Install dependencies
         run: |
           pip install -r packaging/pack_requirements.txt
+      - name: setup node
+        uses: actions/setup-node@v2
+        with:
+          node-version: '14'
+      - name: Install dependencies
+        working-directory: frontend
+        run: |
+          npm install
       - name: Decode pyarmor registration file
         env: 
           REGFILE: ${{ secrets.PYARMOR_REGFILE }}
