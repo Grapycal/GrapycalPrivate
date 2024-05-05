@@ -59,7 +59,7 @@ jobs:
         uses: actions/upload-artifact@v2
         with:
           name: standalone
-          path: packaging/dist/build/
+          path: packaging/dist/build/*.zip
 
   test:
     needs: build
@@ -78,7 +78,8 @@ jobs:
           python-version: 3.11
       - name: Cd into packaging/dist/build/xxx
         run: |
-          cd packaging/dist/build && cd $(ls -d */|head -n 1)
+          cd packaging/dist/build
+          cd $(ls)
           python install.py
           python main.py &
       - name: Wait for 20 seconds
