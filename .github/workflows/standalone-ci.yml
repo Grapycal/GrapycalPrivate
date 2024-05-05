@@ -77,11 +77,10 @@ jobs:
         with:
           python-version: 3.11
       - name: Cd into packaging/dist/build/xxx
-        run: cd packaging/dist/build && cd $(ls -d */|head -n 1)
-      - name: Install Grapycal
-        run: python install.py
-      - name: Run Grapycal for 20 seconds
-        run: python main.py &
+        run: |
+          cd packaging/dist/build && cd $(ls -d */|head -n 1)
+          python install.py
+          python main.py &
       - name: Wait for 20 seconds
         run: sleep 20
       - name: Check if Grapycal is running
