@@ -35,11 +35,11 @@ jobs:
       - name: Install dependencies
         run: |
           pip install -r packaging/pack_requirements.txt
-      - name: setup node
+      - name: Setup node
         uses: actions/setup-node@v2
         with:
-          node-version: '14'
-      - name: Install dependencies
+          node-version: '20'
+      - name: Install npm dependencies
         working-directory: frontend
         run: |
           npm install
