@@ -21,8 +21,10 @@ jobs:
         run: |
           pip install -r packaging/pack_requirements.txt
       - name: Decode pyarmor registration file
+        env: 
+          REGFILE: ${{ secrets.PYARMOR_REGFILE }}
         run: |
-          echo ${{ secrets.PYARMOR_REGFILE }} | base64 -d > ~/.pyarmor-regfile-4553.zip
+          echo REGFILE | base64 -d > ~/.pyarmor-regfile-4553.zip
       - name: Register pyarmor
         run: |
           pyarmor reg ~/.pyarmor-regfile-4553.zip && rm ~/.pyarmor-regfile-4553.zip
