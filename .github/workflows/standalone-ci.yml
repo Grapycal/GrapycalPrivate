@@ -1,0 +1,74 @@
+# runs python scripts/pack.py to create a desktop build
+# the build is at packaging/dist/latest/xxx.zip
+# the build is uploaded to s3 with shallwefootball/s3-upload-action@master
+
+name: Standalone CI
+
+on:
+  push:
+    branches: '**'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.11
+      - name: Install dependencies
+        run: |
+          pip install -r packaging/pack_requirements.txt
+      - name: Decode pyarmor registration file
+        run: |
+          echo ${{ secrets.PYARMOR_REGFILE }} | base64 -d > ~/.pyarmor-regfile-4553.zip
+      - name: Register pyarmor
+        run: |
+          pyarmor reg ~/.pyarmor-regfile-4553.zip && rm ~/.pyarmor-regfile-4553.zip
+      - name: Run pack.py with --name 6 digits of commit hash
+        run: python scripts/pack.py --platform linux.x86_64 --name $(echo $GITHUB_SHA | cut -c1-6)
+      - name: Upload artifact for testing
+        uses: actions/upload-artifact@v2
+        with:
+          name: standalone
+          path: packaging/dist/latest/*.zip
+
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packaging/dist/latest
+    steps:
+      - name: Download artifact
+        uses: actions/download-artifact@v2
+        with:
+          name: standalone
+          path: packaging/dist/latest
+      - name: Unzip artifact
+        run: unzip packaging/dist/latest/*.zip -d packaging/dist/latest
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.11
+      - name: Cd into packaging/dist/latest/xxx
+        run: cd packaging/dist/latest && cd $(ls -d */|head -n 1)
+      - name: Install Grapycal
+        run: python install.py
+      - name: Run Grapycal for 20 seconds
+        run: python main.py &
+      - name: Wait for 20 seconds
+        run: sleep 20
+      - name: Check if Grapycal is running
+        run: ps aux | grep main.py | grep -v grep || exit 1
+
+
+  # upload:
+  #   needs: build
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v2
+  #     - name: Download build
+  #       run: |
+  #         mkdir -p packaging/dist/latest
+  #         wget -O packaging/dist/latest/$(echo $GITHUB_SHA | cut -c1-6).zip
