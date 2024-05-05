@@ -302,7 +302,7 @@ parser.add_argument(
         "darwin.x86_64",
         "darwin.aarch64",
     ],
-    required=True,
+    default="linux.x86_64",
 )
 
 args = parser.parse_args()

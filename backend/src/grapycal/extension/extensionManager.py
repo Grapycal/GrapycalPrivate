@@ -42,18 +42,8 @@ class ExtensionManager:
             "not_installed_extensions", objectsync.DictTopic, is_stateful=False
         )
         self._objectsync.register_service("import_extension", self.import_extension)
-
-        # TODO: this is temporary removed because it cause error of pyarmor
-        self._objectsync.register_service(
-            "unimport_extension",
-            lambda *args, **kwargs: logger.info("unimport extension is disabled"),
-        )
-        self._objectsync.register_service(
-            "update_extension",
-            lambda *args, **kwargs: logger.info("update extension is disabled"),
-        )
-        # self._objectsync.register_service("unimport_extension", self.unimport_extension)
-        # self._objectsync.register_service("update_extension", self.update_extension)
+        self._objectsync.register_service("unimport_extension", self.unimport_extension)
+        self._objectsync.register_service("update_extension", self.update_extension)
         self._objectsync.register_service(
             "refresh_extensions", self._update_available_extensions_topic
         )
@@ -78,9 +68,16 @@ class ExtensionManager:
                 raise
             self._instantiate_singletons(extension_name)
         self._update_available_extensions_topic()
-        # TODO: this is temporary removed because it cause error of pyarmor
-        # main_store.slash.register(f'reload: {extension_name}',lambda _: self.update_extension(extension_name),source=extension_name)
-        # main_store.slash.register(f'unimport: {extension_name}',lambda _: self.unimport_extension(extension_name),source=extension_name)
+        main_store.slash.register(
+            f"reload: {extension_name}",
+            lambda _: self.update_extension(extension_name),
+            source=extension_name,
+        )
+        main_store.slash.register(
+            f"unimport: {extension_name}",
+            lambda _: self.unimport_extension(extension_name),
+            source=extension_name,
+        )
         if log:
             logger.info(f"Imported extension {extension_name}")
             main_store.send_message_to_all(f"Imported extension {extension_name}")
