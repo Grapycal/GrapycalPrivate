@@ -24,7 +24,7 @@ jobs:
         env: 
           REGFILE: ${{ secrets.PYARMOR_REGFILE }}
         run: |
-          echo REGFILE | base64 -d > ~/.pyarmor-regfile-4553.zip
+          echo $REGFILE | base64 -d > ~/.pyarmor-regfile-4553.zip
       - name: Register pyarmor
         run: |
           pyarmor reg ~/.pyarmor-regfile-4553.zip && rm ~/.pyarmor-regfile-4553.zip
