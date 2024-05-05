@@ -1,4 +1,4 @@
-import datetime
+import argparse
 import os
 import shutil
 import subprocess
@@ -275,28 +275,38 @@ class Zip(Module):
         return [copied]
 
 
-nts = "local"
-expire_date = "2024-11-01"
-platform = "linux.x86_64"
-"""
-Options:
-indows.x86
-windows.x86_64
-linux.x86
-linux.x86_64
-linux.arm
-linux.armv6
-linux.armv7
-linux.aarch32
-linux.aarch64
-linux.ppc64
-darwin.x86_64
-darwin.aarch64
-"""
+parser = argparse.ArgumentParser()
+parser.add_argument("--nts", default="local")
+parser.add_argument("--expire_date", default=None)
+parser.add_argument("--name", required=True)
+parser.add_argument(
+    "--platform",
+    choices=[
+        "windows.x86",
+        "windows.x86_64",
+        "linux.x86",
+        "linux.x86_64",
+        "linux.arm",
+        "linux.armv6",
+        "linux.armv7",
+        "linux.aarch32",
+        "linux.aarch64",
+        "linux.ppc64",
+        "darwin.x86_64",
+        "darwin.aarch64",
+    ],
+    required=True,
+)
 
-date_str = datetime.datetime.now().strftime("%y%m%d")
+args = parser.parse_args()
+
+nts = args.nts
+expire_date = args.expire_date
+platform = args.platform
+name = args.name
+
 version = toml.load("backend/pyproject.toml")["tool"]["poetry"]["version"]
-build_name = f"grapycal-{version}-{date_str}-{platform}"
+build_name = f"grapycal-{version}-{name}-{platform}"
 cmd(f"pyarmor cfg nts={nts}")
 run_pipeline(
     PackGrapycal(
@@ -305,3 +315,8 @@ run_pipeline(
     ),
     dst="packaging/dist/" + build_name,
 )
+
+# create a symlink to the latest build
+if Path("packaging/dist/latest").exists():
+    os.remove("packaging/dist/latest")
+os.symlink(build_name, "packaging/dist/latest")
