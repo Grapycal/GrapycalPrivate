@@ -329,5 +329,5 @@ run_pipeline(
     dst="packaging/dist/" + folder_name,
 )
 
-with open("packaging/dist/" + build_name + "/build_name.txt", "w") as f:
+with open("packaging/dist/" + folder_name + "/build_name.txt", "w") as f:
     f.write(build_name)
