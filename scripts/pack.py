@@ -157,7 +157,13 @@ class Pyarmor(Module):
         if self.config.platform:
             command += f" --platform {self.config.platform} "
         command += f" > {dst / 'pyarmor.log'} 2>&1"
-        cmd(command)
+        try:
+            cmd(command)
+        except Exception:
+            # if failed, print the log file
+            with open(dst / "pyarmor.log") as f:
+                print(f.read())
+            raise
         os.remove(dst / "pyarmor.log")
 
 
