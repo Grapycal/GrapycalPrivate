@@ -40,9 +40,11 @@ jobs:
         with:
           node-version: '20'
       - name: Install npm dependencies
-        working-directory: frontend
         run: |
-          npm install
+          cd frontend && npm install && cd .. &&\
+          cd submodules/topicsync-client && npm install && cd ../.. &&\
+          cd submodules/objectsync-client && npm install && cd ../.. &&\
+        
       - name: Decode pyarmor registration file
         env: 
           REGFILE: ${{ secrets.PYARMOR_REGFILE }}
