@@ -37,6 +37,7 @@ jobs:
           path: packaging/dist/latest/*.zip
 
   test:
+    needs: build
     runs-on: ubuntu-latest
     defaults:
       run:
