@@ -31,7 +31,7 @@ class TextControl(ValuedControl[str]):
         readonly=False,
         editable: bool = True,
         placeholder: str = "",
-        activation_mode: ActivationMode = ActivationMode.ON_FINISH,
+        activation_mode: ActivationMode = ActivationMode.NO_ACTIVATION,
     ):
         if readonly:
             editable = False

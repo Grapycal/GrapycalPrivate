@@ -77,11 +77,14 @@ def main():
     args = parse_args()
     print(args)
 
-    # because args.backend_path and args.frontend_path are NOT relative to args.cwd,
-    # we need to make them absolute
+    # because args.backend_path, args.frontend_path, and args.extensions_path are NOT relative to the cwd,
+    # we need to make them absolute before moving to the cwd
     args.backend_path = os.path.abspath(args.backend_path)
     if args.frontend_path is not None:
         args.frontend_path = os.path.abspath(args.frontend_path)
+
+    if args.extensions_path is not None:
+        args.extensions_path = os.path.abspath(args.extensions_path)
 
     # set cwd to args.cwd
     if args.cwd is not None:

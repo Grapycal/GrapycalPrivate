@@ -10,6 +10,7 @@ class FunctionNode(Node):
     max_in_degree = []
     outputs = []
     display_port_names = True
+    is_source = False
 
     def build_node(self):
         self._max_in_degree = self.max_in_degree[:]
@@ -18,41 +19,49 @@ class FunctionNode(Node):
         for i in range(len(self._max_in_degree)):
             if self._max_in_degree[i] is None:
                 self._max_in_degree[i] = 1024
-        for name, max_edges in zip(self.inputs,self._max_in_degree): #type: ignore
-            display_name = name if self.display_port_names else ''
-            self.add_in_port(name,max_edges,display_name=display_name)
+        for name, max_edges in zip(self.inputs, self._max_in_degree):  # type: ignore
+            display_name = name if self.display_port_names else ""
+            self.add_in_port(name, max_edges, display_name=display_name)
         for name in self.outputs:
-            display_name = name if self.display_port_names else ''
-            self.add_out_port(name,display_name=display_name)
+            display_name = name if self.display_port_names else ""
+            self.add_out_port(name, display_name=display_name)
 
-        self.label.set('f')
-        self.shape.set('round')
+        if self.is_source:
+            assert len(self.inputs) == 0
+            self.add_in_port("trigger")
+
+        self.label.set("f")
+        self.shape.set("round")
 
     def edge_activated(self, edge: Edge, port):
-        for port in self._get_func_ins():
-            if not port.is_all_ready():
-                return
-        self.run(self._task)
+        if self.is_source:
+            edge.get()
+            self.run(self._task)
+        else:
+            if port.is_all_ready():
+                self.run(self._task)
 
     def _pre_task(self) -> dict:
+        if self.is_source:
+            return {}  # No inputs for source nodes
         inputs = {}
         for port in self._get_func_ins():
-            arg_name = port.get_name().replace(' ','_')
+            arg_name = port.get_name().replace(" ", "_")
             if port.max_edges.get() == 1:
                 inputs[arg_name] = port.edges[0].get()
             else:
                 inputs[arg_name] = [edge.get() for edge in port.edges]
         return inputs
-    
+
     def _post_task(self, result):
         if len(self._get_func_outs()) == 1:
             self._get_func_outs()[0].push(result)
         else:
             if result is None:
                 return
-            for k,v in result.items():
+            for k, v in result.items():
                 self.get_out_port(k).push(v)
-        
+
     def _task(self):
         if asyncio.iscoroutinefunction(self.calculate):
             self.run(self.task_async)
@@ -73,10 +82,8 @@ class FunctionNode(Node):
         result = await self.calculate(**inputs)
         self._post_task(result)
 
-        
-
-    def calculate(self, **inputs)->Any:
-        '''
+    def calculate(self, **inputs) -> Any:
+        """
         Define the function of this node here.
 
         :param **inputs: A dict of lists. Each dict entry is the data from one input port. For example, if there is only one input port named "in" with two\
@@ -93,7 +100,7 @@ class FunctionNode(Node):
                 ...
                 def calculate(self, items):
                     return {'sum':sum(items)} # Return the sum of the data
-        '''
+        """
         raise NotImplementedError
 
     def input_edge_added(self, edge: Edge, port):
@@ -110,7 +117,7 @@ class FunctionNode(Node):
 
     def remove(self):
         return super().remove()
-    
+
     def _get_func_ins(self):
         res = []
         for port in self.in_ports:
@@ -118,7 +125,7 @@ class FunctionNode(Node):
                 res.append(port)
 
         return res
-    
+
     def _get_func_outs(self):
         res = []
         for port in self.out_ports:
@@ -126,3 +133,8 @@ class FunctionNode(Node):
                 res.append(port)
 
         return res
+
+    def double_click(self):
+        super().double_click()
+        if self.is_source:
+            self.run(self._task)

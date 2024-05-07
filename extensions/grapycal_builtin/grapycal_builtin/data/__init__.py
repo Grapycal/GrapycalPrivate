@@ -1,22 +1,18 @@
 import re
-from typing import Any, Dict
 
 from grapycal import ListTopic, StringTopic
-from grapycal.extension.utils import NodeInfo
 from grapycal.sobjects.controls import TextControl
 from grapycal.sobjects.controls.buttonControl import ButtonControl
 from grapycal.sobjects.edge import Edge
-from grapycal.sobjects.functionNode import FunctionNode
 from grapycal.sobjects.node import Node, deprecated
 from grapycal.sobjects.port import InputPort
 from grapycal.sobjects.sourceNode import SourceNode
-from grapycal.utils.nodeGen import FunctionNodeGenerator
 from topicsync.topic import FloatTopic, IntTopic
 
 
 class VariableNode(SourceNode):
-    '''
-    
+    """
+
     VariableNode stores a variable in the workspace. It can be used to store data for later use.
 
     :inputs:
@@ -26,17 +22,18 @@ class VariableNode(SourceNode):
     :outputs:
         - get: get the variable's value
 
-    '''
-    category = 'data'
-    
+    """
+
+    category = "data"
+
     def build_node(self):
         super().build_node()
-        self.in_port = self.add_in_port('set',1)
-        self.out_port = self.add_out_port('get')
-        self.variable_name = self.add_control(TextControl,name='variable_name')
-        self.label.set('Variable')
-        self.shape.set('simple')
-        self.css_classes.append('fit-content')
+        self.in_port = self.add_in_port("set", 1)
+        self.out_port = self.add_out_port("get")
+        self.variable_name = self.add_control(TextControl, name="variable_name")
+        self.label.set("Variable")
+        self.shape.set("simple")
+        self.css_classes.append("fit-content")
 
     def init_node(self):
         super().init_node()
@@ -50,16 +47,19 @@ class VariableNode(SourceNode):
 
     def task(self):
         if self.variable_name.text.get() not in self.get_vars():
-            self.print_exception(f'Variable "{self.variable_name.text.get()}" does not exist')
+            self.print_exception(
+                f'Variable "{self.variable_name.text.get()}" does not exist'
+            )
             return
         self.value = self.get_vars()[self.variable_name.text.get()]
         self.has_value = True
         for edge in self.out_port.edges:
             edge.push(self.value)
 
-@deprecated('Use SplitList or SplitDict instead','0.12.0','0.13.0')
+
+@deprecated("Use SplitList or SplitDict instead", "0.12.0", "0.13.0")
 class SplitNode(Node):
-    '''
+    """
     SplitNode is used to get items from a list or a dictionary using keys.
     It is equivalent to `data[key]` in Python.
 
@@ -72,16 +72,23 @@ class SplitNode(Node):
         - value1: the value of the first key
         - value2: the value of the second key
         etc.
-    '''
-    category = 'data'
+    """
+
+    category = "data"
 
     def build_node(self):
-        self.in_port = self.add_in_port('list/dict',1)
-        self.label.set('Split')
-        self.shape.set('normal')
-        self.keys = self.add_attribute('keys', ListTopic, editor_type='list')
-        self.key_mode = self.add_attribute('key mode', StringTopic, 'string', editor_type='options', options=['string','eval']) 
-        
+        self.in_port = self.add_in_port("list/dict", 1)
+        self.label.set("Split")
+        self.shape.set("normal")
+        self.keys = self.add_attribute("keys", ListTopic, editor_type="list")
+        self.key_mode = self.add_attribute(
+            "key mode",
+            StringTopic,
+            "string",
+            editor_type="options",
+            options=["string", "eval"],
+        )
+
         if not self.is_new:
             for key in self.keys:
                 self.add_out_port(key)
@@ -97,28 +104,29 @@ class SplitNode(Node):
         self.remove_out_port(key)
 
     def edge_activated(self, edge: Edge, port: InputPort):
-        self.run(self.task,background=False)
-        
+        self.run(self.task, background=False)
+
     def task(self):
         data = self.in_port.get()
         for out_port in self.out_ports:
             key = out_port.name.get()
-            if self.key_mode.get() == 'eval':
-                out_port.push(eval(f'_data[{key}]',self.get_vars(),{'_data':data}))
+            if self.key_mode.get() == "eval":
+                out_port.push(eval(f"_data[{key}]", self.get_vars(), {"_data": data}))
             else:
                 out_port.push(data[key])
 
+
 class SplitListNode(Node):
-    '''
-    '''
-    category = 'data'
+    """ """
+
+    category = "data"
 
     def build_node(self):
-        self.in_port = self.add_in_port('list',1)
-        self.label.set('Split List')
-        self.shape.set('normal')
-        self.keys = self.add_attribute('keys', ListTopic, editor_type='list')
-        
+        self.in_port = self.add_in_port("list", 1)
+        self.label.set("Split List")
+        self.shape.set("normal")
+        self.keys = self.add_attribute("keys", ListTopic, editor_type="list")
+
         if not self.is_new:
             for key in self.keys:
                 self.add_out_port(key)
@@ -134,25 +142,26 @@ class SplitListNode(Node):
         self.remove_out_port(key)
 
     def edge_activated(self, edge: Edge, port: InputPort):
-        self.run(self.task,background=False)
-        
+        self.run(self.task, background=False)
+
     def task(self):
         data = self.in_port.get()
         for out_port in self.out_ports:
             key = out_port.name.get()
-            out_port.push(eval(f'_data[{key}]',self.get_vars(),{'_data':data}))
+            out_port.push(eval(f"_data[{key}]", self.get_vars(), {"_data": data}))
+
 
 class SplitDictNode(Node):
-    '''
-    '''
-    category = 'data'
+    """ """
+
+    category = "data"
 
     def build_node(self):
-        self.in_port = self.add_in_port('dict',1)
-        self.label.set('Split Dict')
-        self.shape.set('normal')
-        self.keys = self.add_attribute('keys', ListTopic, editor_type='list')
-        
+        self.in_port = self.add_in_port("dict", 1)
+        self.label.set("Split Dict")
+        self.shape.set("normal")
+        self.keys = self.add_attribute("keys", ListTopic, editor_type="list")
+
         if not self.is_new:
             for key in self.keys:
                 self.add_out_port(key)
@@ -168,29 +177,31 @@ class SplitDictNode(Node):
         self.remove_out_port(key)
 
     def edge_activated(self, edge: Edge, port: InputPort):
-        self.run(self.task,background=False)
-        
+        self.run(self.task, background=False)
+
     def task(self):
         data = self.in_port.get()
         for out_port in self.out_ports:
             key = out_port.name.get()
             out_port.push(data[key])
 
+
 class BuildStringNode(Node):
-    category = 'data'
+    category = "data"
+
     def build_node(self):
-        self.out_port = self.add_out_port('output')
-        self.label.set('Build String')
-        self.shape.set('normal')
-        self.keys = self.add_attribute('keys', ListTopic, editor_type='list')
-        self.add_button = self.add_control(ButtonControl,name='add',label='Add')
+        self.out_port = self.add_out_port("output")
+        self.label.set("Build String")
+        self.shape.set("normal")
+        self.keys = self.add_attribute("keys", ListTopic, editor_type="list")
+        self.add_button = self.add_control(ButtonControl, name="add", label="Add")
 
         if not self.is_new:
             for key in self.keys:
-                self.add_item(key,-1)
+                self.add_item(key, -1)
         else:
-            self.keys.insert('1')
-            self.add_item('1',-1)
+            self.keys.insert("1")
+            self.add_item("1", -1)
 
     def init_node(self):
         self.keys.on_insert.add_auto(self.add_item)
@@ -198,7 +209,13 @@ class BuildStringNode(Node):
         self.add_button.on_click.add_auto(self.add_pressed)
 
     def add_item(self, key, position):
-        self.add_in_port(key,1,display_name="",control_type=TextControl,activation_mode=TextControl.ActivationMode.NO_ACTIVATION)
+        self.add_in_port(
+            key,
+            1,
+            display_name="",
+            control_type=TextControl,
+            activation_mode=TextControl.ActivationMode.NO_ACTIVATION,
+        )
 
     def remove_item(self, key, position):
         self.remove_in_port(key)
@@ -206,7 +223,7 @@ class BuildStringNode(Node):
     def add_pressed(self):
         new_key = 0
         for key in self.keys:
-            if re.match(r'[0-9]+', key):
+            if re.match(r"[0-9]+", key):
                 new_key = max(new_key, int(key))
         new_key += 1
         self.keys.insert(str(new_key))
@@ -220,34 +237,41 @@ class BuildStringNode(Node):
     def task(self):
         if not all([port.is_all_ready() for port in self.in_ports]):
             return
-        result = ''
+        result = ""
         for key in self.keys:
             result += self.get_in_port(key).get()
         self.out_port.push(result)
         self.flash_running_indicator()
 
+
 class BuildDictNode(Node):
-    category = 'data'
+    category = "data"
+
     def build_node(self):
-        self.out_port = self.add_out_port('output')
-        self.label.set('Build Dict')
-        self.shape.set('normal')
-        self.keys = self.add_attribute('keys', ListTopic, editor_type='list')
+        self.out_port = self.add_out_port("output")
+        self.label.set("Build Dict")
+        self.shape.set("normal")
+        self.keys = self.add_attribute("keys", ListTopic, editor_type="list")
 
         if not self.is_new:
             for key in self.keys:
-                self.add_item(key,-1)
+                self.add_item(key, -1)
 
     def init_node(self):
         self.keys.on_insert.add_auto(self.add_item)
         self.keys.on_pop.add_auto(self.remove_item)
 
     def add_item(self, key, position):
-        self.add_in_port(key,1,control_type=TextControl,activation_mode=TextControl.ActivationMode.NO_ACTIVATION)
+        self.add_in_port(
+            key,
+            1,
+            control_type=TextControl,
+            activation_mode=TextControl.ActivationMode.NO_ACTIVATION,
+        )
 
     def remove_item(self, key, position):
         self.remove_in_port(key)
-        
+
     def double_click(self):
         self.task()
 
@@ -263,8 +287,9 @@ class BuildDictNode(Node):
         self.out_port.push(result)
         self.flash_running_indicator()
 
+
 class RegexFindAllNode(Node):
-    '''
+    """
     ReFindAllNode is used to find all occurrences of a regular expression in a string.
 
     :inputs:
@@ -273,34 +298,46 @@ class RegexFindAllNode(Node):
 
     :outputs:
         - matches: a list of all matches
-    '''
-    category = 'data'
+    """
+
+    category = "data"
 
     def build_node(self):
-        self.in_port = self.add_in_port('string',1,control_type=TextControl,activation_mode=TextControl.ActivationMode.NO_ACTIVATION)
-        self.pattern_port = self.add_in_port('pattern',1,control_type=TextControl,activation_mode=TextControl.ActivationMode.NO_ACTIVATION)
-        self.out_port = self.add_out_port('matches')
-        self.label.set('Regex Find All')
-        self.shape.set('normal')
-        self.css_classes.append('fit-content')
+        self.in_port = self.add_in_port(
+            "string",
+            1,
+            control_type=TextControl,
+            activation_mode=TextControl.ActivationMode.NO_ACTIVATION,
+        )
+        self.pattern_port = self.add_in_port(
+            "pattern",
+            1,
+            control_type=TextControl,
+            activation_mode=TextControl.ActivationMode.NO_ACTIVATION,
+        )
+        self.out_port = self.add_out_port("matches")
+        self.label.set("Regex Find All")
+        self.shape.set("normal")
+        self.css_classes.append("fit-content")
 
     def edge_activated(self, edge: Edge, port: InputPort):
         self.task()
 
     def double_click(self):
         self.task()
-        
+
     def task(self):
         for port in [self.in_port, self.pattern_port]:
-                    if not port.is_all_ready():
-                        return
+            if not port.is_all_ready():
+                return
         string = self.in_port.get()
         pattern = self.pattern_port.get()
-        self.out_port.push(re.findall(pattern,string))
+        self.out_port.push(re.findall(pattern, string))
         self.flash_running_indicator()
 
+
 class ZipNode(Node):
-    '''
+    """
     ZipNode is used to combine multiple lists into a single list.
 
     :inputs:
@@ -310,21 +347,25 @@ class ZipNode(Node):
 
     :outputs:
         - list: the combined list
-    '''
-    category = 'data'
+    """
+
+    category = "data"
+
     def build_node(self):
-        self.out_port = self.add_out_port('output')
-        self.label.set('Zip')
-        self.shape.set('normal')
-        self.items = self.add_attribute('items', ListTopic, editor_type='list')
-        self.add_button = self.add_control(ButtonControl,name='add',label='Add')
-        self.required_length = self.add_control(TextControl,name='required_length',label='Required Length')
+        self.out_port = self.add_out_port("output")
+        self.label.set("Zip")
+        self.shape.set("normal")
+        self.items = self.add_attribute("items", ListTopic, editor_type="list")
+        self.add_button = self.add_control(ButtonControl, name="add", label="Add")
+        self.required_length = self.add_control(
+            TextControl, name="required_length", label="Required Length"
+        )
 
         if not self.is_new:
             for item in self.items:
-                self.add_item(item,-1)
+                self.add_item(item, -1)
         else:
-            self.items.insert('1')
+            self.items.insert("1")
 
     def init_node(self):
         self.items.on_insert.add_auto(self.add_item)
@@ -332,7 +373,7 @@ class ZipNode(Node):
         self.add_button.on_click.add_auto(self.add_pressed)
 
     def add_item(self, item, position):
-        self.add_in_port(item,1,display_name="") #TODO: add control 
+        self.add_in_port(item, 1, display_name="")  # TODO: add control
 
     def remove_item(self, item, position):
         self.remove_in_port(item)
@@ -340,7 +381,7 @@ class ZipNode(Node):
     def add_pressed(self):
         new_item = 0
         for item in self.items:
-            if re.match(r'[0-9]+', item):
+            if re.match(r"[0-9]+", item):
                 new_item = max(new_item, int(item))
         new_item += 1
         self.items.insert(str(new_item))
@@ -366,13 +407,15 @@ class ZipNode(Node):
         if required_length is not None:
             for input_list in inputs:
                 if len(input_list) != required_length:
-                    self.print_exception(f'Length of input lists must be {required_length}')
+                    self.print_exception(
+                        f"Length of input lists must be {required_length}"
+                    )
                     return
-                
+
         try:
             result = list(zip(*inputs))
         except ValueError:
-            self.print_exception('Input lists must have the same length')
+            self.print_exception("Input lists must have the same length")
             return
         self.out_port.push(result)
 
@@ -434,7 +477,11 @@ class MeanNode(Node):
             "output_interval", IntTopic, 1, editor_type="int"
         )
         self.reset_when_output = self.add_attribute(
-            "reset_when_output", StringTopic, "No", editor_type="options", options=["Yes", "No"]
+            "reset_when_output",
+            StringTopic,
+            "No",
+            editor_type="options",
+            options=["Yes", "No"],
         )
 
     def init_node(self):

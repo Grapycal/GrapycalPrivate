@@ -24,6 +24,7 @@ from grapycal_torch.cnn import Conv2dNode, ConvTranspose2dNode
 from grapycal_torch.conversion import ConvertToNode
 from grapycal_torch.dataloader import DataLoaderNode
 from grapycal_torch.dataset import MnistDatasetNode
+from grapycal_torch.generated import generated_nodes
 from grapycal_torch.generative import (
     Arange2Node,
     ArangeNode,
@@ -127,7 +128,7 @@ class GrapycalTorch(Extension):
         RandNode,
         Conv2dNode,
         FConv2DNode,
-    ]
+    ] + generated_nodes
 
     def provide_stores(self):
         self.mn = MNManager()
