@@ -10,13 +10,13 @@ import objectsync
 from dacite import from_dict
 from objectsync.sobject import SObjectSerialized
 
-#Import utils from grapycal
+# Import utils from grapycal
 import grapycal
 import grapycal.utils.logging
 from grapycal.core import running_module, stdout_helper
 from grapycal.core.background_runner import BackgroundRunner
 
-#import all sobject types to register them to the objectsync server
+# import all sobject types to register them to the objectsync server
 from grapycal.core.client_msg_types import ClientMsgTypes
 from grapycal.core.slash_command import SlashCommandManager
 from grapycal.core.strategies import OpenAnotherWorkspaceStrategy
@@ -35,6 +35,7 @@ from grapycal.sobjects.controls import (
 )
 from grapycal.sobjects.controls.keyboardControl import KeyboardControl
 from grapycal.sobjects.controls.sliderControl import SliderControl
+from grapycal.sobjects.controls.toggleControl import ToggleControl
 from grapycal.sobjects.edge import Edge
 from grapycal.sobjects.editor import Editor
 from grapycal.sobjects.fileView import LocalFileView, RemoteFileView
@@ -50,6 +51,7 @@ from grapycal.utils.io import file_exists, read_workspace, write_workspace
 grapycal.utils.logging.setup_logging()
 logger = logging.getLogger("workspace")
 
+
 class Workspace:
     """
     This is the core class of a Grapycal workspace.
@@ -62,9 +64,10 @@ class Workspace:
     ```
     """
 
-    def __init__(self, 
-        path: str, 
-        open_another_workspace_strategy: OpenAnotherWorkspaceStrategy|None = None, 
+    def __init__(
+        self,
+        path: str,
+        open_another_workspace_strategy: OpenAnotherWorkspaceStrategy | None = None,
     ):
         self.path = path
 
@@ -153,6 +156,7 @@ class Workspace:
         self._objectsync.register(KeyboardControl)
         self._objectsync.register(CodeControl)
         self._objectsync.register(SliderControl)
+        self._objectsync.register(ToggleControl)
 
         self._objectsync.register(WebcamStream)
         self._objectsync.register(LinePlotControl)

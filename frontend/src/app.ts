@@ -9,6 +9,7 @@ import { OptionControl } from './sobjects/controls/optionControl'
 import { SliderControl } from './sobjects/controls/sliderControl'
 import { TextControl } from './sobjects/controls/textControl'
 import { ThreeControl } from './sobjects/controls/threeControl'
+import { ToggleControl } from './sobjects/controls/toggleControl'
 import { Edge } from './sobjects/edge'
 import { Editor } from './sobjects/editor'
 import { FileView } from './sobjects/fileView'
@@ -74,6 +75,7 @@ function startObjectSync(wsUrl:string){
     objectsync.register(KeyboardControl)
     objectsync.register(SliderControl)
     objectsync.register(CodeControl)
+    objectsync.register(ToggleControl)
 
     objectsync.register(WebcamStream)
 

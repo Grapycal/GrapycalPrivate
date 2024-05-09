@@ -16,6 +16,7 @@ from grapycal import (
     SetTopic,
     StringTopic,
     TextControl,
+    ToggleControl,
 )
 from grapycal.core.workspace import Workspace
 from grapycal.extension.utils import NodeInfo
@@ -25,6 +26,18 @@ from grapycal.sobjects.edge import Edge
 from grapycal.sobjects.port import InputPort
 from objectsync.sobject import SObjectSerialized
 from websockets.sync.client import connect
+
+
+class OUONode(Node):
+    category = "test"
+
+    def build_node(self):
+        self.label.set("testing")
+        self.add_control(ToggleControl, name="toggle_conutrol", label="toggle")
+
+        self.add_control(ToggleControl, name="toggle_conetrol", label="toeuytggle")
+
+        self.add_control(ToggleControl, name="toggle_control", label="togeytuetyugle")
 
 
 class TestNode(FunctionNode):

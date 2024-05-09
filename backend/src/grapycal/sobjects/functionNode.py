@@ -38,8 +38,10 @@ class FunctionNode(Node):
             edge.get()
             self.run(self._task)
         else:
-            if port.is_all_ready():
-                self.run(self._task)
+            for port in self._get_func_ins():
+                if not port.is_all_ready():
+                    return
+            self.run(self._task)
 
     def _pre_task(self) -> dict:
         if self.is_source:

@@ -25,6 +25,7 @@ from grapycal.sobjects.controls import (
     OptionControl,
     TextControl,
     ThreeControl,
+    ToggleControl,
 )
 from grapycal.sobjects.edge import Edge
 from grapycal.sobjects.functionNode import FunctionNode
