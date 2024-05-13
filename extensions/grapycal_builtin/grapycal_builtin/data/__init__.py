@@ -1,6 +1,11 @@
 import re
 
 from grapycal import ListTopic, StringTopic
+from grapycal.extension_api.behavior import (
+    Behavior,
+    InputsBehavior,
+    OutputsBehavior,
+)
 from grapycal.sobjects.controls import TextControl
 from grapycal.sobjects.controls.buttonControl import ButtonControl
 from grapycal.sobjects.edge import Edge
@@ -247,45 +252,13 @@ class BuildStringNode(Node):
 class BuildDictNode(Node):
     category = "data"
 
-    def build_node(self):
-        self.out_port = self.add_out_port("output")
-        self.label.set("Build Dict")
-        self.shape.set("normal")
-        self.keys = self.add_attribute("keys", ListTopic, editor_type="list")
+    def define_behaviors(self):
+        self.ins = InputsBehavior("ins", expose_attr=True, on_all_ready=self.task)
+        self.outs = OutputsBehavior("outs", outs=["result"])
+        return [self.ins, self.outs]
 
-        if not self.is_new:
-            for key in self.keys:
-                self.add_item(key, -1)
-
-    def init_node(self):
-        self.keys.on_insert.add_auto(self.add_item)
-        self.keys.on_pop.add_auto(self.remove_item)
-
-    def add_item(self, key, position):
-        self.add_in_port(
-            key,
-            1,
-            control_type=TextControl,
-            activation_mode=TextControl.ActivationMode.NO_ACTIVATION,
-        )
-
-    def remove_item(self, key, position):
-        self.remove_in_port(key)
-
-    def double_click(self):
-        self.task()
-
-    def edge_activated(self, edge: Edge, port: InputPort):
-        self.task()
-
-    def task(self):
-        if not all([port.is_all_ready() for port in self.in_ports]):
-            return
-        result = {}
-        for key in self.keys:
-            result[key] = self.get_in_port(key).get()
-        self.out_port.push(result)
-        self.flash_running_indicator()
+    def task(self, **kwargs):
+        self.outs.push("result", kwargs)
 
 
 class RegexFindAllNode(Node):

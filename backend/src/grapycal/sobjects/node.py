@@ -3,8 +3,11 @@ from pprint import pprint
 
 from grapycal.core.background_runner import RunnerInterrupt
 from grapycal.core.client_msg_types import ClientMsgTypes
+from grapycal.extension_api.behavior import Behavior
 from grapycal.sobjects.controls.keyboardControl import KeyboardControl
 from grapycal.sobjects.controls.sliderControl import SliderControl
+from grapycal.sobjects.controls.toggleControl import ToggleControl
+from grapycal.utils.misc import Action
 
 logger = logging.getLogger(__name__)
 import asyncio
@@ -16,20 +19,6 @@ from abc import ABCMeta
 from contextlib import contextmanager
 from itertools import count
 from typing import TYPE_CHECKING, Awaitable, Callable, Literal, Self, TypeVar
-
-from objectsync import (
-    DictTopic,
-    FloatTopic,
-    IntTopic,
-    ListTopic,
-    ObjDictTopic,
-    ObjListTopic,
-    SetTopic,
-    SObject,
-    StringTopic,
-    Topic,
-)
-from objectsync.sobject import SObjectSerialized, WrappedTopic
 
 from grapycal.extension.utils import NodeInfo
 from grapycal.sobjects.controls.buttonControl import ButtonControl
@@ -44,7 +33,20 @@ from grapycal.sobjects.edge import Edge
 from grapycal.sobjects.port import InputPort, OutputPort
 from grapycal.stores import main_store
 from grapycal.utils.io import OutputStream
-from grapycal.utils.logging import error_extension, user_logger, warn_extension
+from grapycal.utils.logging import user_logger, warn_extension
+from objectsync import (
+    DictTopic,
+    FloatTopic,
+    IntTopic,
+    ListTopic,
+    ObjDictTopic,
+    ObjListTopic,
+    SetTopic,
+    SObject,
+    StringTopic,
+    Topic,
+)
+from objectsync.sobject import SObjectSerialized, WrappedTopic
 
 if TYPE_CHECKING:
     from grapycal.extension.extension import Extension
@@ -163,9 +165,20 @@ class RESTORE_FROM(enum.Enum):
 class Node(SObject, metaclass=NodeMeta):
     frontend_type = "Node"
     category = "hidden"
+    label_: str | None = None
+    shape_ = "normal"
     instance: Self  # The singleton instance. Used by singleton nodes.
     _deprecated = False  # TODO: If set to True, the node will be marked as deprecated in the inspector.
     ext: "Extension"
+
+    @classmethod
+    def get_default_label(cls):
+        name = cls.__name__
+        name = name[:-4] if name.endswith("Node") else name
+        # add space before capital letters except the first one
+        return "".join(
+            " " + c if c.isupper() and i != 0 else c for i, c in enumerate(name)
+        )
 
     @classmethod
     def set_extension(cls, ext: "Extension"):
@@ -182,7 +195,21 @@ class Node(SObject, metaclass=NodeMeta):
         self.is_building = False
         self._n_running_tasks = 0
 
+        self.on_build_node = Action()
+        self.on_init_node = Action()
+        self.on_port_activated = Action()
+        self.on_double_click = Action()
+
+        behavior_list = self.define_behaviors()
+        self.behaviors: dict[str, Behavior] = {}
+        for behavior in behavior_list:
+            assert behavior.name not in self.behaviors
+            self.behaviors[behavior.name] = behavior
+            behavior.set_node(self)
         super().initialize(serialized, *args, **kwargs)
+
+    def define_behaviors(self) -> list[Behavior]:
+        return []
 
     def build(
         self,
@@ -197,13 +224,17 @@ class Node(SObject, metaclass=NodeMeta):
         self.is_building = True
 
         self.shape = self.add_attribute(
-            "shape", StringTopic, "normal", restore_from=None
+            "shape", StringTopic, self.shape_, restore_from=None
         )  # normal, simple, round
         self.output = self.add_attribute(
             "output", ListTopic, [], is_stateful=False, restore_from=None
         )
         self.label = self.add_attribute(
-            "label", StringTopic, "", is_stateful=False, restore_from=None
+            "label",
+            StringTopic,
+            self.label_ if self.label_ is not None else self.get_default_label(),
+            is_stateful=False,
+            restore_from=None,
         )
         self.label_offset = self.add_attribute(
             "label_offset", FloatTopic, 0, restore_from=None
@@ -254,21 +285,22 @@ class Node(SObject, metaclass=NodeMeta):
             "controls", ObjDictTopic[Control], restore_from=None
         )
 
+        # store these info in the node's serialized data so when restoring, behaviors can be restored
+        self.behaviors_info = self.add_attribute(
+            "behaviors_info",
+            DictTopic,
+            is_stateful=False,
+        )
+
         self.build_node(**build_node_args)
+        self.on_build_node.invoke()  # not passing build_node_args because behaviors should be independent of the node type
         self.is_building = False
 
-    def create(self):
-        """
-        This method was orignated from a wrong design and should not be used. It will be removed in few commits.
-        Use build_node() and init_node() instead.
-        """
-        # check for override of create
-        if type(self).create != Node.create:
-            error_extension(
-                self,
-                f"Class {self.__class__.__name__} has overridden create() method. The Node.create() method was orignated from a wrong design and should not be used. It will be removed in few commits. Use build_node() and init_node() instead.",
-            )
-            exit(1)
+        # store behaviors info
+        behavior_info = {}
+        for behavior in self.behaviors.values():
+            behavior_info[behavior.name] = behavior.get_info()
+        self.behaviors_info.set(behavior_info)
 
     def build_node(self):
         """
@@ -280,9 +312,7 @@ class Node(SObject, metaclass=NodeMeta):
         """
 
     def init(self):
-        from grapycal.sobjects.editor import (
-            Editor,
-        )
+        from grapycal.sobjects.editor import Editor
 
         parent = self.get_parent()
         if isinstance(parent, Editor):
@@ -291,12 +321,12 @@ class Node(SObject, metaclass=NodeMeta):
             self.editor = None
 
         self.on("double_click", self.double_click, is_stateful=False)
+        self.on("double_click", self.on_double_click.invoke, is_stateful=False)
         self.on("spawn", self.spawn, is_stateful=False)
 
         self._output_stream = OutputStream(self.raw_print)
         self._output_stream.set_event_loop(main_store.event_loop)
         main_store.event_loop.create_task(self._output_stream.run())
-
 
         self.globally_exposed_attributes.on_add.add_auto(
             lambda k, v: main_store.settings.entries.add(k, v)
@@ -304,7 +334,13 @@ class Node(SObject, metaclass=NodeMeta):
         for k, v in self.globally_exposed_attributes.get().items():
             main_store.settings.entries.add(k, v)
 
+        # restore behaviors
+        behavior_info = self.behaviors_info.get()
+        for name, behavior in self.behaviors.items():
+            behavior.restore_from_info(behavior_info[name])
+
         self.init_node()
+        self.on_init_node.invoke()
 
     def init_node(self):
         """
@@ -419,7 +455,7 @@ class Node(SObject, metaclass=NodeMeta):
         """
         Called when a client wants to spawn a node.
         """
-        new_node = main_store.main_editor.create_node(type(self),sender=client_id)
+        new_node = main_store.main_editor.create_node(type(self), sender=client_id)
         if new_node is None:  # failed to create node
             return
         new_node.add_tag(
@@ -740,6 +776,15 @@ class Node(SObject, metaclass=NodeMeta):
         )
         return control
 
+    def add_toggle_control(
+        self, value: bool = False, label: str = "", name: str | None = None
+    ):
+        """
+        Add a toggle control to the node.
+        """
+        control = self.add_control(ToggleControl, value=value, label=label, name=name)
+        return control
+
     def remove_control(self, control: str | Control):
         if isinstance(control, str):
             control = self.controls[control]
@@ -878,7 +923,7 @@ class Node(SObject, metaclass=NodeMeta):
                 },
             )
 
-    def print(self, *objs,sep=' ',end='\n', **kwargs):
+    def print(self, *objs, sep=" ", end="\n", **kwargs):
         """
         Print to the node's output.
         """
@@ -888,7 +933,7 @@ class Node(SObject, metaclass=NodeMeta):
         # maybe the self._output_stream can be abandoned
         output = io.StringIO(newline="")
         for obj in objs[:-1]:
-            if isinstance(obj,str):
+            if isinstance(obj, str):
                 output.write(obj)
             else:
                 pprint(obj, stream=output, **kwargs)
@@ -918,7 +963,10 @@ class Node(SObject, metaclass=NodeMeta):
         Get the position of the node.
         """
         position = self.translation.get().split(",")
-        return [float(position[0]) + translation[0], float(position[1]) + translation[1]]
+        return [
+            float(position[0]) + translation[0],
+            float(position[1]) + translation[1],
+        ]
 
     """
     Run tasks in the background or foreground, redirecting stdout to the node's output stream.
@@ -1075,14 +1123,15 @@ class Node(SObject, metaclass=NodeMeta):
         Get the variables of the running module.
         """
         return main_store.vars()
-    
-    T = TypeVar('T')
+
+    T = TypeVar("T")
+
     def get_store(self, store_type: type[T]) -> T:
-        '''
+        """
         Get a store provided by any extension.
-        '''
+        """
         return main_store.get_store(store_type)
-    
+
     """
     Node events
     """
