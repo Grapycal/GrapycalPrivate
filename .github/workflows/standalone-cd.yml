@@ -85,14 +85,22 @@ jobs:
         run: sleep 20
       - name: Check if Grapycal is running
         run: ps aux | grep main.py | grep -v grep || exit 1
-
-
-  # upload:
-  #   needs: build
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - uses: actions/checkout@v2
-  #     - name: Download build
-  #       run: |
-  #         mkdir -p packaging/dist/latest
-  #         wget -O packaging/dist/latest/$(echo $GITHUB_SHA | cut -c1-6).zip
+      
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download artifact
+        uses: actions/download-artifact@v2
+        with:
+          name: standalone
+          path: packaging/dist/build
+      - name: Setup AWS CLI
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1 
+      - name: Sync files to S3 bucket
+        run: |
+          aws s3 cp packaging/dist/build/*.zip s3://${{ secrets.S3_DESKTOP_ARTIFACT_BUCKET }}/releases/
