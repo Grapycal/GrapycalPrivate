@@ -1,6 +1,8 @@
+import asyncio
 import os
 import sys
 import threading
+from contextlib import asynccontextmanager
 from typing import Awaitable, Callable
 
 import uvicorn
@@ -47,8 +49,29 @@ class Client(ClientCommProtocol):
             raise ConnectionClosedException(e)
 
 
-def make_app(workspace, frontend_path: str | None):
-    app = FastAPI()
+class ThreadingEventWithReturn:
+    def __init__(self):
+        self._event = threading.Event()
+        self._value = None
+
+    def set(self, value):
+        self._value = value
+        self._event.set()
+
+    def wait(self):
+        self._event.wait()
+        return self._value
+
+
+def make_app(
+    workspace, frontend_path: str | None, event_loop_event: ThreadingEventWithReturn
+):
+    @asynccontextmanager
+    async def lifespan(fastapi):
+        event_loop_event.set(asyncio.get_event_loop())
+        yield
+
+    app = FastAPI(lifespan=lifespan)
 
     @app.websocket("/ws")
     async def websocket_endpoint(websocket: WebSocket):
@@ -115,13 +138,17 @@ def main():
 
     workspace = Workspace(args.file, open_another)
 
-    app = make_app(workspace, args.frontend_path)
+    event_loop_event = ThreadingEventWithReturn()
+    app = make_app(workspace, args.frontend_path, event_loop_event)
+
     threading.Thread(
         target=run_uvicorn, args=(app, args.host, args.port), daemon=True
     ).start()
 
+    ui_event_loop = event_loop_event.wait()
+
     try:
-        workspace.run()
+        workspace.run(ui_event_loop)
     except KeyboardInterrupt:
         print("Exiting")
         sys.exit(1)

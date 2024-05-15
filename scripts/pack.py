@@ -135,6 +135,16 @@ class Combine(Module):
 class PyarmorConfig:
     expire_date: str | None = None
     platform: str | None = None
+    prefix: str | None = None
+    no_runtime: bool = False
+
+    def copyWith(self, expire_date: str | None=None, platform: str | None=None, prefix: str | None=None, no_runtime: bool | None=None):
+        return PyarmorConfig(
+            expire_date = expire_date if expire_date else self.expire_date,
+            platform = platform if platform else self.platform,
+            prefix = prefix if prefix else self.prefix,
+            no_runtime = no_runtime if no_runtime != None else self.no_runtime
+        )
 
 
 class Pyarmor(Module):
@@ -152,6 +162,8 @@ class Pyarmor(Module):
 
     def run(self, src: Path, dst: Path):
         command = f"pyarmor gen --recursive -i {src} -O {dst}"
+        if self.config.prefix:
+            command += f" --prefix {self.config.prefix}"
         if self.config.expire_date:
             command += f" -e {self.config.expire_date} "
         if self.config.platform:
@@ -165,6 +177,14 @@ class Pyarmor(Module):
                 print(f.read())
             raise
         os.remove(dst / "pyarmor.log")
+
+        if self.config.no_runtime:
+            iprint("no_runtime: True")
+            runtime_path = dst / "grapycal"
+            iprint(f"removing: {runtime_path}")
+            shutil.rmtree(runtime_path)
+        else:
+            iprint("no_runtime: False")
 
 
 class Copy(Module):
@@ -227,35 +247,45 @@ class PackGrapycal(Module):
                 "backend",
                 "backend",
                 src_dir="src/grapycal",
-                pyarmor_config=self.pyarmor_config,
+                pyarmor_config=self.pyarmor_config.copyWith(
+                    no_runtime = False
+                ),
             )(),
             PackPythonPackage(
                 self,
                 "submodules/topicsync",
                 "topicsync",
                 src_dir="src/topicsync",
-                pyarmor_config=self.pyarmor_config,
+                pyarmor_config=self.pyarmor_config.copyWith(
+                    prefix = "grapycal"
+                ),
             )(),
             PackPythonPackage(
                 self,
                 "submodules/objectsync",
                 "objectsync",
                 src_dir="src/objectsync",
-                pyarmor_config=self.pyarmor_config,
+                pyarmor_config=self.pyarmor_config.copyWith(
+                    prefix = "grapycal"
+                ),
             )(),
             PackPythonPackage(
                 self,
                 "extensions/grapycal_builtin",
                 "grapycal_builtin",
                 src_dir="grapycal_builtin",
-                pyarmor_config=self.pyarmor_config,
+                pyarmor_config=self.pyarmor_config.copyWith(
+                    prefix = "grapycal"
+                ),
             )(),
             PackPythonPackage(
                 self,
                 "extensions/grapycal_torch",
                 "grapycal_torch",
                 src_dir="grapycal_torch",
-                pyarmor_config=self.pyarmor_config,
+                pyarmor_config=self.pyarmor_config.copyWith(
+                    prefix = "grapycal"
+                ),
             )(),
             PackFrontend(self, subfolder="frontend")(),
             Copy(self, "entry/standalone", "entry")(),
@@ -324,7 +354,7 @@ cmd(f"pyarmor cfg nts={nts}")
 run_pipeline(
     PackGrapycal(
         name=build_name,
-        pyarmor_config=PyarmorConfig(expire_date=expire_date, platform=platform),
+        pyarmor_config=PyarmorConfig(expire_date=expire_date, platform=platform, no_runtime=True),
     ),
     dst="packaging/dist/" + folder_name,
 )

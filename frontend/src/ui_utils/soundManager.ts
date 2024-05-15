@@ -1,4 +1,3 @@
-import { as } from "../utils"
 
 export class SoundManager {
     click: HTMLAudioElement;
@@ -7,8 +6,7 @@ export class SoundManager {
         this.click.volume = 1;
     }
     playClick() {
-        let tmp = as(this.click.cloneNode(true),HTMLAudioElement)
-        tmp.volume = 1;
-        tmp.play()
+        this.click.currentTime = 0;
+        this.click.play()
     }
 }
