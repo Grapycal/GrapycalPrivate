@@ -2,11 +2,12 @@
 # the build is at packaging/dist/latest/xxx.zip
 # the build is uploaded to s3 with shallwefootball/s3-upload-action@master
 
-name: Standalone CI
-
+name: Standalone CD
+# only run on tag push
 on:
   push:
-    branches: '**'
+    tags:
+      - 'v*'
 
 jobs:
   build:
