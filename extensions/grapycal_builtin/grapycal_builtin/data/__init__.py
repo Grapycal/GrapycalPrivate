@@ -1,10 +1,10 @@
 import re
 
 from grapycal import ListTopic, StringTopic
-from grapycal.extension_api.behavior import (
-    Behavior,
-    InputsBehavior,
-    OutputsBehavior,
+from grapycal.extension_api.trait import (
+    Trait,
+    InputsTrait,
+    OutputsTrait,
 )
 from grapycal.sobjects.controls import TextControl
 from grapycal.sobjects.controls.buttonControl import ButtonControl
@@ -192,15 +192,15 @@ class SplitDictNode(Node):
 class BuildStringNode(Node):
     category = "data"
 
-    def define_behaviors(self):
-        self.ins = InputsBehavior(
+    def define_traits(self):
+        self.ins = InputsTrait(
             "ins",
             ins=[""],
             expose_attr=True,
             on_all_ready=self.task,
             enable_add_button=True,
         )
-        self.outs = OutputsBehavior("outs", outs=["result"])
+        self.outs = OutputsTrait("outs", outs=["result"])
         return [self.ins, self.outs]
 
     def task(self, **kwargs):
@@ -211,9 +211,9 @@ class BuildStringNode(Node):
 class BuildDictNode(Node):
     category = "data"
 
-    def define_behaviors(self):
-        self.ins = InputsBehavior("ins", expose_attr=True, on_all_ready=self.task)
-        self.outs = OutputsBehavior("outs", outs=["result"])
+    def define_traits(self):
+        self.ins = InputsTrait("ins", expose_attr=True, on_all_ready=self.task)
+        self.outs = OutputsTrait("outs", outs=["result"])
         return [self.ins, self.outs]
 
     def task(self, **kwargs):

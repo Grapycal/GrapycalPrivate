@@ -3,7 +3,7 @@ from pprint import pprint
 
 from grapycal.core.background_runner import RunnerInterrupt
 from grapycal.core.client_msg_types import ClientMsgTypes
-from grapycal.extension_api.behavior import Behavior
+from grapycal.extension_api.trait import Trait
 from grapycal.sobjects.controls.keyboardControl import KeyboardControl
 from grapycal.sobjects.controls.sliderControl import SliderControl
 from grapycal.sobjects.controls.toggleControl import ToggleControl
@@ -200,15 +200,15 @@ class Node(SObject, metaclass=NodeMeta):
         self.on_port_activated = Action()
         self.on_double_click = Action()
 
-        behavior_list = self.define_behaviors()
-        self.behaviors: dict[str, Behavior] = {}
-        for behavior in behavior_list:
-            assert behavior.name not in self.behaviors
-            self.behaviors[behavior.name] = behavior
-            behavior.set_node(self)
+        trait_list = self.define_traits()
+        self.traits: dict[str, Trait] = {}
+        for trait in trait_list:
+            assert trait.name not in self.traits
+            self.traits[trait.name] = trait
+            trait.set_node(self)
         super().initialize(serialized, *args, **kwargs)
 
-    def define_behaviors(self) -> list[Behavior]:
+    def define_traits(self) -> list[Trait]:
         return []
 
     def build(
@@ -285,22 +285,22 @@ class Node(SObject, metaclass=NodeMeta):
             "controls", ObjDictTopic[Control], restore_from=None
         )
 
-        # store these info in the node's serialized data so when restoring, behaviors can be restored
-        self.behaviors_info = self.add_attribute(
-            "behaviors_info",
+        # store these info in the node's serialized data so when restoring, traits can be restored
+        self.traits_info = self.add_attribute(
+            "traits_info",
             DictTopic,
             is_stateful=False,
         )
 
         self.build_node(**build_node_args)
-        self.on_build_node.invoke()  # not passing build_node_args because behaviors should be independent of the node type
+        self.on_build_node.invoke()  # not passing build_node_args because traits should be independent of the node type
         self.is_building = False
 
-        # store behaviors info
-        behavior_info = {}
-        for behavior in self.behaviors.values():
-            behavior_info[behavior.name] = behavior.get_info()
-        self.behaviors_info.set(behavior_info)
+        # store traits info
+        trait_info = {}
+        for trait in self.traits.values():
+            trait_info[trait.name] = trait.get_info()
+        self.traits_info.set(trait_info)
 
     def build_node(self):
         """
@@ -334,10 +334,10 @@ class Node(SObject, metaclass=NodeMeta):
         for k, v in self.globally_exposed_attributes.get().items():
             main_store.settings.entries.add(k, v)
 
-        # restore behaviors
-        behavior_info = self.behaviors_info.get()
-        for name, behavior in self.behaviors.items():
-            behavior.restore_from_info(behavior_info[name])
+        # restore traits
+        trait_info = self.traits_info.get()
+        for name, trait in self.traits.items():
+            trait.restore_from_info(trait_info[name])
 
         self.init_node()
         self.on_init_node.invoke()

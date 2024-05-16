@@ -14,7 +14,7 @@ def is_overridden(method, base_class=None):
     return method.__func__ is not base_class.__dict__[method.__name__]
 
 
-class Behavior:
+class Trait:
     def __init__(self, name: str) -> None:
         self.name = name
 
@@ -79,7 +79,7 @@ def get_next_number_string(strings):
     return str(max(numbers) + 1)
 
 
-class InputsBehavior(Behavior):
+class InputsTrait(Trait):
     def __init__(
         self,
         name,
@@ -147,7 +147,7 @@ class InputsBehavior(Behavior):
         return len(self.port_names)
 
 
-class OutputsBehavior(Behavior):
+class OutputsTrait(Trait):
     def __init__(
         self, name: str, attr_name="outputs", outs=[], expose_attr: bool = False
     ) -> None:
