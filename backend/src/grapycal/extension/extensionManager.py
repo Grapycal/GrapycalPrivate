@@ -58,6 +58,22 @@ class ExtensionManager:
     def import_extension(
         self, extension_name: str, create_nodes=True, log=True
     ) -> None:
+        """
+        Import an extension by name. Its dependencies will be imported recursively.
+        """
+        if extension_name in self._extensions:
+            return
+        self._import_extension_raw(extension_name, create_nodes, log)
+        target_ext = self._extensions[extension_name]
+
+        dependencies = target_ext.dependencies
+        for dependency in dependencies:
+            logger.info(f"Found dependency {dependency} <- {extension_name}")
+            self.import_extension(dependency, create_nodes, log)  # recursive import
+
+    def _import_extension_raw(
+        self, extension_name: str, create_nodes=True, log=True
+    ) -> None:
         extension = self._load_extension(extension_name)
         main_store.set_stores(extension.provide_stores())
         if create_nodes:
@@ -182,6 +198,18 @@ class ExtensionManager:
         self._objectsync.clear_history_inclusive()
 
     def unimport_extension(self, extension_name: str, log=True) -> None:
+        # dependents need to be unloaded first
+        for dependent in get_all_dependents(
+            self._extensions[extension_name],
+            list(self._extensions.values()),
+            include_target=False,
+        ):
+            if dependent in self._extensions.values():
+                logger.warning(
+                    f"Please unimport dependent extension {dependent.name} before unimport {extension_name}"
+                )
+                return
+
         self._check_extension_not_used(extension_name)
         self._destroy_nodes(extension_name)
         self._unload_extension(extension_name)

@@ -172,7 +172,8 @@ def get_package_version(package_name: str) -> str:
         # the package is not installed
         return "0.0.0"
 
-def get_package_version_from_pyproject(package_name:str)->str|None:
+
+def get_package_version_from_pyproject(package_name: str) -> str | None:
     spec = importlib.util.find_spec(package_name)
     if spec is None:
         return None
@@ -221,10 +222,14 @@ def get_extension_info(name) -> dict:
         "version": get_package_version(name),
     }
 
-def snap_node(value: float, grid_size: float=17) -> float:
+
+def snap_node(value: float, grid_size: float = 17) -> float:
     return round(value / grid_size) * grid_size
 
-def get_all_dependents(target:'Extension',extensions:List['Extension']) -> List['Extension']:
+
+def get_all_dependents(
+    target: "Extension", extensions: List["Extension"], include_target: bool = True
+) -> List["Extension"]:
     """
     Returns all extensions that depend on the target and the target itself. The order is from the target to the dependents
     """
@@ -235,7 +240,12 @@ def get_all_dependents(target:'Extension',extensions:List['Extension']) -> List[
         for e in extensions:
             if dependency.name in e.dependencies:
                 if e in res_q:
-                    raise ValueError(f"Extension {e.name} has circular dependency with {dependency.name}")
+                    raise ValueError(
+                        f"Extension {e.name} has circular dependency with {dependency.name}"
+                    )
                 res_q.append(e)
                 search_q.append(e)
+
+    if not include_target:
+        res_q.remove(target)
     return res_q
