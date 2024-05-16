@@ -20,6 +20,8 @@ class Behavior:
 
     def set_node(self, node: "Node"):
         self.node = node
+
+        # only add the event listeners if the method is overridden, so performance is affected minimally
         if is_overridden(self.build_node):
             self.node.on_build_node += self.build_node
         if is_overridden(self.init_node):
