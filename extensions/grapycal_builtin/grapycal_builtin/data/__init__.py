@@ -163,8 +163,6 @@ class SplitDictNode(Node):
 
     def build_node(self):
         self.in_port = self.add_in_port("dict", 1)
-        self.label.set("Split Dict")
-        self.shape.set("normal")
         self.keys = self.add_attribute("keys", ListTopic, editor_type="list")
 
         if not self.is_new:
@@ -194,59 +192,20 @@ class SplitDictNode(Node):
 class BuildStringNode(Node):
     category = "data"
 
-    def build_node(self):
-        self.out_port = self.add_out_port("output")
-        self.label.set("Build String")
-        self.shape.set("normal")
-        self.keys = self.add_attribute("keys", ListTopic, editor_type="list")
-        self.add_button = self.add_control(ButtonControl, name="add", label="Add")
-
-        if not self.is_new:
-            for key in self.keys:
-                self.add_item(key, -1)
-        else:
-            self.keys.insert("1")
-            self.add_item("1", -1)
-
-    def init_node(self):
-        self.keys.on_insert.add_auto(self.add_item)
-        self.keys.on_pop.add_auto(self.remove_item)
-        self.add_button.on_click.add_auto(self.add_pressed)
-
-    def add_item(self, key, position):
-        self.add_in_port(
-            key,
-            1,
-            display_name="",
-            control_type=TextControl,
-            activation_mode=TextControl.ActivationMode.NO_ACTIVATION,
+    def define_behaviors(self):
+        self.ins = InputsBehavior(
+            "ins",
+            ins=[""],
+            expose_attr=True,
+            on_all_ready=self.task,
+            enable_add_button=True,
         )
+        self.outs = OutputsBehavior("outs", outs=["result"])
+        return [self.ins, self.outs]
 
-    def remove_item(self, key, position):
-        self.remove_in_port(key)
-
-    def add_pressed(self):
-        new_key = 0
-        for key in self.keys:
-            if re.match(r"[0-9]+", key):
-                new_key = max(new_key, int(key))
-        new_key += 1
-        self.keys.insert(str(new_key))
-
-    def double_click(self):
-        self.task()
-
-    def edge_activated(self, edge: Edge, port: InputPort):
-        self.task()
-
-    def task(self):
-        if not all([port.is_all_ready() for port in self.in_ports]):
-            return
-        result = ""
-        for key in self.keys:
-            result += self.get_in_port(key).get()
-        self.out_port.push(result)
-        self.flash_running_indicator()
+    def task(self, **kwargs):
+        result = "".join([value for value in kwargs.values()])
+        self.outs.push("result", result)
 
 
 class BuildDictNode(Node):
