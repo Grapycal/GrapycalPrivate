@@ -1,3 +1,4 @@
+# pyright: reportUnusedExpression=false
 import argparse
 import os
 import shutil
@@ -6,7 +7,6 @@ from collections import defaultdict
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List
 
 import toml
 
@@ -46,89 +46,127 @@ def pascale_to_snake(name: str) -> str:
     return res[1:] if res[0] == "_" else res
 
 
-def run_pipeline(module: "Module", dst: Path | str):
-    dst = Path(dst)
-    if TMP_ROOT.exists():
-        shutil.rmtree(TMP_ROOT)
+class StepResult:
+    def __init__(self, dir: Path):
+        self.dir = dir
 
-    if dst.exists():
-        response = input(f"Destination {dst} already exists. Delete? [y/N]")
-        if response.lower() != "y":
-            return
-        shutil.rmtree(dst)
+    def __mul__(self, other: "Step") -> "StepResult":
+        """
+        Apply the step to the result
+        """
+        return other(self.dir)
 
-    child_dst = (
-        TMP_ROOT / f"{module.__class__.__name__}_{Module.count[module.__class__]}"
-    )
-    Module.count[module.__class__] += 1
-    child_dst.mkdir(parents=True, exist_ok=True)
-    module._run(module.src, child_dst / module.subfolder)
-    shutil.move(child_dst, dst)
+    def __add__(self, other: "StepResult") -> "StepResult":
+        """
+        Merge the result with another step result
+        """
+        iprint(f"Merging {self.dir} and {other.dir}")
+        # first create a new folder
+        dst = TMP_ROOT / f"__Add_{Step.count[StepResult]}/"
+        Step.count[StepResult] += 1
+        shutil.copytree(self.dir, dst)
+        # then copy the other result into the new folder
+        for f in other.dir.iterdir():
+            if f.is_dir():
+                shutil.copytree(f, dst / f.name)
+            else:
+                shutil.copy(f, dst / f.name)
+        return StepResult(dst)
 
-    print("=" * 20)
-    print(f"The result is in {dst}")
-    shutil.rmtree(TMP_ROOT)
 
-
-class Module:
+class Step:
     count = defaultdict(int)
 
-    def __init__(
-        self,
-        parent: "Module|None" = None,
-        src: Path | str = ".",
-        subfolder: Path | str = ".",
-    ):
-        self.parent = parent
-        self.src = Path(src)
-        self.subfolder = Path(subfolder)
+    def _gen_tmp_dst(self) -> Path:
+        tmp_dst = TMP_ROOT / f"{self.__class__.__name__}_{self.count[self.__class__]}"
+        self.count[self.__class__] += 1
+        return tmp_dst
 
-    def _run_child(self, child: "Module"):
-        child_dst = (
-            TMP_ROOT / f"{child.__class__.__name__}_{self.count[child.__class__]}"
-        )
-        self.count[child.__class__] += 1
-        (child_dst / child.subfolder).mkdir(parents=True, exist_ok=True)
-        child._run(self.src / child.src, child_dst / child.subfolder)
-        return child_dst
-
-    def __call__(self):
-        return self.parent._run_child(self)
-
-    def _run(self, src, dst: Path):
+    def __call__(self, src: str | Path) -> StepResult:
         """
         Put stuffs into dst
         """
-        with iprint.indent():
-            iprint(f"Running {self.__class__.__name__} {src} -> {dst}")
-            results = self.run(src, dst)  # This could make some self._run_child calls
-            if results is not None:
-                for result in results:
-                    for item in os.listdir(result):
-                        iprint(f"Moving {result / item} -> {dst}")
-                        shutil.move(result / item, dst)
+        if isinstance(src, str):
+            src = Path(src)
 
-    def run(self, src: Path, dst: Path) -> List[Path] | None:
+        tmp_dir = self._gen_tmp_dst()
+
+        if not tmp_dir.exists():
+            tmp_dir.mkdir(parents=True, exist_ok=True)
+
+        with iprint.indent():
+            iprint(f"Running {self.__class__.__name__} {src} -> {tmp_dir}")
+            self.run(src, tmp_dir)
+
+        return StepResult(tmp_dir)
+
+    def run(self, src: Path, dst: Path) -> None:
         raise NotImplementedError
 
 
-class Sequential(Module):
-    def __init__(self, *modules):
-        self.modules = modules
+def From(src) -> StepResult:
+    """
+    Read from a source folder. Usually a pipeline starts with this.
+    """
+    return StepResult(src)
+
+
+class To(Step):
+    """
+    Output the content to a real destination folder.
+    Usually the last step in a pipeline.
+    """
+
+    def __init__(self, dst: str | Path):
+        self.dst = dst
+
+    def __call__(self, src: str | Path) -> StepResult:
+        iprint(f"Running To: {src} -> {self.dst}")
+        if isinstance(src, str):
+            src = Path(src)
+        dst = self.dst
+        if isinstance(dst, str):
+            dst = Path(dst)
+        if not dst.exists():
+            dst.mkdir(parents=True, exist_ok=True)
+        for f in src.iterdir():
+            if f.is_dir():
+                shutil.copytree(f, dst / f.name)
+            else:
+                shutil.copy(f, dst / f.name)
+        return StepResult(dst)
+
+
+class ToRelative(Step):
+    """
+    Put all content into a subfolder. For example:
+
+    ### before:
+    ```
+    a.txt
+    b.txt
+    ```
+    ### after:
+    ```
+    subfolder/
+        a.txt
+        b.txt
+    ```
+    """
+
+    def __init__(self, subfolder: str | Path):
+        self.subfolder = subfolder
 
     def run(self, src: Path, dst: Path):
-        for module in self.modules:
-            src = module(src, dst)
-        return src
-
-
-class Combine(Module):
-    def __init__(self, parent: Module | None = None, *paths):
-        super().__init__(parent)
-        self.paths = paths
-
-    def run(self, src: Path, dst: Path):
-        return self.paths
+        if not (dst / self.subfolder).exists():
+            (dst / self.subfolder).mkdir(parents=True, exist_ok=True)
+        for f in src.iterdir():
+            if f.is_dir():
+                iprint(f"copying {f} to {dst / self.subfolder / f.name}")
+                shutil.copytree(f, dst / self.subfolder / f.name)
+            else:
+                iprint(f"copying {f} to {dst / self.subfolder}")
+                shutil.copy(f, dst / self.subfolder / f.name)
 
 
 @dataclass
@@ -138,24 +176,41 @@ class PyarmorConfig:
     prefix: str | None = None
     no_runtime: bool = False
 
-    def copyWith(self, expire_date: str | None=None, platform: str | None=None, prefix: str | None=None, no_runtime: bool | None=None):
+    def copyWith(
+        self,
+        expire_date: str | None = None,
+        platform: str | None = None,
+        prefix: str | None = None,
+        no_runtime: bool | None = None,
+    ):
         return PyarmorConfig(
-            expire_date = expire_date if expire_date else self.expire_date,
-            platform = platform if platform else self.platform,
-            prefix = prefix if prefix else self.prefix,
-            no_runtime = no_runtime if no_runtime != None else self.no_runtime
+            expire_date=expire_date if expire_date else self.expire_date,
+            platform=platform if platform else self.platform,
+            prefix=prefix if prefix else self.prefix,
+            no_runtime=no_runtime if no_runtime != None else self.no_runtime,
         )
 
 
-class Pyarmor(Module):
+class Select(Step):
+    """
+    Select a single file or folder from the source folder.
+    """
+
+    def __init__(self, name: str):
+        self.name = name
+
+    def run(self, src: Path, dst: Path):
+        if (src / self.name).is_dir():
+            shutil.copytree(src / self.name, dst / self.name)
+        else:
+            shutil.copy(src / self.name, dst / self.name)
+
+
+class Pyarmor(Step):
     def __init__(
         self,
-        parent: Module | None = None,
-        src: Path | str = ".",
-        subfolder: Path | str = ".",
         config: PyarmorConfig | None = None,
     ):
-        super().__init__(parent, src, subfolder)
         if config is None:
             config = PyarmorConfig()
         self.config = config
@@ -187,129 +242,90 @@ class Pyarmor(Module):
             iprint("no_runtime: False")
 
 
-class Copy(Module):
-    def run(self, src: Path, dst: Path):
-        if src.is_dir():
-            shutil.copytree(src, dst, dirs_exist_ok=True)
-        else:
-            shutil.copy(src, dst)
-
-
-class PackPythonPackage(Module):
+class PackPythonPackage(Step):
     def __init__(
         self,
-        parent: Module | None = None,
-        src: Path | str = ".",
-        subfolder: Path | str = ".",
-        src_dir: Path | str = ".",
+        package_src_dir: Path | str = ".",
         pyarmor_config: PyarmorConfig | None = None,
     ):
-        super().__init__(parent, src, subfolder)
-        self.src_dir = Path(src_dir)
+        self.package_src_dir = Path(package_src_dir)
         self.pyarmor_config = pyarmor_config
 
     def run(self, src: Path, dst: Path):
-        return [
-            Pyarmor(
-                self, self.src_dir, self.src_dir.parent, config=self.pyarmor_config
-            )(),
-            Copy(self, "pyproject.toml")(),
-        ]
+        From(src / self.package_src_dir) * Pyarmor(self.pyarmor_config) * To(
+            dst / self.package_src_dir.parent
+        )
+        From(src) * Select("pyproject.toml") * To(dst)
 
 
-class PackFrontend(Module):
+class PackFrontend(Step):
     def run(self, src: Path, dst: Path):
         python = shutil.which("python")
         if not python:
             raise Exception("Python not found")
         cmd(f"{python} scripts/build_frontend.py")
-        return [Copy(self, "frontend/dist")()]
+        From("frontend/dist") * To(dst)
 
 
-class PackGrapycal(Module):
+class PackGrapycal(Step):
     def __init__(
         self,
-        parent: Module | None = None,
-        src: Path | str = ".",
-        subfolder: Path | str = ".",
         name: str = "grapycal",
         pyarmor_config: PyarmorConfig | None = None,
     ):
-        super().__init__(parent, src, subfolder)
         self.name = name
         self.pyarmor_config = pyarmor_config
 
     def run(self, src: Path, dst: Path):
-        pack = Combine(
-            self,
-            PackPythonPackage(
-                self,
-                "backend",
-                "backend",
-                src_dir="src/grapycal",
-                pyarmor_config=self.pyarmor_config.copyWith(
-                    no_runtime = False
-                ),
-            )(),
-            PackPythonPackage(
-                self,
-                "submodules/topicsync",
-                "topicsync",
-                src_dir="src/topicsync",
-                pyarmor_config=self.pyarmor_config.copyWith(
-                    prefix = "grapycal"
-                ),
-            )(),
-            PackPythonPackage(
-                self,
-                "submodules/objectsync",
-                "objectsync",
-                src_dir="src/objectsync",
-                pyarmor_config=self.pyarmor_config.copyWith(
-                    prefix = "grapycal"
-                ),
-            )(),
-            PackPythonPackage(
-                self,
-                "extensions/grapycal_builtin",
-                "grapycal_builtin",
-                src_dir="grapycal_builtin",
-                pyarmor_config=self.pyarmor_config.copyWith(
-                    prefix = "grapycal"
-                ),
-            )(),
-            PackPythonPackage(
-                self,
-                "extensions/grapycal_torch",
-                "grapycal_torch",
-                src_dir="grapycal_torch",
-                pyarmor_config=self.pyarmor_config.copyWith(
-                    prefix = "grapycal"
-                ),
-            )(),
-            PackFrontend(self, subfolder="frontend")(),
-            Copy(self, "entry/standalone", "entry")(),
-            Copy(self, "packaging/template")(),
-        )()
-        return [Zip(self, pack, name=self.name)()]
+        (
+            From(src / "backend")
+            * PackPythonPackage(
+                package_src_dir="src/grapycal",
+                pyarmor_config=self.pyarmor_config.copyWith(no_runtime=False),
+            )
+            * ToRelative("backend")
+            + From(src / "submodules/topicsync")
+            * PackPythonPackage(
+                package_src_dir="src/topicsync",
+                pyarmor_config=self.pyarmor_config.copyWith(prefix="grapycal"),
+            )
+            * ToRelative("topicsync")
+            + From(src / "submodules/objectsync")
+            * PackPythonPackage(
+                package_src_dir="src/objectsync",
+                pyarmor_config=self.pyarmor_config.copyWith(prefix="grapycal"),
+            )
+            * ToRelative("objectsync")
+            + From(src / "extensions/grapycal_builtin")
+            * PackPythonPackage(
+                package_src_dir="grapycal_builtin",
+                pyarmor_config=self.pyarmor_config.copyWith(prefix="grapycal"),
+            )
+            * ToRelative("grapycal_builtin")
+            + From(src / "extensions/grapycal_torch")
+            * PackPythonPackage(
+                package_src_dir="grapycal_torch",
+                pyarmor_config=self.pyarmor_config.copyWith(prefix="grapycal"),
+            )
+            * ToRelative("grapycal_torch")
+            + From(src / "frontend") * PackFrontend() * ToRelative("frontend")
+            + From(src / "entry/standalone") * ToRelative("entry")
+            + From(src / "packaging/template")
+        ) * To(dst)
 
 
-class Zip(Module):
+class Zip(Step):
     def __init__(
         self,
-        parent: Module | None = None,
-        src: Path | str = ".",
-        subfolder: Path | str = ".",
         name: str = "archive",
     ):
-        super().__init__(parent, src, subfolder)
         self.name = name
 
     def run(self, src: Path, dst: Path):
         shutil.make_archive(str(dst / self.name), "zip", src)
-        copied = Copy(self, subfolder=self.name)()
-        return [copied]
 
+
+# argument parsing
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--nts", default="local")
@@ -350,14 +366,29 @@ if args.folder_name:
 else:
     folder_name = build_name
 
-cmd(f"pyarmor cfg nts={nts}")
-run_pipeline(
-    PackGrapycal(
-        name=build_name,
-        pyarmor_config=PyarmorConfig(expire_date=expire_date, platform=platform, no_runtime=True),
-    ),
-    dst="packaging/dist/" + folder_name,
-)
+# end of argument parsing
 
-with open("packaging/dist/" + folder_name + "/build_name.txt", "w") as f:
-    f.write(build_name)
+# prepare running the pipeline
+
+cmd(f"pyarmor cfg nts={nts}")
+
+dst = Path("packaging/dist/" + folder_name)
+if TMP_ROOT.exists():
+    shutil.rmtree(TMP_ROOT)
+
+if dst.exists():
+    response = input(f"Destination {dst} already exists. Delete? [y/N]")
+    if response.lower() != "y":
+        exit(1)
+    shutil.rmtree(dst)
+
+# run the pipeline
+
+From(".") * PackGrapycal(
+    name=build_name,
+    pyarmor_config=PyarmorConfig(
+        expire_date=expire_date, platform=platform, no_runtime=True
+    ),
+) * To(dst / build_name) * Zip(name=build_name) * To(dst)
+
+shutil.rmtree(TMP_ROOT)
