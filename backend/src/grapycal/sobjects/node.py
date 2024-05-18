@@ -162,6 +162,9 @@ class RESTORE_FROM(enum.Enum):
     SAME = 0
 
 
+# ===CHECK_LICENCE=== #
+
+
 class Node(SObject, metaclass=NodeMeta):
     frontend_type = "Node"
     category = "hidden"
