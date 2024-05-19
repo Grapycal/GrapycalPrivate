@@ -1,4 +1,4 @@
-# runs python scripts/pack.py to create a desktop build
+# runs python packaging/pack.py to create a desktop build
 # the build is at packaging/dist/latest/xxx.zip
 # the build is uploaded to s3 with shallwefootball/s3-upload-action@master
 
@@ -56,7 +56,7 @@ jobs:
         run: |
           pyarmor reg ~/.pyarmor-regfile-4553.zip && rm ~/.pyarmor-regfile-4553.zip
       - name: Run pack.py with --name 6 digits of commit hash
-        run: python scripts/pack.py --platform linux.x86_64 --name $(echo $GITHUB_SHA | cut -c1-6) --folder_name build
+        run: python packaging/pack.py --platform linux.x86_64 --name $(echo $GITHUB_SHA | cut -c1-6) --folder_name build
       - name: Upload artifact for testing
         uses: actions/upload-artifact@v2
         with:
