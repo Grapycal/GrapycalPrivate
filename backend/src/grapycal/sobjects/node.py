@@ -162,7 +162,7 @@ class RESTORE_FROM(enum.Enum):
     SAME = 0
 
 
-# ===CHECK_LICENCE=== #
+# ===CHECK_LICENSE=== #
 
 
 class Node(SObject, metaclass=NodeMeta):

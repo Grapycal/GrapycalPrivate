@@ -252,9 +252,9 @@ class PackPythonPackage(Step):
         self.pyarmor_config = pyarmor_config
 
     def run(self, src: Path, dst: Path):
-        From(src / self.package_src_dir) * Pyarmor(self.pyarmor_config) * To(
-            dst / self.package_src_dir.parent
-        )
+        From(src / self.package_src_dir) * AddLicenseCheckCode() * Pyarmor(
+            self.pyarmor_config
+        ) * To(dst / self.package_src_dir.parent)
         From(src) * Select("pyproject.toml") * To(dst)
 
 
@@ -323,6 +323,69 @@ class Zip(Step):
 
     def run(self, src: Path, dst: Path):
         shutil.make_archive(str(dst / self.name), "zip", src)
+
+
+def insert_code_into_lines(lines, idx, code, indent):
+    """
+    Insert code into the lines at the given index
+    """
+    added_lines = code.split("\n")
+    for i, line in enumerate(added_lines):
+        added_lines[i] = " " * indent + line + "\n"
+    lines = lines[:idx] + added_lines + lines[idx:]
+    return lines
+
+
+class AddLicenseCheckCode(Step):
+    """
+    Replaces the # ===CHECK_LICENSE=== # markers in the source code with the actual license check code
+    """
+
+    check_license_code = """
+try:
+    from Crypto.PublicKey import RSA
+    from hashlib import sha1
+    import json
+    license = json.loads(open("license.json").read())
+    signature_string = license["signature"]
+    license_content = license["content"]
+    hash = int.from_bytes(sha1(json.dumps(license_content).encode()).digest(), byteorder="big")
+    
+    import base64
+    signature = int.from_bytes(base64.b64decode(signature_string), byteorder="big")
+    hashFromSignature = pow(signature, 949469, 1000000007) # to be replaced with the actual public key
+    if hash != hashFromSignature:
+        print("Invalid license")
+        exit(1)
+except Exception:
+    print("Invalid license")
+    exit(1)
+    """
+    # TODO check mac address and time
+
+    def run(self, src: Path, dst: Path):
+        # copy src to dst to avoid modifying the original files
+        From(src) * To(dst)
+        # iterate over all .py files in the directory
+        for f in dst.rglob("*.py"):
+            with open(f, "r") as file:
+                lines = file.readlines()
+
+            # find the line with the license check code
+            i = 0
+            while i < len(lines):
+                if "# ===CHECK_LICENSE=== #" in lines[i]:
+                    indent = len(lines[i]) - len(lines[i].lstrip())
+                    lines[i] = ""
+                    # insert the license check code
+                    lines = insert_code_into_lines(
+                        lines, i, self.check_license_code, indent
+                    )
+                i += 1
+
+            # write the modified lines back to the file
+            with open(f, "w") as file:
+                file.writelines(lines)
 
 
 # argument parsing

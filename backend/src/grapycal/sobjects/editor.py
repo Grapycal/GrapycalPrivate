@@ -37,7 +37,7 @@ class Editor(SObject):
         if old is not None:
             self._restore_entire_editor(old)
 
-        # ===CHECK_LICENCE=== #
+        # ===CHECK_LICENSE=== #
 
         # called by client
         self.register_service("create_edge", self.create_edge_from_port_id)

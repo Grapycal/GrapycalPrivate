@@ -82,7 +82,7 @@ class InputPort(Port, typing.Generic[T]):
             self.activated_by_control(self.default_control)
         )
 
-    # ===CHECK_LICENCE=== #
+    # ===CHECK_LICENSE=== #
 
     def add_edge(self, edge: "Edge"):
         super().add_edge(edge)

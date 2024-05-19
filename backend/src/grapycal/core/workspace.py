@@ -49,7 +49,7 @@ from objectsync.sobject import SObjectSerialized
 grapycal.utils.logging.setup_logging()
 logger = logging.getLogger("workspace")
 
-# ===CHECK_LICENCE=== #
+# ===CHECK_LICENSE=== #
 
 
 class Workspace:
@@ -120,7 +120,7 @@ class Workspace:
         # Make SObject tree present. After this, the workspace is ready to be used. Most of the operations will be done on the tree.
         self._load_or_create_workspace()
 
-        # ===CHECK_LICENCE=== #
+        # ===CHECK_LICENSE=== #
 
         # Setup is done. Hand the thread over to the background runner.
         if run_runner:
