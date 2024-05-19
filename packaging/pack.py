@@ -7,8 +7,11 @@ from collections import defaultdict
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
+import dotenv
 
 import toml
+
+dotenv.load_dotenv()
 
 TMP_ROOT = Path("packaging/dist/tmp")
 
@@ -216,6 +219,8 @@ class Pyarmor(Step):
         self.config = config
 
     def run(self, src: Path, dst: Path):
+        # the actual src is the child of the src folder
+        src = src.iterdir().__next__()
         command = f"pyarmor gen --recursive -i {src} -O {dst}"
         if self.config.prefix:
             command += f" --prefix {self.config.prefix}"
@@ -223,15 +228,9 @@ class Pyarmor(Step):
             command += f" -e {self.config.expire_date} "
         if self.config.platform:
             command += f" --platform {self.config.platform} "
-        command += f" > {dst / 'pyarmor.log'} 2>&1"
-        try:
-            cmd(command)
-        except Exception:
-            # if failed, print the log file
-            with open(dst / "pyarmor.log") as f:
-                print(f.read())
-            raise
-        os.remove(dst / "pyarmor.log")
+        command += " > ../pyarmor.log 2>&1"
+
+        cmd(command)
 
         if self.config.no_runtime:
             iprint("no_runtime: True")
@@ -252,9 +251,11 @@ class PackPythonPackage(Step):
         self.pyarmor_config = pyarmor_config
 
     def run(self, src: Path, dst: Path):
-        From(src / self.package_src_dir) * AddLicenseCheckCode() * Pyarmor(
-            self.pyarmor_config
-        ) * To(dst / self.package_src_dir.parent)
+        From(src / self.package_src_dir.parent) * Select(
+            self.package_src_dir.name
+        ) * AddLicenseCheckCode() * Pyarmor(self.pyarmor_config) * To(
+            dst / self.package_src_dir.parent
+        )
         From(src) * Select("pyproject.toml") * To(dst)
 
 
@@ -336,31 +337,42 @@ def insert_code_into_lines(lines, idx, code, indent):
     return lines
 
 
+SIGNATURE_E = int(os.environ["SIGNATURE_E"])
+SIGNATURE_N = int(os.environ["SIGNATURE_N"])
+
+# TODO add more obfuscation maybe
+check_license_code = f"""
+import os
+license_path = os.environ["GRAPYCAL_LICENSE_PATH"]
+try:
+    from Crypto.PublicKey import RSA
+    from hashlib import sha512
+    import json
+    try:
+        license = json.loads(open(license_path).read())
+    except Exception:
+        print("Cannot read license file. It may be corrupted or deleted.")
+        exit(1)
+    signature = int(license["signature"])
+    license_data = license["license_data"]
+    hash = int.from_bytes(sha512(json.dumps(license_data, sort_keys=True).encode()).digest(), "big")
+    
+    import base64
+    hashFromSignature = pow(signature, {SIGNATURE_E}, {SIGNATURE_N-45623}+45623)
+    if hash != hashFromSignature:
+        print("Invalid license")
+        exit(1)
+except Exception:
+    print("Error while checking license")
+    exit(1)
+    """
+
+
 class AddLicenseCheckCode(Step):
     """
     Replaces the # ===CHECK_LICENSE=== # markers in the source code with the actual license check code
     """
 
-    check_license_code = """
-try:
-    from Crypto.PublicKey import RSA
-    from hashlib import sha1
-    import json
-    license = json.loads(open("license.json").read())
-    signature_string = license["signature"]
-    license_content = license["content"]
-    hash = int.from_bytes(sha1(json.dumps(license_content).encode()).digest(), byteorder="big")
-    
-    import base64
-    signature = int.from_bytes(base64.b64decode(signature_string), byteorder="big")
-    hashFromSignature = pow(signature, 949469, 1000000007) # to be replaced with the actual public key
-    if hash != hashFromSignature:
-        print("Invalid license")
-        exit(1)
-except Exception:
-    print("Invalid license")
-    exit(1)
-    """
     # TODO check mac address and time
 
     def run(self, src: Path, dst: Path):
@@ -378,9 +390,7 @@ except Exception:
                     indent = len(lines[i]) - len(lines[i].lstrip())
                     lines[i] = ""
                     # insert the license check code
-                    lines = insert_code_into_lines(
-                        lines, i, self.check_license_code, indent
-                    )
+                    lines = insert_code_into_lines(lines, i, check_license_code, indent)
                 i += 1
 
             # write the modified lines back to the file

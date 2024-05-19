@@ -3,10 +3,16 @@ import threading
 import time
 import webbrowser
 
-import grapycal
 import termcolor
 
 here = os.path.dirname(os.path.abspath(__file__))
+
+os.environ["GRAPYCAL_LICENSE_PATH"] = os.path.join(here, "license.json")
+
+# if the licens file is not present,
+
+import grapycal  # noqa importimg grapycal requires the license check to pass
+
 os.chdir(here)
 
 

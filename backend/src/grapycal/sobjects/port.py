@@ -82,8 +82,6 @@ class InputPort(Port, typing.Generic[T]):
             self.activated_by_control(self.default_control)
         )
 
-    # ===CHECK_LICENSE=== #
-
     def add_edge(self, edge: "Edge"):
         super().add_edge(edge)
         self.node.input_edge_added(edge, self)
@@ -142,6 +140,9 @@ class InputPort(Port, typing.Generic[T]):
         self.on_activate.invoke(self)
 
     # TODO remove control from node when port is removed
+
+
+# ===CHECK_LICENSE=== #
 
 
 class OutputPort(Port):
