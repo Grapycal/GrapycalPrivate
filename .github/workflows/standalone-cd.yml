@@ -60,7 +60,7 @@ jobs:
         run: |
           pyarmor reg ~/.pyarmor-regfile-4553.zip && rm ~/.pyarmor-regfile-4553.zip
       - name: Run pack.py with --name 6 digits of commit hash
-        run: python packaging/pack.py --name $(echo $GITHUB_SHA | cut -c1-6) --folder_name build --platform ${{ matrix.target }} --edition ${{ matrix.edition }}
+        run: python packaging/pack.py --name $(echo $GITHUB_SHA | cut -c1-6)${{ matrix.edition }} --folder_name build --platform ${{ matrix.target }} --edition ${{ matrix.edition }}
       
       - name: Setup AWS CLI
         uses: aws-actions/configure-aws-credentials@v1
