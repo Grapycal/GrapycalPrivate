@@ -15,10 +15,6 @@ from grapycal.sobjects.port import InputPort, OutputPort, Port
 from objectsync import ObjSetTopic, SObject, SObjectSerialized
 
 
-def e():
-    pass  # ===CHECK_LICENSE=== #
-
-
 class Editor(SObject):
     frontend_type = "Editor"
 
@@ -48,6 +44,12 @@ class Editor(SObject):
         self.register_service("paste", self._paste, pass_sender=True)
         self.register_service("delete", self._delete)
 
+        def e():
+            pass  # ===CHECK_LICENSE=== #
+
+        e()
+        del e
+
     def _restore_entire_editor(self, serialized: SObjectSerialized):
         """
         When the editor is loaded from a save, this method is called to recreate the nodes and edges.
@@ -67,8 +69,6 @@ class Editor(SObject):
                     extra={"key": f"{type_name} node not defined"},
                 )
         self.restore(nodes, edges)
-
-    e()
 
     """
     Public methods

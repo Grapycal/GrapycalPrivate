@@ -406,6 +406,9 @@ parser.add_argument("--expire_date", default=None)
 parser.add_argument("--name", required=True)
 parser.add_argument("--folder_name", default=None)
 parser.add_argument(
+    "--edition", default="full"
+)  # demo or full. # TODO: make some difference in the build
+parser.add_argument(
     "--platform",
     choices=[
         "windows.x86",

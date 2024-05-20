@@ -12,6 +12,10 @@ on:
 
 jobs:
   build:
+    strategy:
+      matrix:
+        target: [windows.x86_64, linux.x86_64, darwin.x86_64, darwin.aarch64]
+        edition: [demo, full]
     runs-on: ubuntu-latest
     steps:
       # checkout with submodules
@@ -56,21 +60,37 @@ jobs:
         run: |
           pyarmor reg ~/.pyarmor-regfile-4553.zip && rm ~/.pyarmor-regfile-4553.zip
       - name: Run pack.py with --name 6 digits of commit hash
-        run: python packaging/pack.py --platform linux.x86_64 --name $(echo $GITHUB_SHA | cut -c1-6) --folder_name build
+        run: python packaging/pack.py --name $(echo $GITHUB_SHA | cut -c1-6) --folder_name build --platform ${{ matrix.target }} --edition ${{ matrix.edition }}
+      
+      - name: Setup AWS CLI
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1 
+      - name: Sync files to S3 bucket
+        run: |
+          aws s3 cp packaging/dist/build/*.zip s3://${{ secrets.S3_DESKTOP_ARTIFACT_BUCKET }}/releases/${{ matrix.edition }}
+      
       - name: Upload artifact for testing
         uses: actions/upload-artifact@v2
         with:
-          name: standalone
+          name: standalone-${{ matrix.target }}-${{ matrix.edition }}
           path: packaging/dist/build/*.zip
 
   test:
     needs: build
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        target: [{runs-on: windows-latest, target: windows.x86_64}, {runs-on: ubuntu-latest, target: linux.x86_64}, {runs-on: macos-latest, target: darwin.x86_64}, {runs-on: macos-latest, target: darwin.aarch64}]
+        edition: [demo, full]
+    # if linux, use ubuntu-latest. If windows, use windows-latest. If mac, use macos-latest.
+    runs-on: ${{ matrix.target.runs-on }}
     steps:
       - name: Download artifact
         uses: actions/download-artifact@v2
         with:
-          name: standalone
+          name: standalone-${{ matrix.target.target }}-${{ matrix.edition }}
           path: packaging/dist/build
       - name: Unzip artifact
         run: unzip packaging/dist/build/*.zip -d packaging/dist/build/grapycal
@@ -97,12 +117,4 @@ jobs:
         with:
           name: standalone
           path: packaging/dist/build
-      - name: Setup AWS CLI
-        uses: aws-actions/configure-aws-credentials@v1
-        with:
-          aws-access-key-id: ${{ secrets.AWS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1 
-      - name: Sync files to S3 bucket
-        run: |
-          aws s3 cp packaging/dist/build/*.zip s3://${{ secrets.S3_DESKTOP_ARTIFACT_BUCKET }}/releases/
+
