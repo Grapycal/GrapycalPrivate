@@ -107,14 +107,4 @@ jobs:
         run: sleep 20
       - name: Check if Grapycal is running
         run: ps aux | grep main.py | grep -v grep || exit 1
-      
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    steps:
-      - name: Download artifact
-        uses: actions/download-artifact@v2
-        with:
-          name: standalone
-          path: packaging/dist/build
 
