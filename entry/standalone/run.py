@@ -66,12 +66,22 @@ class ThreadingEventWithReturn:
 def make_app(
     workspace, frontend_path: str | None, event_loop_event: ThreadingEventWithReturn
 ):
+    if os.getenv("BEHIND_PROXY"):
+        ROOT_PATH = os.getenv("ROOT_PATH", "/minilab")
+        ROOT_PATH_IN_SERVERS = os.getenv("ROOT_PATH_IN_SERVERS", False)
+        settings = {
+            "root_path": ROOT_PATH,
+            "root_path_in_servers": ROOT_PATH_IN_SERVERS,
+        }
+    else:
+        settings = {}
+
     @asynccontextmanager
     async def lifespan(fastapi):
         event_loop_event.set(asyncio.get_event_loop())
         yield
 
-    app = FastAPI(lifespan=lifespan)
+    app = FastAPI(lifespan=lifespan, **settings)
 
     @app.websocket("/ws")
     async def websocket_endpoint(websocket: WebSocket):
@@ -81,11 +91,11 @@ def make_app(
 
     if frontend_path is not None:
 
-        @app.get("/frontend/", response_class=HTMLResponse)
+        @app.get("/", response_class=HTMLResponse)
         async def read_root():
             return open(frontend_path + "/index.html").read()
 
-        app.mount("/frontend/", StaticFiles(directory=frontend_path), name="static")
+        app.mount("/", StaticFiles(directory=frontend_path), name="static")
 
     return app
 

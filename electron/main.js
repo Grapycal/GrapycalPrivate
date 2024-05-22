@@ -130,7 +130,7 @@ const createWindow = (port) => {
 		copyright: 'Grapycal Team',
 		iconPath: path.join(__dirname, 'frontend', 'dist', 'icon.png').replace("app.asar", "app.asar.unpacked")
 	})
-	win.loadURL(`http://localhost:${port}/frontend`)
+	win.loadURL(`http://localhost:${port}`)
 	// win.webContents.openDevTools()
 }
 

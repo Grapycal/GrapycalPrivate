@@ -345,7 +345,6 @@ check_license_code = f"""
 import os
 license_path = os.environ["GRAPYCAL_LICENSE_PATH"]
 try:
-    from Crypto.PublicKey import RSA
     from hashlib import sha512
     import json
     try:
