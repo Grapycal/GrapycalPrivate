@@ -429,7 +429,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--nts", default="local")
 parser.add_argument("--expire_date", default=None)
 parser.add_argument("--expire_days", default=180, type=int)  # 6 months
-parser.add_argument("--name", required=True)
+parser.add_argument("--build_name", default=None)
 parser.add_argument("--folder_name", default=None)
 parser.add_argument("--edition", default="full", choices=["demo", "full", "cloud"])
 parser.add_argument(
@@ -460,10 +460,10 @@ expire_date = args.expire_date or (
     )
 )
 platform = args.platform
-name = args.name
+build_name = "+" + args.build_name if args.build_name else ""
 
 version = toml.load("backend/pyproject.toml")["tool"]["poetry"]["version"]
-build_name = f"grapycal-{version}-{name}-{platform}"
+build_name = f"grapycal-{version}{build_name}-{platform}"
 
 if args.folder_name:
     folder_name = args.folder_name
