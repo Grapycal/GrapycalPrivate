@@ -68,7 +68,7 @@ jobs:
         env:
           SIGNATURE_E: ${{ secrets.SIGNATURE_E }}
           SIGNATURE_N: ${{ secrets.SIGNATURE_N }}
-        run: python packaging/pack.py --name ${{ github.ref_name }}${{ matrix.edition }} --folder_name build --platform ${{ matrix.target }} --edition ${{ matrix.edition }}
+        run: python packaging/pack.py --build_name ${{ matrix.edition }} --folder_name build --platform ${{ matrix.target }} --edition ${{ matrix.edition }}
       
       - name: Setup AWS CLI
         uses: aws-actions/configure-aws-credentials@v1
