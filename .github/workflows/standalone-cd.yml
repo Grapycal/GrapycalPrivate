@@ -94,9 +94,9 @@ jobs:
         uses: actions/download-artifact@v2
         with:
           name: standalone-linux.x86_64-cloud
-          path: /work
+          path: work
       - name: Unzip artifact
-        run: unzip /work/*.zip -d /work/grapycal
+        run: unzip work/*.zip -d work/grapycal
 
       - name: Docker - Login
         uses: docker/login-action@v3
@@ -109,7 +109,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: /work/grapycal/lab.Dockerfile
+          file: work/grapycal/lab.Dockerfile
           platforms: linux/amd64
           push: true
           tags: registry.grapycal.com/lab:${{ github.ref_name }}
