@@ -36,7 +36,7 @@ def new_minor():
     bump_and_commit(old_version, new_version)
     cmd(f"git branch release/{new_version_without_patch}")
     bump_and_commit(new_version, new_version + "+dev")
-    cmd("git checkout release")
+    cmd(f"git checkout release/{new_version_without_patch}")
 
 
 if __name__ == "__main__":
