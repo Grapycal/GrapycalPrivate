@@ -64,7 +64,7 @@ jobs:
       - name: Register pyarmor
         run: |
           pyarmor reg ~/.pyarmor-regfile-4553.zip && rm ~/.pyarmor-regfile-4553.zip
-      - name: Run pack.py with --name 6 digits of commit hash
+      - name: Run pack.py
         env:
           SIGNATURE_E: ${{ secrets.SIGNATURE_E }}
           SIGNATURE_N: ${{ secrets.SIGNATURE_N }}
@@ -75,7 +75,7 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1 
+          aws-region: ap-northeast-1
       - name: Sync files to S3 bucket
         run: |
           aws s3 cp packaging/dist/build/*.zip s3://${{ secrets.S3_DESKTOP_ARTIFACT_BUCKET }}/releases/${{ matrix.edition }}/
