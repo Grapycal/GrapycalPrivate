@@ -1,5 +1,7 @@
 # pyright: reportUnusedExpression=false
 import argparse
+import datetime
+import json
 import os
 import shutil
 import subprocess
@@ -244,18 +246,20 @@ class Pyarmor(Step):
 class PackPythonPackage(Step):
     def __init__(
         self,
+        edition: str,
         package_src_dir: Path | str = ".",
         pyarmor_config: PyarmorConfig | None = None,
     ):
+        self.edition = edition
         self.package_src_dir = Path(package_src_dir)
         self.pyarmor_config = pyarmor_config
 
     def run(self, src: Path, dst: Path):
-        From(src / self.package_src_dir.parent) * Select(
-            self.package_src_dir.name
-        ) * AddLicenseCheckCode() * Pyarmor(self.pyarmor_config) * To(
-            dst / self.package_src_dir.parent
-        )
+        x = From(src / self.package_src_dir.parent) * Select(self.package_src_dir.name)
+        if self.edition in ["demo", "full"]:
+            x *= AddLicenseCheckCode()
+        x * Pyarmor(self.pyarmor_config) * To(dst / self.package_src_dir.parent)
+
         From(src) * Select("pyproject.toml") * To(dst)
 
 
@@ -271,9 +275,11 @@ class PackFrontend(Step):
 class PackGrapycal(Step):
     def __init__(
         self,
+        edition: str,
         name: str = "grapycal",
         pyarmor_config: PyarmorConfig | None = None,
     ):
+        self.edition = edition
         self.name = name
         self.pyarmor_config = pyarmor_config
 
@@ -281,30 +287,35 @@ class PackGrapycal(Step):
         (
             From(src / "backend")
             * PackPythonPackage(
+                edition=self.edition,
                 package_src_dir="src/grapycal",
                 pyarmor_config=self.pyarmor_config.copyWith(no_runtime=False),
             )
             * ToRelative("backend")
             + From(src / "submodules/topicsync")
             * PackPythonPackage(
+                edition=self.edition,
                 package_src_dir="src/topicsync",
                 pyarmor_config=self.pyarmor_config.copyWith(prefix="grapycal"),
             )
             * ToRelative("topicsync")
             + From(src / "submodules/objectsync")
             * PackPythonPackage(
+                edition=self.edition,
                 package_src_dir="src/objectsync",
                 pyarmor_config=self.pyarmor_config.copyWith(prefix="grapycal"),
             )
             * ToRelative("objectsync")
             + From(src / "extensions/grapycal_builtin")
             * PackPythonPackage(
+                edition=self.edition,
                 package_src_dir="grapycal_builtin",
                 pyarmor_config=self.pyarmor_config.copyWith(prefix="grapycal"),
             )
             * ToRelative("grapycal_builtin")
             + From(src / "extensions/grapycal_torch")
             * PackPythonPackage(
+                edition=self.edition,
                 package_src_dir="grapycal_torch",
                 pyarmor_config=self.pyarmor_config.copyWith(prefix="grapycal"),
             )
@@ -313,6 +324,20 @@ class PackGrapycal(Step):
             + From(src / "entry/standalone") * ToRelative("entry")
             + From(src / "packaging/template")
         ) * To(dst)
+
+        if self.edition in ["cloud"]:
+            From(src) * Select("lab.Dockerfile") * To(dst)
+
+        json.dump(
+            {
+                "build_name": build_name,
+                "version": version,
+                "expire_date": expire_date,
+                "platform": platform,
+                "nts": nts,
+            },
+            open(dst / "build_info.json", "w"),
+        )
 
 
 class Zip(Step):
@@ -345,7 +370,6 @@ check_license_code = f"""
 import os
 license_path = os.environ["GRAPYCAL_LICENSE_PATH"]
 try:
-    from Crypto.PublicKey import RSA
     from hashlib import sha512
     import json
     try:
@@ -365,6 +389,7 @@ try:
 except Exception:
     print("Error while checking license")
     exit(1)
+del license_path, RSA, sha512, license, signature, license_data, hash, hashFromSignature
     """
 
 
@@ -403,11 +428,10 @@ class AddLicenseCheckCode(Step):
 parser = argparse.ArgumentParser()
 parser.add_argument("--nts", default="local")
 parser.add_argument("--expire_date", default=None)
+parser.add_argument("--expire_days", default=180, type=int)  # 6 months
 parser.add_argument("--name", required=True)
 parser.add_argument("--folder_name", default=None)
-parser.add_argument(
-    "--edition", default="full"
-)  # demo or full. # TODO: make some difference in the build
+parser.add_argument("--edition", default="full", choices=["demo", "full", "cloud"])
 parser.add_argument(
     "--platform",
     choices=[
@@ -430,7 +454,11 @@ parser.add_argument(
 args = parser.parse_args()
 
 nts = args.nts
-expire_date = args.expire_date
+expire_date = args.expire_date or (
+    (datetime.datetime.now() + datetime.timedelta(days=args.expire_days)).strftime(
+        "%Y-%m-%d"
+    )
+)
 platform = args.platform
 name = args.name
 
@@ -461,10 +489,12 @@ if dst.exists():
 # run the pipeline
 
 From(".") * PackGrapycal(
+    edition=args.edition,
     name=build_name,
     pyarmor_config=PyarmorConfig(
         expire_date=expire_date, platform=platform, no_runtime=True
     ),
 ) * To(dst / build_name) * Zip(name=build_name) * To(dst)
+
 
 shutil.rmtree(TMP_ROOT)

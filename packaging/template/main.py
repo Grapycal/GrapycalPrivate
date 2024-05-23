@@ -17,7 +17,7 @@ os.chdir(here)
 
 def open_browser():
     time.sleep(4)
-    webbrowser.open("http://localhost:7943/frontend")
+    webbrowser.open("http://localhost:7943")
 
 
 threading.Thread(target=open_browser).start()
@@ -40,7 +40,7 @@ print(
 
 print(
     "\nWelcome to Grapycal. Please go to "
-    + termcolor.colored("http://localhost:7943/frontend", "green")
+    + termcolor.colored("http://localhost:7943", "green")
     + " with Chrome to access the frontend.\n"
 )
 
