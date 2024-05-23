@@ -1,5 +1,17 @@
 #!python
 
+import subprocess
+import sys
+
+
+def cmd(command: str):
+    ret = subprocess.run(  # forward the stdout and stderr to the parent process
+        command,
+        shell=True,
+    )
+    if ret.returncode != 0:
+        raise Exception(f"Command failed: {command}")
+
 
 class Scanner:
     def __init__(self, string) -> None:
@@ -58,19 +70,22 @@ def bump_version_number_in_file(file, prefix, new_version):
         f.writelines(lines)
 
 
-def bump_version():
-    import sys
-
-    if len(sys.argv) < 2:
-        print("Usage: bump.py <version>")
-        sys.exit(1)
-
-    new_version = sys.argv[1]
-
+def bump(new_version):
     for file_prefix in version_number_locations:
         file, prefix = file_prefix.split("|")
         bump_version_number_in_file(file, prefix, new_version)
 
 
+def bump_and_commit(old_version, new_version):
+    bump(new_version)
+    cmd("git add .")
+    cmd(f'git commit -m "bump: {old_version} -> {new_version}"')
+
+
 if __name__ == "__main__":
-    bump_version()
+    if len(sys.argv) < 2:
+        print("Usage: bump.py <version>")
+        sys.exit(1)
+
+    new_version = sys.argv[1]
+    bump(new_version)
