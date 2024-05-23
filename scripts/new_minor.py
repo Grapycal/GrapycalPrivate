@@ -21,24 +21,29 @@ def get_current_version():
 
 
 def new_minor():
-    old_version = get_current_version()
-    major, minor, _ = old_version.split(".")
-    new_version = f"{major}.{int(minor) + 1}.0"
-    new_version_without_patch = f"{major}.{int(minor) + 1}"
+    current_version = get_current_version()
+    major, minor, _ = current_version.split(".")
 
-    response = input(f"Creating a new minor release {new_version}. Continue? [Y/n] ")
+    release_branch_name = f"release/v{major}.{minor}"
+    release_version = f"{major}.{int(minor) + 1}.0"
+    release_tag = f"v{release_version}"
+
+    new_main_branch_version = f"{major}.{int(minor) + 1}.0+dev"  # next minor version
+
+    response = input(f"Creating a new minor release {release_tag}. Continue? [Y/n] ")
     if response.lower() != "y" and response != "":
         print("Aborting")
         return
 
     # this trick avoids merge conflicts when merging the release branch back into main, if needed
 
-    bump_and_commit(old_version, new_version)
-    cmd(f"git branch release/v{new_version_without_patch}")
-    bump_and_commit(new_version, new_version + "+dev")
-    cmd(f"git checkout release/v{new_version_without_patch}")
+    cmd(f"git branch {release_branch_name}")
+    cmd(f"git checkout {release_branch_name}")
+    bump_and_commit(current_version, release_version)
+    cmd(f"git tag {release_tag})")
 
-    cmd(f"git tag v{new_version})")
+    cmd("git checkout main")
+    bump_and_commit(current_version, new_main_branch_version)
 
 
 if __name__ == "__main__":
