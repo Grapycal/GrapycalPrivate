@@ -38,6 +38,8 @@ def new_minor():
     bump_and_commit(new_version, new_version + "+dev")
     cmd(f"git checkout release/v{new_version_without_patch}")
 
+    cmd(f"git tag v{new_version})")
+
 
 if __name__ == "__main__":
     new_minor()
