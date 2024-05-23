@@ -8,6 +8,7 @@ from typing import Any, Dict
 # Import utils from grapycal
 import grapycal
 import grapycal.utils.logging
+from grapycal.utils.misc import SemVer
 import objectsync
 from dacite import from_dict
 from grapycal.core import running_module, stdout_helper
@@ -293,9 +294,9 @@ class Workspace:
 
     def _check_grapycal_version(self, version: str):
         # check if the workspace version is compatible with the current version
-        workspace_version_tuple = tuple(map(int, version.split(".")))
-        current_version_tuple = tuple(map(int, grapycal.__version__.split(".")))
-        if current_version_tuple < workspace_version_tuple:
+        workspace_version = SemVer(version)
+        current_version = SemVer(grapycal.__version__)
+        if current_version < workspace_version:
             logger.warning(
                 f"Attempting to downgrade workspace from version {version} to {grapycal.__version__}. This may cause errors."
             )
