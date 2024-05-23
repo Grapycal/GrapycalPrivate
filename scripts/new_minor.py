@@ -34,9 +34,9 @@ def new_minor():
     # this trick avoids merge conflicts when merging the release branch back into main, if needed
 
     bump_and_commit(old_version, new_version)
-    cmd(f"git branch release/{new_version_without_patch}")
+    cmd(f"git branch release/v{new_version_without_patch}")
     bump_and_commit(new_version, new_version + "+dev")
-    cmd(f"git checkout release/{new_version_without_patch}")
+    cmd(f"git checkout release/v{new_version_without_patch}")
 
 
 if __name__ == "__main__":
