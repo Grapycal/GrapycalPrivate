@@ -32,8 +32,14 @@ def pip_install_from_path(path):
         print(f"Failed to install {path}")
         sys.exit(1)
 
+# required by update process
+def pip_install_requests():
+    if os.system(f"pip install requests") != 0:
+        print(f"Failed to install requests")
+        sys.exit(1)
 
 print("Installing packages...")
+pip_install_requests()
 pip_install_from_path("topicsync")
 pip_install_from_path("objectsync")
 pip_install_from_path("backend")
