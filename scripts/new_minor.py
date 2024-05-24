@@ -25,7 +25,7 @@ def new_minor():
     major, minor, _ = current_version.split(".")
 
     release_branch_name = f"release/v{major}.{minor}"
-    release_version = f"{major}.{int(minor) + 1}.0"
+    release_version = f"{major}.{int(minor)}.0"
     release_tag = f"v{release_version}"
 
     new_main_branch_version = f"{major}.{int(minor) + 1}.0+dev"  # next minor version
@@ -40,7 +40,7 @@ def new_minor():
     cmd(f"git branch {release_branch_name}")
     cmd(f"git checkout {release_branch_name}")
     bump_and_commit(current_version, release_version)
-    cmd(f"git tag {release_tag})")
+    cmd(f"git tag {release_tag}")
 
     cmd("git checkout main")
     bump_and_commit(current_version, new_main_branch_version)
