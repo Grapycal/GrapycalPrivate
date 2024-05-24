@@ -242,6 +242,11 @@ class Pyarmor(Step):
         else:
             iprint("no_runtime: False")
 
+        # do not obfuscate entry folder
+        if (dst / src.name / "entry").exists():
+            shutil.rmtree(dst / src.name / "entry")
+            shutil.copytree(src / "entry", dst / src.name / "entry")
+
 
 class PackPythonPackage(Step):
     def __init__(
@@ -321,7 +326,6 @@ class PackGrapycal(Step):
             )
             * ToRelative("grapycal_torch")
             + From(src / "frontend") * PackFrontend() * ToRelative("frontend")
-            + From(src / "entry/standalone") * ToRelative("entry")
             + From(src / "packaging/template")
         ) * To(dst)
 
@@ -372,8 +376,9 @@ try:
 
     import os
     import datetime
+    import pathlib
 
-    license_path = os.environ["GRAPYCAL_LICENSE_PATH"]
+    license_path = pathlib.Path(os.environ["GRAPYCAL_ROOT"]) / "license.json"
     from hashlib import sha512
     import json
 

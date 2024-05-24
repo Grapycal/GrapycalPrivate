@@ -142,9 +142,6 @@ class InputPort(Port, typing.Generic[T]):
     # TODO remove control from node when port is removed
 
 
-# ===CHECK_LICENSE=== #
-
-
 class OutputPort(Port):
     def build(self, name="port", max_edges=64, display_name=None):
         super().build(name, max_edges, display_name)

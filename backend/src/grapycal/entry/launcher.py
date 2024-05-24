@@ -9,7 +9,7 @@ import subprocess
 import sys
 import time
 
-from args import parse_args
+from grapycal.entry.args import parse_args
 
 
 def sigint_handler(signum, frame):

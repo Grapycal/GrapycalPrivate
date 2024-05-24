@@ -6,7 +6,7 @@ from contextlib import asynccontextmanager
 from typing import Awaitable, Callable
 
 import uvicorn
-from args import parse_args
+from grapycal.entry.args import parse_args
 from fastapi import FastAPI, WebSocket
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
@@ -75,14 +75,13 @@ def make_app(
         }
     else:
         settings = {}
-    app = FastAPI(**settings)
 
     @asynccontextmanager
     async def lifespan(fastapi):
         event_loop_event.set(asyncio.get_event_loop())
         yield
 
-    app = FastAPI(lifespan=lifespan)
+    app = FastAPI(lifespan=lifespan, **settings)
 
     @app.websocket("/ws")
     async def websocket_endpoint(websocket: WebSocket):

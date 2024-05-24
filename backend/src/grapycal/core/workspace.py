@@ -50,8 +50,6 @@ from objectsync.sobject import SObjectSerialized
 grapycal.utils.logging.setup_logging()
 logger = logging.getLogger("workspace")
 
-# ===CHECK_LICENSE=== #
-
 
 class Workspace:
     """
