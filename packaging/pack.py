@@ -367,30 +367,62 @@ SIGNATURE_N = int(os.environ["SIGNATURE_N"])
 
 # TODO add more obfuscation maybe
 check_license_code = f"""
-import os
-license_path = os.environ["GRAPYCAL_LICENSE_PATH"]
 try:
+    import psutil
+
+    import os
+    import datetime
+
+    license_path = os.environ["GRAPYCAL_LICENSE_PATH"]
     from hashlib import sha512
     import json
+
     try:
         license = json.loads(open(license_path).read())
     except Exception:
-        print("Cannot read license file. It may be corrupted or deleted.")
-        exit(1)
+        print("License not found or corrupted")
+        exit(3)
     signature = int(license["signature"])
     license_data = license["license_data"]
-    hash = int.from_bytes(sha512(json.dumps(license_data, sort_keys=True).encode()).digest(), "big")
-    
-    import base64
-    hashFromSignature = pow(signature, {SIGNATURE_E}, {SIGNATURE_N-45623}+45623)
+    hash = int.from_bytes(
+        sha512(json.dumps(license_data, sort_keys=True).encode()).digest(), "big"
+    )
+
+    hashFromSignature = pow(signature, {SIGNATURE_E}, {SIGNATURE_N - 45623} + 45623)
     if hash != hashFromSignature:
         print("Invalid license")
-        exit(1)
+        exit(4)
+
+    current_timestamp = int(datetime.datetime.now().timestamp())
+    if license_data["expire_time"] < current_timestamp:
+        print("License expired")
+        exit(5)
+
+    def get_ip_addresses(family):
+        for interface, snics in psutil.net_if_addrs().items():
+            for snic in snics:
+                if snic.family == family:
+                    yield (interface, snic.address)
+
+    try:
+        macs = dict(get_ip_addresses(psutil.AF_LINK))
+    except Exception:
+        print("Error while getting mac addresses")
+        exit(6)
+    if len(macs) == 0:
+        print("Error while getting mac addresses")
+        exit(6)
+
+    if set(license_data["mac_addresses"]) & set(macs.values()) == set():
+        print("Invalid license")
+        exit(4)
+
 except Exception:
     print("Error while checking license")
     exit(1)
-del license_path, RSA, sha512, license, signature, license_data, hash, hashFromSignature
-    """
+
+del license_path, sha512, license, signature, license_data, hash, hashFromSignature
+"""
 
 
 class AddLicenseCheckCode(Step):
@@ -428,7 +460,7 @@ class AddLicenseCheckCode(Step):
 parser = argparse.ArgumentParser()
 parser.add_argument("--nts", default="local")
 parser.add_argument("--expire_date", default=None)
-parser.add_argument("--expire_days", default=180, type=int)  # 6 months
+parser.add_argument("--expire_days", default=None, type=int)  # 6 months
 parser.add_argument("--build_name", default=None)
 parser.add_argument("--folder_name", default=None)
 parser.add_argument("--edition", default="full", choices=["demo", "full", "cloud"])
@@ -454,8 +486,11 @@ parser.add_argument(
 args = parser.parse_args()
 
 nts = args.nts
+
+expire_days = args.expire_days or (90 if args.edition == "demo" else 100000)
+
 expire_date = args.expire_date or (
-    (datetime.datetime.now() + datetime.timedelta(days=args.expire_days)).strftime(
+    (datetime.datetime.now() + datetime.timedelta(days=expire_days)).strftime(
         "%Y-%m-%d"
     )
 )
