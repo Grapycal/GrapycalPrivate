@@ -121,8 +121,24 @@ def acquire_license():
 
     if response.status_code == 200:
         response = response.json()
+        print(
+            "License acquired successfully. Remaining uses: ",
+            response["remaining_uses"],
+        )
         with open(GRAPYCAL_ROOT / "license.json", "w") as f:
             json.dump(response["license"], f)
+    elif response.status_code == 403:
+        print(
+            "Invalid serial number. Maybe it has been used too many times, or it's invalid."
+        )
+        sys.exit(1)
+    else:  # error
+        print(
+            "Failed to acquire license, please try again.",
+            response.status_code,
+            response.text,
+        )
+        sys.exit(1)
 
 
 def print_welcome():
