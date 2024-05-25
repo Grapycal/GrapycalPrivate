@@ -1,8 +1,10 @@
+import json
 import os
 import pathlib
 import threading
 import time
 import webbrowser
+import psutil
 import requests
 import zipfile
 from io import BytesIO
@@ -18,6 +20,10 @@ HERE = pathlib.Path(__file__).parent
 GRAPYCAL_ROOT = HERE.parent.parent.parent
 
 
+def input_colored(prompt):
+    return input(termcolor.colored(prompt, "green"))
+
+
 def update_if_needed():
     # login first
     session = requests.Session()
@@ -31,7 +37,9 @@ def update_if_needed():
 
     def ask_update():
         while True:
-            ans = input("Grapycal update available, download and install? y/n ")
+            ans = input_colored(
+                "Grapycal update available, download and install? (y/n) "
+            )
             match ans:
                 case "y" | "Y":
                     return True
@@ -85,19 +93,39 @@ def update_if_needed():
             install("extracted")  # this is a non-returning function
 
 
-def main():
-    os.environ["GRAPYCAL_ROOT"] = str(GRAPYCAL_ROOT)
+def license_file_exists():
+    return Path(GRAPYCAL_ROOT / "license.json").exists()
 
-    update_if_needed()
 
-    os.chdir(HERE)
+def acquire_license():
+    serial = input_colored("Please enter your serial number: ")
 
-    def open_browser():
-        time.sleep(4)
-        webbrowser.open("http://localhost:7943")
+    def get_ip_addresses(family):
+        for interface, snics in psutil.net_if_addrs().items():
+            for snic in snics:
+                if snic.family == family:
+                    yield snic.address
 
-    threading.Thread(target=open_browser).start()
+    macs = list(get_ip_addresses(psutil.AF_LINK))
 
+    if len(macs) == 0:
+        print("No MAC address found, please connect to a network to acquire license.")
+        sys.exit(1)
+
+    # do not accept too many mac addresses, otherwise the license would be abused
+    macs = macs[:10]
+    response = requests.post(
+        "https://license.grapycal.com/license",
+        json={"serial_number": serial, "mac_addresses": macs, "user_name": "demo"},
+    )
+
+    if response.status_code == 200:
+        response = response.json()
+        with open(GRAPYCAL_ROOT / "license.json", "w") as f:
+            json.dump(response["license"], f)
+
+
+def print_welcome():
     version = grapycal.__version__
     print(
         termcolor.colored(
@@ -119,9 +147,36 @@ def main():
         + termcolor.colored("http://localhost:7943", "green")
         + " with Chrome to access the frontend.\n"
     )
-
     print("=" * 50)
 
-    os.system(
+
+def run_core():
+    return os.system(
         f'python {HERE/"entry/launcher.py"} --backend-path {GRAPYCAL_ROOT/"backend/src"} --frontend-path {GRAPYCAL_ROOT/"frontend"} --port 7943 --cwd {CWD}'
     )
+
+
+def main():
+    os.environ["GRAPYCAL_ROOT"] = str(GRAPYCAL_ROOT)
+
+    print("Checking for updates...")
+    update_if_needed()
+
+    if not license_file_exists():
+        print("License not found. Acquiring license...")
+        acquire_license()
+
+    def open_browser():
+        time.sleep(4)
+        webbrowser.open("http://localhost:7943")
+
+    threading.Thread(target=open_browser).start()
+
+    while True:
+        print_welcome()
+        core_return_code = run_core()
+
+        if core_return_code in [3, 4, 5]:
+            acquire_license()
+        else:
+            break
