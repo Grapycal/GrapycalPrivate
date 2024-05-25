@@ -11,13 +11,14 @@ import shutil
 import sys
 import termcolor
 
+import grapycal
 
-def main():
-    CWD = os.getcwd()
-    HERE = pathlib.Path(__file__).parent
-    GRAPYCAL_ROOT = HERE.parent.parent.parent
-    os.environ["GRAPYCAL_ROOT"] = str(GRAPYCAL_ROOT)
+CWD = os.getcwd()
+HERE = pathlib.Path(__file__).parent
+GRAPYCAL_ROOT = HERE.parent.parent.parent
 
+
+def update_if_needed():
     # login first
     session = requests.Session()
     session.post(
@@ -83,7 +84,11 @@ def main():
             pack_zip.extractall("extracted")
             install("extracted")  # this is a non-returning function
 
-    import grapycal  # noqa importimg grapycal requires the license check to pass
+
+def main():
+    os.environ["GRAPYCAL_ROOT"] = str(GRAPYCAL_ROOT)
+
+    update_if_needed()
 
     os.chdir(HERE)
 
@@ -118,5 +123,5 @@ def main():
     print("=" * 50)
 
     os.system(
-        f'python entry/launcher.py --backend-path {GRAPYCAL_ROOT/"backend/src"} --frontend-path {GRAPYCAL_ROOT/"frontend"} --port 7943 --cwd {CWD}'
+        f'python {HERE/"entry/launcher.py"} --backend-path {GRAPYCAL_ROOT/"backend/src"} --frontend-path {GRAPYCAL_ROOT/"frontend"} --port 7943 --cwd {CWD}'
     )
