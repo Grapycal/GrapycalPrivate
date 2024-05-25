@@ -442,7 +442,8 @@ class AddLicenseCheckCode(Step):
         From(src) * To(dst)
         # iterate over all .py files in the directory
         for f in dst.rglob("*.py"):
-            with open(f, "r") as file:
+            with open(f, "r", encoding="utf-8") as file:
+                print(f"Adding license check code to {f}")
                 lines = file.readlines()
 
             # find the line with the license check code
@@ -456,7 +457,7 @@ class AddLicenseCheckCode(Step):
                 i += 1
 
             # write the modified lines back to the file
-            with open(f, "w") as file:
+            with open(f, "w", encoding="utf-8") as file:
                 file.writelines(lines)
 
 
