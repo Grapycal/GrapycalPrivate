@@ -11,6 +11,8 @@ from fastapi import FastAPI, WebSocket
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from grapycal import OpenAnotherWorkspaceStrategy
+
+from grapycal.core.workspace import Workspace
 from topicsync.server.client_manager import (
     ClientCommProtocol,
     ConnectionClosedException,
@@ -101,18 +103,16 @@ def make_app(
 
 
 def run_uvicorn(app, host, port):
-    uvicorn.run(app, host=host, port=port)
+    uvicorn.run(app, host=host, port=port, log_level="error")
     print("uvicorn exited")
     sys.exit(1)
 
 
 def main():
     args = parse_args()
-    print(args)
 
-    # because args.backend_path, args.frontend_path, and args.extensions_path are NOT relative to the cwd,
+    # because args.frontend_path and args.extensions_path are NOT relative to the cwd,
     # we need to make them absolute before moving to the cwd
-    args.backend_path = os.path.abspath(args.backend_path)
     if args.frontend_path is not None:
         args.frontend_path = os.path.abspath(args.frontend_path)
 
@@ -139,10 +139,6 @@ def main():
     # make extensions available
     if args.extensions_path is not None:
         sys.path.append(args.extensions_path)
-
-    # before importing workspace, we need to add the backend path to sys.path
-    sys.path.append(args.backend_path)
-    from grapycal.core.workspace import Workspace
 
     open_another = MyOpenAnotherWorkspaceStrategy()
 
