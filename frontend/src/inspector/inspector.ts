@@ -16,6 +16,7 @@ import { OptionsEditor as OptionsEditor } from "./OptionEditor"
 import { Componentable } from "../component/componentable"
 import { Editor } from "./Editor"
 import { DictEditor } from "./DictEditor"
+import { ToggleEditor } from "./ToggleEditor"
 
 export function object_equal(a:any,b:any){
     return JSON.stringify(a) === JSON.stringify(b);
@@ -33,7 +34,8 @@ export class Inspector extends Componentable{
         'float':FloatEditor,
         'button':ButtonEditor,
         'options':OptionsEditor,
-        'dict':DictEditor
+        'dict':DictEditor,
+        'toggle':ToggleEditor
 
     }
 
