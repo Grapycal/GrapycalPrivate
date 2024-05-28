@@ -19,7 +19,8 @@ export class ImageControl extends Control {
     }
     .control{
         background: #eee url('data:image/svg+xml,\
-           <svg xmlns="http://www.w3.org/2000/svg" width="400" height="400"         fill-opacity=".25" >\
+           <svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" fill-opacity="0.7">\
+                    <rect width="400" height="400" />\
                     <rect x="200" width="200" height="200" />\
                     <rect y="200" width="200" height="200" />\
                     </svg>');
