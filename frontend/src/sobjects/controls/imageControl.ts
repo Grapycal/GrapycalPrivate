@@ -1,4 +1,4 @@
-import { StringTopic } from "objectsync-client"
+import { FloatTopic, StringTopic } from "objectsync-client"
 import { Control } from "./control"
 import { print } from "../../devUtils"
 import { as, getImageFromClipboard } from "../../utils"
@@ -24,8 +24,14 @@ export class ImageControl extends Control {
                     <rect y="200" width="200" height="200" />\
                     </svg>');
         background-size: 20px 20px;
+        overflow: hidden; /* needed for the resize handle */
+        resize: both;
+        min-width: 100%;
     }
     `}
+
+    private width = this.getAttribute("width", FloatTopic)
+    private height = this.getAttribute("height", FloatTopic)
 
     protected onStart(): void {
         super.onStart()
@@ -47,6 +53,25 @@ export class ImageControl extends Control {
             this.unlink2(document, "paste")
         }
 
+        // eat drag events
+        this.eventDispatcher.onDrag.add(() => {})
+
+        this.link(this.eventDispatcher.onDragEnd, (e) => {
+            this.objectsync.record(() => {
+                if(base.offsetWidth != this.width.getValue())
+                    this.width.set(base.offsetWidth)
+                if(base.offsetHeight != this.height.getValue())
+                    this.height.set(base.offsetHeight)
+            })
+        })
+
+        this.link(this.width.onSet, (newValue) => {
+            base.style.width = newValue + "px"
+        })
+
+        this.link(this.height.onSet, (newValue) => {
+            base.style.height = newValue + "px"
+        })
 
     }
 

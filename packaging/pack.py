@@ -466,7 +466,7 @@ class AddLicenseCheckCode(Step):
 parser = argparse.ArgumentParser()
 parser.add_argument("--nts", default="local")
 parser.add_argument("--expire_date", default=None)
-parser.add_argument("--expire_days", default=None, type=int)  # 6 months
+parser.add_argument("--expire_days", default=None, type=int)
 parser.add_argument("--build_name", default=None)
 parser.add_argument("--folder_name", default=None)
 parser.add_argument("--edition", default="full", choices=["demo", "full", "cloud"])
