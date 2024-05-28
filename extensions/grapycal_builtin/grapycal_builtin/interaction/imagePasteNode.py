@@ -11,6 +11,7 @@ from grapycal.sobjects.sourceNode import SourceNode
 from matplotlib import pyplot as plt
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
+from topicsync.topic import GenericTopic
 
 try:
     import torch
@@ -258,7 +259,13 @@ class ImageDisplayNode(Node):
                 "gist_ncar",
             ],
         )
+        self.use_vmin = self.add_attribute(
+            "use vmin", GenericTopic[bool], False, editor_type="toggle"
+        )
         self.vmin = self.add_attribute("vmin", FloatTopic, 0, editor_type="float")
+        self.use_vmax = self.add_attribute(
+            "use vmax", GenericTopic[bool], False, editor_type="toggle"
+        )
         self.vmax = self.add_attribute("vmax", FloatTopic, 1, editor_type="float")
         self.slice = self.add_text_control(label="slice: ", name="slice", text=":")
         self.in_port = self.add_in_port("data", 1, "")
@@ -345,7 +352,10 @@ class ImageDisplayNode(Node):
 
                 data = data.transpose(1, 2, 0)
             plt.imshow(
-                data, cmap=self.cmap.get(), vmin=self.vmin.get(), vmax=self.vmax.get()
+                data,
+                cmap=self.cmap.get(),
+                vmin=self.vmin.get() if self.use_vmin.get() else None,
+                vmax=self.vmax.get() if self.use_vmax.get() else None,
             )
             plt.axis("off")
             plt.savefig(
