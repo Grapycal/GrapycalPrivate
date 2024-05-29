@@ -108,6 +108,7 @@ class Workspace:
         self._setup_slash_commands()
 
         main_store.event_loop = ui_thread_event_loop
+        ui_thread_event_loop.create_task(self.auto_save())
         ui_thread_event_loop.create_task(self._objectsync.serve())
 
         # The extension manager starts searching for all extensions available.
@@ -390,5 +391,10 @@ class Workspace:
     def _client_disconnected(self, client_id):
         try:
             self._objectsync.remove_topic(f"status_message_{client_id}")
-        except:
+        except KeyError:
             pass  # topic may have not been created successfully.
+
+    async def auto_save(self):
+        while True:
+            await asyncio.sleep(60)
+            self._save_workspace(self.path)

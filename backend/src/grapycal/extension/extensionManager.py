@@ -3,7 +3,6 @@ import logging
 import pkgutil
 import subprocess
 
-from grapycal.extension.extensionSearch import get_remote_extensions
 from grapycal.extension.utils import (
     get_all_dependents,
     get_extension_info,
@@ -250,18 +249,21 @@ class ExtensionManager:
                 lambda _, n=extension_name: self.import_extension(n),
                 source="import_extension",
             )
-        not_installed_extensions = await get_remote_extensions()
-        not_installed_extensions = [
-            info
-            for info in not_installed_extensions
-            if (
-                info["name"] not in self._avaliable_extensions_topic
-                and info["name"] not in self._imported_extensions_topic
-            )
-        ]
-        self._not_installed_extensions_topic.set(
-            list_to_dict(not_installed_extensions, "name")
-        )
+
+        # The functionality of downloading extensions from the internet is disabled for now.
+
+        # not_installed_extensions = await get_remote_extensions()
+        # not_installed_extensions = [
+        #     info
+        #     for info in not_installed_extensions
+        #     if (
+        #         info["name"] not in self._avaliable_extensions_topic
+        #         and info["name"] not in self._imported_extensions_topic
+        #     )
+        # ]
+        # self._not_installed_extensions_topic.set(
+        #     list_to_dict(not_installed_extensions, "name")
+        # )
 
     def _scan_available_extensions(self) -> list[dict]:
         """
