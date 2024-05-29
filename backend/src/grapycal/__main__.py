@@ -33,9 +33,9 @@ def update_if_needed():
     )
 
     def check_update():
-        from importlib_metadata import version
+        from importlib.metadata import version
         latest_url = 'https://resource.grapycal.com/latest/releases/demo'
-        latest_version = session.get(latest)
+        latest_version = session.get(latest_url)
         current_version = version('grapycal')
         if current_version in latest_version:
             return None
@@ -51,7 +51,7 @@ def update_if_needed():
             os_name = 'linux.x86_64'
         else:  # assume darwin
             if 'arm' in platform.machine():  # aarch
-                os_name = 'darwin.aarch64':
+                os_name = 'darwin.aarch64'
             else:
                 os_name = 'darwin.x86_64'
 
