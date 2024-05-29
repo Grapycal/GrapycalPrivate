@@ -78,7 +78,11 @@ class Editor(SObject):
         self.create_node(**kwargs)  # no return value #TODO make it elegant
 
     def create_node(
-        self, node_type: str | type[Node], sender: int | None = None, **kwargs
+        self,
+        node_type: str | type[Node],
+        sender: int | None = None,
+        attached_port: str | None = None,
+        **kwargs,
     ) -> Node | None:
         if isinstance(node_type, str):
             node_type_cls = self._server._object_types[node_type]
@@ -90,11 +94,18 @@ class Editor(SObject):
                 f"Node type {node_type} is a singleton and already exists"
             )
             return None
-        new_node = self.add_child(node_type_cls, is_preview=False, **kwargs)
-        assert isinstance(new_node, Node)
-        new_node.post_create()
-        if sender is not None:
-            new_node.add_tag(f"created_by_{sender}")
+        with self._server.record():
+            new_node = self.add_child(node_type_cls, is_preview=False, **kwargs)
+            assert isinstance(new_node, Node)
+            new_node.post_create()
+            if sender is not None:
+                new_node.add_tag(f"created_by_{sender}")
+
+            if attached_port is not None:
+                if self._server.has_object(attached_port):
+                    port = self._server.get_object(attached_port)
+                    assert isinstance(port, Port)
+                    new_node.attach_to_port(port)
         user_logger.info(f"Created {new_node.get_type_name()}")
         return new_node
 

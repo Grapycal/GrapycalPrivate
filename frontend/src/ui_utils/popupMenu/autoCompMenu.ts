@@ -286,7 +286,7 @@ export class AutoCompMenu extends PopupMenu{
     openAt(x:number,y:number){
         super.openAt(x,y)
         this.search.focus()
-        this.onSearch()
+        this.onSearch('') // show all options by setting empty query
         this.link(GlobalEventDispatcher.instance.onAnyKeyDown,this.onKeyDown)
     }
     open(){

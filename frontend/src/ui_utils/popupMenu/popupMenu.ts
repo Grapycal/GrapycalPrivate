@@ -62,8 +62,8 @@ export class PopupMenu extends Componentable{
     protected addOptionElement(el:HTMLElement,onclick:()=>void){
         el.classList.add(this.constructor.name+'-option')
         el.addEventListener('click',(e)=>{
-            this.close()
             onclick()
+            this.close()
             e.stopPropagation()
         })
         this.optionTemplate.parentNode.appendChild(el)

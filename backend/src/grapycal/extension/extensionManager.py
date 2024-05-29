@@ -354,8 +354,8 @@ class ExtensionManager:
             self._objectsync.register(node_type, node_type_name)
             main_store.slash.register(
                 node_type_name.split(".")[1][:-4],
-                lambda ctx, n=node_type_name: self._create_node_slash_listener(
-                    ctx, n
+                lambda ctx, args, n=node_type_name: self._create_node_slash_listener(
+                    ctx, args, n
                 ),  # the lambda is necessary to capture the value of n
                 source=name,
                 prefix="",
@@ -363,12 +363,19 @@ class ExtensionManager:
         for slash in self._extensions[name].get_slash_commands().values():
             main_store.slash.register(slash["name"], slash["callback"], source=name)
 
-    def _create_node_slash_listener(self, ctx: CommandCtx, node_type_name: str) -> None:
-        x = snap_node(ctx.mouse_pos[0])
-        y = snap_node(ctx.mouse_pos[1])
-        translation = [x, y]
+    def _create_node_slash_listener(
+        self, ctx: CommandCtx, args: dict, node_type_name: str
+    ) -> None:
+        translation = args.get("translation", [ctx.mouse_pos[0], ctx.mouse_pos[1]])
+        translation = [
+            snap_node(translation[0]),
+            snap_node(translation[1]),
+        ]
         main_store.main_editor.create_node(
-            node_type_name, translation=translation, sender=ctx.client_id
+            node_type_name,
+            sender=ctx.client_id,
+            attached_port=args.get("attached_port", None),
+            translation=translation,
         )
 
     def _check_extension_not_used(self, name: str) -> None:
