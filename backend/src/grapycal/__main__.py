@@ -33,7 +33,29 @@ def update_if_needed():
     )
 
     def check_update():
-        return "https://resource.grapycal.com/releases/demo/grapycal-0.11.3-e52a16demo-darwin.aarch64.zip"
+        from importlib.metadata import version
+        latest_url = 'https://resource.grapycal.com/latest/releases/demo'
+        latest_version = session.get(latest_url)
+        current_version = version('grapycal')
+        if current_version in latest_version:
+            return None
+
+        # select os
+
+        import platform
+        os_name = ''
+        platform_name = platform.system()
+        if platform_name == 'Windows':
+            os_name = 'windows.x86_64'
+        elif platform_name == 'Linux':
+            os_name = 'linux.x86_64'
+        else:  # assume darwin
+            if 'arm' in platform.machine():  # aarch
+                os_name = 'darwin.aarch64'
+            else:
+                os_name = 'darwin.x86_64'
+
+        return f"{latest_version}-{os_name}"
 
     def ask_update():
         while True:
@@ -54,43 +76,26 @@ def update_if_needed():
             BytesIO(response.content), compression=zipfile.ZIP_DEFLATED
         )
 
-    def install(extract_path: str):
-        # First remove everything (except this file)
-        # Remove current file will cause a crash
-        for filename in os.listdir(HERE):
-            if filename != "main.py" and filename != extract_path:
-                dest_path = Path(HERE) / filename
-                if os.path.isfile(dest_path):
-                    os.remove(dest_path)
-                elif os.path.isdir(dest_path):
-                    shutil.rmtree(dest_path)
+    def install(extract_path: Path):
+        # chdir here is safe, because at the end of install the new grapycal will be started
+        chdir(extract_path)
+        installer_path = os.getcwd() /'backend'/'src'/'grapycal'/'standalone_utils'/'install.py'
+        exec(open(installer_path).read())
 
-        # Move everything from extract_path to the current folder (except this file)
-        for filename in os.listdir(extract_path):
-            if filename != "main.py":
-                shutil.move(Path(extract_path) / filename, Path(HERE))
+        # replace new grapycal with the current one
+        # notice that after the installer, PATH of grapycal is changed
+        os.execlp('grapycal')
 
-        # update instruction for updater
-        with open("update", "w") as f:
-            print(
-                f"u {extract_path} main.py", file=f
-            )  # update main.py, new file in extract_path
-            print(f"rmtree {extract_path}", file=f)
-            print("r install.py", file=f)
-
-        # updater will replace current process
-        # inherit environment, use same python
-        # all arguments are passed to updater, so updater can start updated main.py again with the same arguments
-        os.execv(sys.executable, ["python", "updater.py"] + sys.argv)
-
-    if update_url := check_update():
+    if new_grapycal_name := check_update():
+        update_url = f'https://resource.grapycal.com/releases/demo/{new_grapycal_name}.zip'
         need_update = ask_update()
 
         if need_update:
             pack_zip = download(update_url)
-            print("before extract")
-            pack_zip.extractall("extracted")
-            install("extracted")  # this is a non-returning function
+            grapycal_parent = GRAPYCAL_ROOT.parent
+            extract_path = grapycal_parent / new_grapycal_name
+            pack_zip.extractall(extract_path)
+            install(extract_path)
 
 
 def license_file_exists():
@@ -176,7 +181,9 @@ def print_welcome():
 
 def run():
     print("Checking for updates...")
-    update_if_needed()
+
+    # if updated, this function will not return back
+    update_if_needed()  
 
     if not license_file_exists():
         print("License not found. Acquiring license...")
