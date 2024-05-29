@@ -1,4 +1,5 @@
 import os
+import pathlib
 
 # check frontend is changed from last build (hash.txt)
 
@@ -46,6 +47,9 @@ def write_hash(hash: str):
         f.write(hash)
 
 
+old_dir = os.getcwd()
+os.chdir(pathlib.Path(__file__).parent.parent)
+
 hash_result = hash_files()
 if hash_result == read_hash():
     print("No changes in frontend. Skipping build.")
@@ -58,3 +62,5 @@ if os.system("cd frontend && npm run build:standalone && cd .."):
 
 write_hash(hash_result)
 print("Frontend build successful")
+
+os.chdir(old_dir)

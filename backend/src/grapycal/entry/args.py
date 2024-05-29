@@ -4,7 +4,7 @@ from typing import Any
 import usersettings
 
 
-def parse_args():
+def parse_args(sync=True):
     parser = argparse.ArgumentParser(description="Grapycal backend server")
     parser.add_argument(
         "file", type=str, help="path to workspace file, relative to --cwd", nargs="?"
@@ -22,9 +22,8 @@ def parse_args():
         if not args.file.endswith(".grapycal"):
             args.file += ".grapycal"
 
-    sync_args_with_usersettings(
-        args, {"file": "workspace.grapycal", "port": 7943, "host": "localhost"}
-    )
+    if sync:
+        sync_args_with_usersettings(args, {"port": 7943, "host": "localhost"})
 
     return args
 
@@ -38,5 +37,20 @@ def sync_args_with_usersettings(args: argparse.Namespace, defaults: dict[str, An
             s[name] = getattr(args, name)
         else:
             setattr(args, name, s.get(name, default))
+
+    if (
+        "cwd" in s
+        and args.cwd == s["cwd"]
+        and "file" in s
+        and s["file"] is not None
+        and args.file is None
+    ):
+        args.file = s["file"]
+    elif args.file is None:
+        args.file = "workspace.grapycal"
+
+    s["cwd"] = args.cwd
+    s["file"] = args.file
+
     s.save_settings()
     return args

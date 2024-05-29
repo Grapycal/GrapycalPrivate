@@ -5,7 +5,6 @@ import threading
 import time
 import webbrowser
 import psutil
-import requests
 import zipfile
 from io import BytesIO
 from pathlib import Path
@@ -13,11 +12,10 @@ import shutil
 import sys
 import termcolor
 
-import grapycal
-
 CWD = os.getcwd()
 HERE = pathlib.Path(__file__).parent
 GRAPYCAL_ROOT = HERE.parent.parent.parent
+os.environ["GRAPYCAL_ROOT"] = str(GRAPYCAL_ROOT)
 
 
 def input_colored(prompt):
@@ -25,6 +23,8 @@ def input_colored(prompt):
 
 
 def update_if_needed():
+    import requests
+
     # login first
     session = requests.Session()
     session.post(
@@ -98,6 +98,8 @@ def license_file_exists():
 
 
 def acquire_license():
+    import requests
+
     serial = input_colored("Please enter your serial number: ")
 
     def get_ip_addresses(family):
@@ -142,7 +144,13 @@ def acquire_license():
 
 
 def print_welcome():
-    version = grapycal.__version__
+    # not using grapycal.__version__ because it's slow
+    # instead read from __init__.py, find the line __version__ = "..."
+    with open(HERE / "__init__.py") as f:
+        for line in f:
+            if line.startswith("__version__"):
+                version = line.split('"')[1].split('"')[0]
+                break
     print(
         termcolor.colored(
             r"""
@@ -166,15 +174,7 @@ def print_welcome():
     print("=" * 50)
 
 
-def run_core():
-    return os.system(
-        f'python {HERE/"entry/launcher.py"} --backend-path {GRAPYCAL_ROOT/"backend/src"} --frontend-path {GRAPYCAL_ROOT/"frontend"} --port 7943 --cwd {CWD}'
-    )
-
-
-def main():
-    os.environ["GRAPYCAL_ROOT"] = str(GRAPYCAL_ROOT)
-
+def run():
     print("Checking for updates...")
     update_if_needed()
 
@@ -190,9 +190,32 @@ def main():
 
     while True:
         print_welcome()
-        core_return_code = run_core()
+        core_return_code = os.system(
+            f'python {HERE/"entry/launcher.py"} --frontend-path {GRAPYCAL_ROOT/"frontend"} --port 7943 --cwd {CWD}'
+        )
 
         if core_return_code in [3, 4, 5]:
             acquire_license()
         else:
             break
+
+
+def dev():
+    # python scripts/build_frontend.py
+    os.system(f"python {GRAPYCAL_ROOT/'scripts/build_frontend.py'}")
+    try:
+        os.system(
+            f'python {HERE/"entry/launcher.py"} --frontend-path {GRAPYCAL_ROOT/"frontend/dist"} --port 7943 --cwd {CWD}'
+        )
+    except KeyboardInterrupt:
+        pass
+
+
+def main():
+    command = sys.argv[1] if len(sys.argv) > 1 else "run"
+    if command == "run":
+        run()
+    elif command == "dev":
+        dev()
+    else:
+        print("Avaliable commands: run, dev")

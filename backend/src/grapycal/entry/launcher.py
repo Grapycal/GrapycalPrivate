@@ -22,7 +22,7 @@ if __name__ == "__main__":
 
     workspace_file = None
 
-    args = parse_args()
+    args = parse_args(sync=False)
     if args.file is not None:
         workspace_file = os.path.abspath(args.file)
         argv = sys.argv[1:-1]
@@ -32,17 +32,12 @@ if __name__ == "__main__":
     while True:
         # Run the server
         server = subprocess.Popen(
-            ["python", os.path.join(here, "run.py")] + argv + [workspace_file]
-            if workspace_file is not None
-            else [],
+            ["python", os.path.join(here, "run.py")]
+            + argv
+            + ([workspace_file] if workspace_file is not None else []),
         )
 
-        if os.name == "nt":
-            # If Windows, capture SIGINT and close the server with SIGTERM because SIGINT is used for interrupting the runner on Windows
-            signal.signal(signal.SIGINT, sigint_handler)
-        else:
-            # If Unix, just wait for the server to finish
-            signal.signal(signal.SIGINT, sigint_handler)
+        signal.signal(signal.SIGINT, sigint_handler)
 
         # this while loop is necessary to catch the SIGINT in Windows. Not sure why.
         while server.poll() is None:

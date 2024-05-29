@@ -127,6 +127,7 @@ class InputsTrait(Trait):
         self.node.add_in_port(
             name,
             1,
+            display_name="",
             control_type=TextControl,
             activation_mode=TextControl.ActivationMode.NO_ACTIVATION,
         )
