@@ -9,6 +9,8 @@ import subprocess
 import sys
 import time
 
+from grapycal.entry.args import parse_args
+
 
 def sigint_handler(signum, frame):
     print("SIGINT received, closing server")
@@ -20,12 +22,19 @@ if __name__ == "__main__":
 
     workspace_file = None
 
+    args = parse_args()
+    if args.file is not None:
+        workspace_file = os.path.abspath(args.file)
+        argv = sys.argv[1:-1]
+    else:
+        argv = sys.argv[1:]
+
     while True:
         # Run the server
         server = subprocess.Popen(
-            ["python", os.path.join(here, "run.py")]
-            + sys.argv[1:]
-            + ([workspace_file] if workspace_file else [])
+            ["python", os.path.join(here, "run.py")] + argv + [workspace_file]
+            if workspace_file is not None
+            else [],
         )
 
         if os.name == "nt":

@@ -3,16 +3,14 @@ import importlib.metadata
 import logging
 import os
 import signal
-import threading
 from typing import Any, Dict
-
-import objectsync
-from dacite import from_dict
-from objectsync.sobject import SObjectSerialized
 
 # Import utils from grapycal
 import grapycal
 import grapycal.utils.logging
+from grapycal.utils.misc import SemVer
+import objectsync
+from dacite import from_dict
 from grapycal.core import running_module, stdout_helper
 from grapycal.core.background_runner import BackgroundRunner
 
@@ -47,6 +45,7 @@ from grapycal.sobjects.workspaceObject import WebcamStream, WorkspaceObject
 from grapycal.stores import main_store
 from grapycal.utils.httpResource import HttpResource
 from grapycal.utils.io import file_exists, read_workspace, write_workspace
+from objectsync.sobject import SObjectSerialized
 
 grapycal.utils.logging.setup_logging()
 logger = logging.getLogger("workspace")
@@ -91,7 +90,7 @@ class Workspace:
         self.slash = SlashCommandManager(self._slash_commands_topic)
         stdout_helper.enable_proxy(redirect_error=False)
 
-    def run(self, run_runner=True) -> None:
+    def run(self, ui_thread_event_loop: asyncio.AbstractEventLoop, run_runner=True):
         """
         The blocking function that make the workspace start functioning. The main thread will run a background_runner
         that runs the background tasks from nodes.
@@ -108,13 +107,8 @@ class Workspace:
         # Setup slash commands
         self._setup_slash_commands()
 
-        # Start the communication thread.
-        # The thread runs the objectsync server in an asyncio event loop.
-        event_loop_set_event = threading.Event()
-        threading.Thread(
-            target=self._communication_thread, daemon=True, args=[event_loop_set_event]
-        ).start()  # daemon=True until we have a proper exit strategy
-        event_loop_set_event.wait()
+        main_store.event_loop = ui_thread_event_loop
+        ui_thread_event_loop.create_task(self._objectsync.serve())
 
         # The extension manager starts searching for all extensions available.
         self._extention_manager.start()
@@ -124,6 +118,8 @@ class Workspace:
 
         # Make SObject tree present. After this, the workspace is ready to be used. Most of the operations will be done on the tree.
         self._load_or_create_workspace()
+
+        # ===CHECK_LICENSE=== #
 
         # Setup is done. Hand the thread over to the background runner.
         if run_runner:
@@ -188,14 +184,6 @@ class Workspace:
         self.slash.register(
             "save workspace", lambda ctx: self._save_workspace(self.path)
         )
-
-    def _communication_thread(self, event_loop_set_event: threading.Event):
-        asyncio.run(self._async_communication_thread(event_loop_set_event))
-
-    async def _async_communication_thread(self, event_loop_set_event: threading.Event):
-        main_store.event_loop = asyncio.get_event_loop()
-        event_loop_set_event.set()
-        await self._objectsync.serve()
 
     def _setup_store(self):
         """
@@ -304,9 +292,9 @@ class Workspace:
 
     def _check_grapycal_version(self, version: str):
         # check if the workspace version is compatible with the current version
-        workspace_version_tuple = tuple(map(int, version.split(".")))
-        current_version_tuple = tuple(map(int, grapycal.__version__.split(".")))
-        if current_version_tuple < workspace_version_tuple:
+        workspace_version = SemVer(version)
+        current_version = SemVer(grapycal.__version__)
+        if current_version < workspace_version:
             logger.warning(
                 f"Attempting to downgrade workspace from version {version} to {grapycal.__version__}. This may cause errors."
             )

@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "grapycal"
-version = "0.11.3"
+version = "0.13.0+dev"
 description = "A highly interactive visual programming language"
 authors = [
     "eri24816 <a931eric@gmail.com>",
@@ -12,10 +12,6 @@ authors = [
 maintainers = [
     "eri24816 <a931eric@gmail.com>",
 ]
-
-documentation = "https://wiki.grapycal.org/"
-
-include = ["src/grapycal/webpage/**/*","src/grapycal/Welcome.grapycal"] # Have to explicitly include here because Poetry by default ignores all files in the .gitignore file.
 
 [tool.poetry.dependencies]
 python = "^3.11"
@@ -29,37 +25,9 @@ certifi = "^2023.11.17"
 fastapi = "^0.110.1"
 uvicorn = "^0.29.0"
 termcolor = "^2.4.0"
-
-[tool.poetry.group.docs]
-optional = true
-
-[tool.poetry.group.docs.dependencies]
-sphinx = "~7.0"
-furo = "~2023.5"
-sphinx-autoapi = "~2.1"
-
-
-[tool.commitizen]
-name = "cz_conventional_commits"
-tag_format = "v$version"
-version_scheme = "pep440"
-version_provider = "poetry"
-update_changelog_on_bump = true
-major_version_zero = true
-version_files = [
-    "docs/source/conf.py:release",
-    "src/grapycal/__init__.py:__version__",
-    "../frontend/package.json:version",
-    "../extensions/grapycal_builtin/pyproject.toml:version",
-    "../extensions/grapycal_builtin/pyproject.toml:grapycal",
-    "../test_build.bat:pip",
-    "../test_build_pypi.bat:pip",
-]
-
-pre_bump_hooks = [
-    "pre_bump.bat",
-]
-
+psutil = "^5.9.8"
+requests = "^2.31.0"
+python-dotenv = "^1.0.1"
 
 [build-system]
 requires = ["poetry-core"]

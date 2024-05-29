@@ -2,12 +2,11 @@ import logging
 
 from grapycal.utils.IsRunningManager import IsRunningManager
 from grapycal.stores import main_store
-from grapycal.utils.misc import as_type
 
 logger = logging.getLogger(__name__)
 from grapycal.utils.logging import user_logger, warn_extension
 
-from typing import Any, Dict, List
+from typing import Dict, List
 from dacite import from_dict
 from grapycal.extension.utils import NodeInfo
 from grapycal.sobjects.edge import Edge
@@ -15,19 +14,24 @@ from grapycal.sobjects.node import Node
 from grapycal.sobjects.port import InputPort, OutputPort, Port
 from objectsync import ObjSetTopic, SObject, SObjectSerialized
 
+
 class Editor(SObject):
     frontend_type = "Editor"
 
-    '''
+    """
     Initialization
-    '''
+    """
 
     def build(self, old: SObjectSerialized | None = None):
         self.node_types = main_store.node_types
 
         # Setup IsRunningManager. It is used to keep track of the nodes that are running, so the frontend can animate them.
-        running_nodes_topic = self.add_attribute("running_nodes", ObjSetTopic, is_stateful=False)
-        self.is_running_manager = IsRunningManager(running_nodes_topic,main_store.clock)
+        running_nodes_topic = self.add_attribute(
+            "running_nodes", ObjSetTopic, is_stateful=False
+        )
+        self.is_running_manager = IsRunningManager(
+            running_nodes_topic, main_store.clock
+        )
 
         # If the editor is loaded from a save, we need to recreate the nodes and edges.
         if old is not None:
@@ -40,10 +44,16 @@ class Editor(SObject):
         self.register_service("paste", self._paste, pass_sender=True)
         self.register_service("delete", self._delete)
 
+        def e():
+            pass  # ===CHECK_LICENSE=== #
+
+        e()
+        del e
+
     def _restore_entire_editor(self, serialized: SObjectSerialized):
-        '''
+        """
         When the editor is loaded from a save, this method is called to recreate the nodes and edges.
-        '''
+        """
         nodes: list[SObjectSerialized] = []
         edges: list[SObjectSerialized] = []
         node_types = self.node_types.get()
@@ -60,14 +70,16 @@ class Editor(SObject):
                 )
         self.restore(nodes, edges)
 
-    '''
+    """
     Public methods
-    '''
+    """
 
-    def create_node_service(self,**kwargs):
-        self.create_node(**kwargs) # no return value #TODO make it elegant
+    def create_node_service(self, **kwargs):
+        self.create_node(**kwargs)  # no return value #TODO make it elegant
 
-    def create_node(self, node_type: str | type[Node], sender:int|None=None, **kwargs) -> Node | None:
+    def create_node(
+        self, node_type: str | type[Node], sender: int | None = None, **kwargs
+    ) -> Node | None:
         if isinstance(node_type, str):
             node_type_cls = self._server._object_types[node_type]
             assert issubclass(node_type_cls, Node)
@@ -110,11 +122,11 @@ class Editor(SObject):
         assert isinstance(head, InputPort)
         new_edge = self.create_edge(tail, head, new_edge_id)
         return new_edge.get_id()
-    
+
     def restore(self, nodes: list[SObjectSerialized], edges: list[SObjectSerialized]):
-        '''
+        """
         Restore the nodes and edges. This method is called by Editor.restore_entire_editor(), Editor._paste() and ExtensionManager.update_extension().
-        '''
+        """
         with self._server.record(allow_reentry=True):
             new_node_ids, new_edge_ids = self._restore(nodes, edges)
             for node in self._restored_nodes:
@@ -137,9 +149,9 @@ class Editor(SObject):
                     msg += "s"
             user_logger.info(msg)
 
-    '''
+    """
     Callbacks
-    '''
+    """
 
     def _copy(self, ids: list[str]):
         """
@@ -169,8 +181,8 @@ class Editor(SObject):
             # convert the dicts to SObjectSerialized
             nodes = [from_dict(SObjectSerialized, d) for d in data["nodes"]]
             edges = [from_dict(SObjectSerialized, d) for d in data["edges"]]
-        except Exception as e:
-            user_logger.info(f"Invalid paste content")
+        except Exception:
+            user_logger.info("Invalid paste content")
             return
 
         # translate the center of the nodes to the mouse position
@@ -237,10 +249,9 @@ class Editor(SObject):
                 edge_ids.append(id)
             else:
                 raise Exception(f"Unknown object type {obj}")
-            
+
         for id in node_ids:
             obj = self._server.get_object(id)
-            
 
         if len(node_ids) == 0 and len(edge_ids) == 0:
             return
@@ -259,13 +270,13 @@ class Editor(SObject):
                 edges.add(obj)
             else:
                 raise Exception(f"{obj} is not an edge")
-        
+
         # also include the edges connected to the nodes
         for node in nodes:
             for port in node.in_ports.get() + node.out_ports.get():
                 for edge in port.edges:
                     edges.add(edge)
-        
+
         # check for duplicate deletion
         # this happens when the previous delete message are still flying to the client
         for edge in edges:
@@ -274,14 +285,14 @@ class Editor(SObject):
         for node in nodes:
             if node.is_destroyed():
                 raise Exception(f"Node {node} is already destroyed")
-        
+
         with self._server.record():
             # actually delete the nodes and edges
             for edge in edges:
                 edge.remove()
             for node in nodes:
                 node.remove()
-        
+
         # log the deletion
         # TODO: deleting nodes may need thread locking
         msg = "Deleted "
@@ -297,17 +308,17 @@ class Editor(SObject):
                 msg += "s"
         user_logger.info(msg)
 
-    '''
+    """
     Utility methods
-    '''
+    """
 
     def _restore(
         self, node_list: list[SObjectSerialized], edge_list: list[SObjectSerialized]
     ):
-        '''
+        """
         The actual algorithm to restore the nodes and edges. This method is called by restore().
-        '''
-    
+        """
+
         # Generate new ids for the nodes and edges
         nodes: dict[str, SObjectSerialized] = {}
         edges: dict[str, SObjectSerialized] = {}
@@ -317,36 +328,36 @@ class Editor(SObject):
             else:
                 new_id = obj.id  # if possible, keep the old id
             nodes[new_id] = obj
-    
+
         for obj in edge_list:
             if obj.id in self._server._objects:
                 new_id = f"r_{main_store.next_id()}"
             else:
                 new_id = obj.id
             edges[new_id] = obj
-    
+
         # Edges and nodes may reference each other with attributes, so we need to update the references
         id_map: dict[str, str] = {}
         for new_id, old in nodes.items():
             id_map[old.id] = new_id
         for new_id, old in edges.items():
             id_map[old.id] = new_id
-    
+
         for obj in nodes.values():
             obj.update_references(id_map)
-    
+
         for obj in edges.values():
             obj.update_references(id_map)
-    
+
         # TODO: also update references of existing nodes
-    
+
         # To handle edge recovery, we need to know the mapping between old and new port ids.
         # We use the port name and the node id to identify a port.
         # The mapping can be accessed by combining the following maps:
         #   port_map_1: old id -> (port name, old node id)
         #   node_id_map: old node id -> new node id
         #   port_map_2: (port name, new node id) -> new id
-    
+
         port_map_1 = {}
         for node in nodes.values():
             old_port_ids: List[str] = node.get_attribute(
@@ -359,7 +370,7 @@ class Editor(SObject):
                     old_port_info.get_attribute("name"),
                     node.id,
                 )
-    
+
         # Recreate the nodes
         new_nodes: dict[str, tuple[SObjectSerialized, Node]] = {}
         for obj in nodes.values():
@@ -367,7 +378,7 @@ class Editor(SObject):
             # Instead we want a clean build of the node then calling restore_from_version explicitly.
             # By doing this, the node can resolve any backward compatibility issues manually.
             new_node_id = id_map[obj.id]
-    
+
             # The node may fail to create when the restore() method is called when pasting, and it should not be treated as an error.
             # For example, copy and paste a node that should be unique.
             try:
@@ -387,7 +398,7 @@ class Editor(SObject):
                     self._server.destroy_object(new_node_id)
             else:
                 new_nodes[obj.id] = (obj, node)
-    
+
         # After the nodes are created and before the edges are created, we must map the port ids so edges can find the ports on new nodes
         port_map_2 = {}
         for old_serialized, new_node in new_nodes.values():
@@ -396,21 +407,21 @@ class Editor(SObject):
                 port_map_2[
                     (port.is_input.get(), port.name.get(), new_node.get_id())
                 ] = port.get_id()
-    
+
         existing_ports = []
         for node in self.get_children_of_type(Node):
             existing_ports += [
                 port.get_id() for port in (node.in_ports.get() + node.out_ports.get())
             ]
-    
+
         existing_ports = set(existing_ports)
-    
+
         def port_id_map(old_port_id: str) -> str | None:
             """
             With port_map_1 and port_map_2, we can map old ports to new ones by matching their names
             None is returned if the port does not exist in the new editor
             """
-    
+
             try:
                 is_input, port_name, old_node_id = port_map_1[old_port_id]
             except KeyError:
@@ -419,9 +430,9 @@ class Editor(SObject):
                     return old_port_id
                 else:
                     return None
-    
+
             new_node_id = id_map[old_node_id]
-    
+
             try:
                 new_port_id = port_map_2[(is_input, port_name, new_node_id)]
             except KeyError:
@@ -429,11 +440,11 @@ class Editor(SObject):
                     return old_port_id
                 else:
                     return None
-    
+
             return new_port_id
-    
+
         # Now we can recreate the edges
-    
+
         new_edge_ids = []
         for obj in edges.values():
             new_tail_id = port_id_map(obj.get_attribute("tail"))
@@ -443,7 +454,7 @@ class Editor(SObject):
                     f"edge {obj.id} was not restored. head: {new_head_id} tail: {new_tail_id}"
                 )
                 continue  # skip edges that reference ports that don't exist in the new version of nodes
-    
+
             # check the ports accept the edge
             tail = self._server.get_object(new_tail_id)
             head = self._server.get_object(new_head_id)
@@ -453,7 +464,7 @@ class Editor(SObject):
                     f"edge {obj.id} was not restored. head: {new_head_id} tail: {new_tail_id}"
                 )
                 continue  # skip edges that reference ports that are full
-    
+
             # keep the old id if possible
             if obj.id in self._server._objects:
                 new_edge_id = f"r_{main_store.next_id()}"
@@ -463,14 +474,13 @@ class Editor(SObject):
                 new_tail_id, new_head_id, new_edge_id
             )
             new_edge_ids.append(new_edge_id)
-    
+
         # return the ids of the restored nodes and edges
         new_node_ids = []
         for _, node in new_nodes.values():
             new_node_ids.append(node.get_id())
-    
+
         # used by self.restore()
         self._restored_nodes = [node for _, node in new_nodes.values()]
-    
+
         return new_node_ids, new_edge_ids
-    

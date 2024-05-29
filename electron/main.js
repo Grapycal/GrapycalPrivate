@@ -126,11 +126,11 @@ const createWindow = (port) => {
 	syncInterpreterListWithMenu()
 	app.setAboutPanelOptions({
 		applicationName: 'Grapycal', 
-		applicationVersion: '0.11.3',
+		applicationVersion: '0.13.0+dev',
 		copyright: 'Grapycal Team',
 		iconPath: path.join(__dirname, 'frontend', 'dist', 'icon.png').replace("app.asar", "app.asar.unpacked")
 	})
-	win.loadURL(`http://localhost:${port}/frontend`)
+	win.loadURL(`http://localhost:${port}`)
 	// win.webContents.openDevTools()
 }
 

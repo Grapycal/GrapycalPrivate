@@ -1,14 +1,18 @@
+import asyncio
 import os
 import sys
 import threading
+from contextlib import asynccontextmanager
 from typing import Awaitable, Callable
 
 import uvicorn
-from args import parse_args
+from grapycal.entry.args import parse_args
 from fastapi import FastAPI, WebSocket
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from grapycal import OpenAnotherWorkspaceStrategy
+
+from grapycal.core.workspace import Workspace
 from topicsync.server.client_manager import (
     ClientCommProtocol,
     ConnectionClosedException,
@@ -47,8 +51,39 @@ class Client(ClientCommProtocol):
             raise ConnectionClosedException(e)
 
 
-def make_app(workspace, frontend_path: str | None):
-    app = FastAPI()
+class ThreadingEventWithReturn:
+    def __init__(self):
+        self._event = threading.Event()
+        self._value = None
+
+    def set(self, value):
+        self._value = value
+        self._event.set()
+
+    def wait(self):
+        self._event.wait()
+        return self._value
+
+
+def make_app(
+    workspace, frontend_path: str | None, event_loop_event: ThreadingEventWithReturn
+):
+    if os.getenv("BEHIND_PROXY"):
+        ROOT_PATH = os.getenv("ROOT_PATH", "/minilab")
+        ROOT_PATH_IN_SERVERS = os.getenv("ROOT_PATH_IN_SERVERS", False)
+        settings = {
+            "root_path": ROOT_PATH,
+            "root_path_in_servers": ROOT_PATH_IN_SERVERS,
+        }
+    else:
+        settings = {}
+
+    @asynccontextmanager
+    async def lifespan(fastapi):
+        event_loop_event.set(asyncio.get_event_loop())
+        yield
+
+    app = FastAPI(lifespan=lifespan, **settings)
 
     @app.websocket("/ws")
     async def websocket_endpoint(websocket: WebSocket):
@@ -58,28 +93,26 @@ def make_app(workspace, frontend_path: str | None):
 
     if frontend_path is not None:
 
-        @app.get("/frontend/", response_class=HTMLResponse)
+        @app.get("/", response_class=HTMLResponse)
         async def read_root():
             return open(frontend_path + "/index.html").read()
 
-        app.mount("/frontend/", StaticFiles(directory=frontend_path), name="static")
+        app.mount("/", StaticFiles(directory=frontend_path), name="static")
 
     return app
 
 
 def run_uvicorn(app, host, port):
-    uvicorn.run(app, host=host, port=port)
+    uvicorn.run(app, host=host, port=port, log_level="error")
     print("uvicorn exited")
     sys.exit(1)
 
 
 def main():
     args = parse_args()
-    print(args)
 
-    # because args.backend_path, args.frontend_path, and args.extensions_path are NOT relative to the cwd,
+    # because args.frontend_path and args.extensions_path are NOT relative to the cwd,
     # we need to make them absolute before moving to the cwd
-    args.backend_path = os.path.abspath(args.backend_path)
     if args.frontend_path is not None:
         args.frontend_path = os.path.abspath(args.frontend_path)
 
@@ -107,21 +140,21 @@ def main():
     if args.extensions_path is not None:
         sys.path.append(args.extensions_path)
 
-    # before importing workspace, we need to add the backend path to sys.path
-    sys.path.append(args.backend_path)
-    from grapycal.core.workspace import Workspace
-
     open_another = MyOpenAnotherWorkspaceStrategy()
 
     workspace = Workspace(args.file, open_another)
 
-    app = make_app(workspace, args.frontend_path)
+    event_loop_event = ThreadingEventWithReturn()
+    app = make_app(workspace, args.frontend_path, event_loop_event)
+
     threading.Thread(
         target=run_uvicorn, args=(app, args.host, args.port), daemon=True
     ).start()
 
+    ui_event_loop = event_loop_event.wait()
+
     try:
-        workspace.run()
+        workspace.run(ui_event_loop)
     except KeyboardInterrupt:
         print("Exiting")
         sys.exit(1)

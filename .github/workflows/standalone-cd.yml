@@ -1,0 +1,151 @@
+# runs python packaging/pack.py to create a desktop build
+# the build is at packaging/dist/latest/xxx.zip
+# the build is uploaded to s3 with shallwefootball/s3-upload-action@master
+
+name: Standalone CD
+# only run on tag push
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch: # allow manual trigger
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        target: [windows.x86_64, linux.x86_64, darwin.x86_64, darwin.aarch64]
+        edition: [demo, full]
+        include:
+          # cloud edition is only for linux.x86_64
+          - edition: cloud
+            target: linux.x86_64
+
+    runs-on: ubuntu-latest
+    steps:
+      # checkout with submodules
+      - name: Get token from Github App
+        uses: actions/create-github-app-token@v1
+        id: app_token
+        with:
+          app-id: ${{ secrets.CI_APP_ID }}
+          private-key: ${{ secrets.CI_APP_PEM }}
+          # owner is required, otherwise the creds will fail the checkout step
+          owner: ${{ github.repository_owner }}
+      
+      - name: Checkout from GitHub
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+          token: ${{ steps.app_token.outputs.token }}
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.11
+      - name: Install dependencies
+        run: |
+          pip install -r packaging/pack_requirements.txt
+      - name: Setup node
+        uses: actions/setup-node@v2
+        with:
+          node-version: '20'
+      - name: Install npm dependencies
+        run: |
+          cd frontend && npm install && cd ..
+          cd submodules/topicsync-client && npm install && cd ../..
+          cd submodules/objectsync-client && npm install && cd ../..
+        
+      - name: Decode pyarmor registration file
+        env: 
+          REGFILE: ${{ secrets.PYARMOR_REGFILE }}
+        run: |
+          echo $REGFILE | base64 -d > ~/.pyarmor-regfile-4553.zip
+      - name: Register pyarmor
+        run: |
+          pyarmor reg ~/.pyarmor-regfile-4553.zip && rm ~/.pyarmor-regfile-4553.zip
+      - name: Run pack.py
+        env:
+          SIGNATURE_E: ${{ secrets.SIGNATURE_E }}
+          SIGNATURE_N: ${{ secrets.SIGNATURE_N }}
+        run: python packaging/pack.py --build_name ${{ matrix.edition }} --folder_name build --platform ${{ matrix.target }} --edition ${{ matrix.edition }}
+      
+      - name: Setup AWS CLI
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-northeast-1
+      - name: Sync files to S3 bucket
+        run: |
+          aws s3 cp packaging/dist/build/*.zip s3://${{ secrets.S3_DESKTOP_ARTIFACT_BUCKET }}/releases/${{ matrix.edition }}/
+      
+      - name: Upload artifact for testing
+        uses: actions/upload-artifact@v2
+        with:
+          name: standalone-${{ matrix.target }}-${{ matrix.edition }}
+          path: packaging/dist/build/*.zip
+
+  build-docker:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download artifact
+        uses: actions/download-artifact@v2
+        with:
+          name: standalone-linux.x86_64-cloud
+          path: work
+      - name: Unzip artifact
+        run: unzip work/*.zip -d work/grapycal
+
+      - name: Docker - Login
+        uses: docker/login-action@v3
+        with:
+          registry: registry.grapycal.com
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+      
+      - name: Docker - Build / Push
+        uses: docker/build-push-action@v5
+        with:
+          context: ./work/grapycal
+          file: work/grapycal/lab.Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: registry.grapycal.com/lab:${{ github.ref_name }}
+
+  test:
+    needs: build
+    strategy:
+      matrix:
+        target: [
+          {runs-on: windows-latest, target: windows.x86_64}, 
+          {runs-on: ubuntu-latest, target: linux.x86_64}, 
+          {runs-on: macos-latest, target: darwin.x86_64}, 
+          {runs-on: macos-latest, target: darwin.aarch64}
+        ]
+        edition: [demo, full]
+    # if linux, use ubuntu-latest. If windows, use windows-latest. If mac, use macos-latest.
+    runs-on: ${{ matrix.target.runs-on }}
+    steps:
+      - name: Download artifact
+        uses: actions/download-artifact@v2
+        with:
+          name: standalone-${{ matrix.target.target }}-${{ matrix.edition }}
+          path: packaging/dist/build
+      - name: Unzip artifact
+        run: unzip packaging/dist/build/*.zip -d packaging/dist/build/grapycal
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.11
+      - name: Install and run grapycal
+        run: |
+          cd packaging/dist/build/grapycal
+          python install.py
+          python main.py &
+      - name: Wait for 20 seconds
+        run: sleep 20
+      - name: Check if Grapycal is running
+        run: ps aux | grep main.py | grep -v grep || exit 1
+

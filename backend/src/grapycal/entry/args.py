@@ -10,9 +10,6 @@ def parse_args():
         "file", type=str, help="path to workspace file, relative to --cwd", nargs="?"
     )
     parser.add_argument(
-        "--backend-path", type=str, help="path to backend code", required=True
-    )
-    parser.add_argument(
         "--frontend-path", type=str, help="path to frontend code", required=False
     )
     parser.add_argument("--extensions-path", type=str, help="path to extensions folder")

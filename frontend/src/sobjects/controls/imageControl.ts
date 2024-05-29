@@ -1,4 +1,4 @@
-import { StringTopic } from "objectsync-client"
+import { FloatTopic, StringTopic } from "objectsync-client"
 import { Control } from "./control"
 import { print } from "../../devUtils"
 import { as, getImageFromClipboard } from "../../utils"
@@ -19,13 +19,20 @@ export class ImageControl extends Control {
     }
     .control{
         background: #eee url('data:image/svg+xml,\
-           <svg xmlns="http://www.w3.org/2000/svg" width="400" height="400"         fill-opacity=".25" >\
+           <svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" fill-opacity="0.7">\
+                    <rect width="400" height="400" />\
                     <rect x="200" width="200" height="200" />\
                     <rect y="200" width="200" height="200" />\
                     </svg>');
         background-size: 20px 20px;
+        overflow: hidden; /* needed for the resize handle */
+        resize: both;
+        min-width: 100%;
     }
     `}
+
+    private width = this.getAttribute("width", FloatTopic)
+    private height = this.getAttribute("height", FloatTopic)
 
     protected onStart(): void {
         super.onStart()
@@ -47,6 +54,25 @@ export class ImageControl extends Control {
             this.unlink2(document, "paste")
         }
 
+        // eat drag events
+        this.eventDispatcher.onDrag.add(() => {})
+
+        this.link(this.eventDispatcher.onDragEnd, (e) => {
+            this.objectsync.record(() => {
+                if(base.offsetWidth != this.width.getValue())
+                    this.width.set(base.offsetWidth)
+                if(base.offsetHeight != this.height.getValue())
+                    this.height.set(base.offsetHeight)
+            })
+        })
+
+        this.link(this.width.onSet, (newValue) => {
+            base.style.width = newValue + "px"
+        })
+
+        this.link(this.height.onSet, (newValue) => {
+            base.style.height = newValue + "px"
+        })
 
     }
 
