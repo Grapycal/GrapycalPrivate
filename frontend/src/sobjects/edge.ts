@@ -297,18 +297,26 @@ export class Edge extends CompSObject {
         if(this.state == EdgeState.DraggingTail &&
             (this.tail.getValue() == null || !MouseOverDetector.objectsUnderMouse.includes(this.tail.getValue())))
             {
+                this.editor.slashCommandMenu.openMenu({
+                    attached_port:this.head.getValue().id,
+                    translation:this.editor.transform.worldToLocal(this.eventDispatcher.mousePos).add(new Vector2(-17*6,0)).toList()
+                })
                 this.objectsync.clearPretendedChanges();
             }
         else if(this.state == EdgeState.DraggingHead &&
             (this.head.getValue() == null || !MouseOverDetector.objectsUnderMouse.includes(this.head.getValue())))
             {
+                this.editor.slashCommandMenu.openMenu({
+                    attached_port:this.tail.getValue().id,
+                    translation:this.editor.transform.worldToLocal(this.eventDispatcher.mousePos).toList()
+                })
                 this.objectsync.clearPretendedChanges();
             }
         else {
             // make the change of port permanent
             let tail = this.tail.getValue()
             let head = this.head.getValue()
-            as(this.parent,Editor).createEdge(tail.id,head.id)
+            this.editor.createEdge(tail.id,head.id)
             this.objectsync.clearPretendedChanges();
         }
     }

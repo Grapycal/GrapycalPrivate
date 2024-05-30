@@ -16,7 +16,6 @@ export class ExtensionsSetting extends Componentable{
         <div class="card-gallery" ref="importedDiv"></div>
         <h2>Avaliable</h2>
         <div class="card-gallery"  ref="avaliableDiv"></div>
-        <h2>Not Installed</h2>
         <div class="card-gallery"  ref="notInstalledDiv"></div>
         <button ref="refreshButton">Refresh</button>
     </div>

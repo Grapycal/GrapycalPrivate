@@ -30,7 +30,7 @@ from grapycal.sobjects.controls.nullControl import NullControl
 from grapycal.sobjects.controls.optionControl import OptionControl
 from grapycal.sobjects.controls.textControl import TextControl
 from grapycal.sobjects.edge import Edge
-from grapycal.sobjects.port import InputPort, OutputPort
+from grapycal.sobjects.port import InputPort, OutputPort, Port
 from grapycal.stores import main_store
 from grapycal.utils.io import OutputStream
 from grapycal.utils.logging import user_logger, warn_extension
@@ -461,6 +461,20 @@ class Node(SObject, metaclass=NodeMeta):
         new_node.add_tag(
             f"drag_created_by{client_id}"
         )  # So the client can find the node it spawned and make it follow the mouse
+
+    def attach_to_port(self, other_port: Port):
+        if isinstance(other_port, InputPort):
+            if len(self.out_ports) == 0:
+                return
+            self_port = self.out_ports[0]
+            assert self_port is not None
+            self.editor.create_edge(self_port, other_port)
+        elif isinstance(other_port, OutputPort):
+            if len(self.in_ports) == 0:
+                return
+            self_port = self.in_ports[0]
+            assert self_port is not None
+            self.editor.create_edge(other_port, self_port)
 
     def destroy(self) -> SObjectSerialized:
         """

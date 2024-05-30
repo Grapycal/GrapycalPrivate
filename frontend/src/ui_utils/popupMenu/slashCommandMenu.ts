@@ -9,6 +9,7 @@ import { Vector2 } from "../../utils"
 export class SlashCommandMenu extends AutoCompMenu{
     // basically the same as AddNodeMenu, but with a different topic
     private slashCommandsTopic:DictTopic<string,any>
+    private args: any = {}
     get style(){
         return super.style+`
             .base{
@@ -50,8 +51,18 @@ export class SlashCommandMenu extends AutoCompMenu{
              (e.key == '/' || e.key.match(/[a-zA-Z0-9_]/))
              &&!e.ctrlKey && !e.altKey && !e.metaKey
         ){
-            this.openAt(GlobalEventDispatcher.instance.mousePos.x,GlobalEventDispatcher.instance.mousePos.y)
-            this.value = ''
+            this.openMenu()
+        }
+    }
+
+    public openMenu(args?:any){
+        if (this.opened){
+            return
+        }
+        this.openAt(GlobalEventDispatcher.instance.mousePos.x,GlobalEventDispatcher.instance.mousePos.y)
+        this.value = ''
+        if (args){
+            this.args = args
         }
     }
 
@@ -67,11 +78,18 @@ export class SlashCommandMenu extends AutoCompMenu{
                         mouse_pos:this.editor.getMousePos().toList(),
                         client_id:this.editor.objectsync.clientId
                     }
-                    Workspace.instance.callSlashCommand(commandName,ctx)
+                    Workspace.instance.selection.clearSelection() // a workaround to avoid old selection persisting when creating new ones
+                    Workspace.instance.callSlashCommand(commandName,ctx,this.args)
+                    this.args = {}
                 },
                 displayName:command.display_name
             })
         })
         this.setOptions(options)
+    }
+
+    close(): void {
+        super.close()
+        this.args = {}
     }
 }

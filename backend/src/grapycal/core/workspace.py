@@ -108,6 +108,7 @@ class Workspace:
         self._setup_slash_commands()
 
         main_store.event_loop = ui_thread_event_loop
+        ui_thread_event_loop.create_task(self.auto_save())
         ui_thread_event_loop.create_task(self._objectsync.serve())
 
         # The extension manager starts searching for all extensions available.
@@ -171,7 +172,8 @@ class Workspace:
         self._objectsync.register_service("exit", self._exit)
         self._objectsync.register_service("interrupt", self._interrupt)
         self._objectsync.register_service(
-            "slash_command", lambda name, ctx: self.slash.call(name, CommandCtx(**ctx))
+            "slash_command",
+            lambda name, ctx, args: self.slash.call(name, CommandCtx(**ctx), args),
         )
         self._objectsync.register_service(
             "ctrl+s", lambda: self._save_workspace(self.path)
@@ -237,7 +239,7 @@ class Workspace:
         except ModuleNotFoundError:
             pass
 
-    def _save_workspace(self, path: str) -> None:
+    def _save_workspace(self, path: str, send_message=True) -> None:
         workspace_serialized = self._workspace_object.serialize()
 
         metadata = {
@@ -257,9 +259,10 @@ class Workspace:
         logger.info(
             f"Workspace saved to {path}. Node count: {node_count}. Edge count: {edge_count}. File size: {file_size // 1024} KB."
         )
-        self._send_message_to_all(
-            f"Workspace saved to {path}. Node count: {node_count}. Edge count: {edge_count}. File size: {file_size // 1024} KB."
-        )
+        if send_message:
+            self._send_message_to_all(
+                f"Workspace saved to {path}. Node count: {node_count}. Edge count: {edge_count}. File size: {file_size // 1024} KB."
+            )
 
     def _load_workspace(self, path: str) -> None:
         version, metadata, data = read_workspace(path)
@@ -390,5 +393,10 @@ class Workspace:
     def _client_disconnected(self, client_id):
         try:
             self._objectsync.remove_topic(f"status_message_{client_id}")
-        except:
+        except KeyError:
             pass  # topic may have not been created successfully.
+
+    async def auto_save(self):
+        while True:
+            await asyncio.sleep(60)
+            self._save_workspace(self.path, send_message=False)

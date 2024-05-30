@@ -49,12 +49,13 @@ export class Editor extends CompSObject{
     editor: HTMLDivElement
     viewport: HTMLDivElement
     boxSelection: HTMLDivElement
+    slashCommandMenu: SlashCommandMenu
 
     running_nodes: ObjSetTopic = this.getAttribute('running_nodes',ObjSetTopic);
     runningChanged = new ActionDict<SObject,[boolean]>();
 
     protected onStart(): void {
-        new SlashCommandMenu(this)
+        this.slashCommandMenu = new SlashCommandMenu(this)
         this.htmlItem.setParentElement(document.body.getElementsByClassName('main')[0] as HTMLElement)
         
         this.transform.targetElement = this.editor
