@@ -382,6 +382,8 @@ class BarPlotNode(Node):
         self.run(self.render, data=port.get())
 
     def render(self, data):
+        if isinstance(data, tuple):
+            data = list(data)
         data = to_numpy(data)
         while data.ndim > 1 and data.shape[0] == 1:
             data = data[0]
