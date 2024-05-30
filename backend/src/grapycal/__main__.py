@@ -11,6 +11,7 @@ from pathlib import Path
 import shutil
 import sys
 import termcolor
+import subprocess
 
 CWD = os.getcwd()
 HERE = pathlib.Path(__file__).parent
@@ -24,38 +25,35 @@ def input_colored(prompt):
 
 def update_if_needed():
     import requests
+    RESOURCE_SERVER = 'https://resource.grapycal.com'
 
     # login first
     session = requests.Session()
     session.post(
-        "https://resource.grapycal.com/token",
+        f"{RESOURCE_SERVER}/token",
         data={"password": "demo:@J%^INTERACTIVITYcounts2hqw45"},
     )
 
+    def version_url_to_version(url):
+        return url.split('/')[-1]
+
     def check_update():
-        from importlib.metadata import version
-        latest_url = 'https://resource.grapycal.com/latest/releases/demo'
-        latest_version = session.get(latest_url)
-        current_version = version('grapycal')
-        if current_version in latest_version:
+        latest_url = f'{RESOURCE_SERVER}/latest/releases/demo'
+        latest_version_url = session.get(latest_url).text.strip('" ')
+        latest_version = version_url_to_version(latest_version_url)
+
+        current_version = ''
+        platform = ''
+        with open(GRAPYCAL_ROOT / 'build_info.json') as build_info_file:
+            build_info = json.load(build_info_file)
+            current_version = build_info['version']
+            platform = build_info['platform']
+
+        # there will be a grapycal prefix in latest version
+        if f'grapycal-{current_version}' == latest_version:
             return None
 
-        # select os
-
-        import platform
-        os_name = ''
-        platform_name = platform.system()
-        if platform_name == 'Windows':
-            os_name = 'windows.x86_64'
-        elif platform_name == 'Linux':
-            os_name = 'linux.x86_64'
-        else:  # assume darwin
-            if 'arm' in platform.machine():  # aarch
-                os_name = 'darwin.aarch64'
-            else:
-                os_name = 'darwin.x86_64'
-
-        return f"{latest_version}-{os_name}"
+        return f"{latest_version_url}-{platform}"
 
     def ask_update():
         while True:
@@ -77,21 +75,20 @@ def update_if_needed():
         )
 
     def install(extract_path: Path):
-        # chdir here is safe, because at the end of install the new grapycal will be started
-        chdir(extract_path)
-        installer_path = os.getcwd() /'backend'/'src'/'grapycal'/'standalone_utils'/'install.py'
-        exec(open(installer_path).read())
+        subprocess.call([sys.executable, 'install.py'], cwd=extract_path)
 
         # replace new grapycal with the current one
         # notice that after the installer, PATH of grapycal is changed
-        os.execlp('grapycal')
+        os.execlp('grapycal', 'grapycal')
 
-    if new_grapycal_name := check_update():
-        update_url = f'https://resource.grapycal.com/releases/demo/{new_grapycal_name}.zip'
+    if download_url := check_update():
         need_update = ask_update()
 
         if need_update:
+            update_url = f'{RESOURCE_SERVER}/{download_url}.zip'
             pack_zip = download(update_url)
+
+            new_grapycal_name = version_url_to_version(download_url)
             grapycal_parent = GRAPYCAL_ROOT.parent
             extract_path = grapycal_parent / new_grapycal_name
             pack_zip.extractall(extract_path)
