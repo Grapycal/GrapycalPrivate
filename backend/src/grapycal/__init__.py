@@ -1,4 +1,4 @@
-__version__ = "0.14.0+dev"
+__version__ = "0.14.0"
 from objectsync import (
     DictTopic,
     EventTopic,
