@@ -8,10 +8,8 @@ import psutil
 import zipfile
 from io import BytesIO
 from pathlib import Path
-import shutil
 import sys
 import termcolor
-import subprocess
 
 CWD = os.getcwd()
 HERE = pathlib.Path(__file__).parent
@@ -25,33 +23,47 @@ def input_colored(prompt):
 
 def update_if_needed():
     import requests
-    RESOURCE_SERVER = 'https://resource.grapycal.com'
+
+    RESOURCE_SERVER = "https://resource.grapycal.com"
 
     # login first
-    session = requests.Session()
-    session.post(
-        f"{RESOURCE_SERVER}/token",
-        data={"password": "demo:@J%^INTERACTIVITYcounts2hqw45"},
-    )
+    try:
+        session = requests.Session()
+        session.post(
+            f"{RESOURCE_SERVER}/token",
+            data={"password": "demo:@J%^INTERACTIVITYcounts2hqw45"},
+        )
+    except Exception:
+        print("Failed to check for updates. No internet connection.")
+        return
+
+    def build_info():
+        current_version = ""
+        platform = ""
+        with open(GRAPYCAL_ROOT / "build_info.json") as build_info_file:
+            build_info = json.load(build_info_file)
+            current_version = build_info["version"]
+            platform = build_info["platform"]
+
+        return current_version, platform
 
     def version_url_to_version(url):
-        return url.split('/')[-1]
+        return url.split("/")[-1]
 
     def check_update():
-        latest_url = f'{RESOURCE_SERVER}/latest/releases/demo'
+        latest_url = f"{RESOURCE_SERVER}/latest/releases/demo"
         latest_version_url = session.get(latest_url).text.strip('" ')
         latest_version = version_url_to_version(latest_version_url)
 
-        current_version = ''
-        platform = ''
-        with open(GRAPYCAL_ROOT / 'build_info.json') as build_info_file:
-            build_info = json.load(build_info_file)
-            current_version = build_info['version']
-            platform = build_info['platform']
+        current_version, platform = build_info()
 
         # there will be a grapycal prefix in latest version
-        if f'grapycal-{current_version}' == latest_version:
+        if f"grapycal-{current_version}" == latest_version:
             return None
+
+        print(
+            f"Current version: grapycal-{current_version}, latest version: {latest_version}"
+        )
 
         return f"{latest_version_url}-{platform}"
 
@@ -75,24 +87,46 @@ def update_if_needed():
         )
 
     def install(extract_path: Path):
-        subprocess.call([sys.executable, 'install.py'], cwd=extract_path)
-
-        # replace new grapycal with the current one
         # notice that after the installer, PATH of grapycal is changed
-        os.execlp('grapycal', 'grapycal')
+        _, platform = build_info()
+        if "windows" in platform:
+            # in windows,
+            os.execl(
+                sys.executable,
+                sys.executable,
+                extract_path / "install.py",
+                "--message",
+                f'"Grapycal updated to {version_url_to_version(extract_path.name)}. Please start Grapycal with `grapycal run` command"',
+            )
+        else:
+            os.execl(
+                sys.executable, sys.executable, extract_path / "install.py", "--launch"
+            )
 
     if download_url := check_update():
         need_update = ask_update()
 
         if need_update:
-            update_url = f'{RESOURCE_SERVER}/{download_url}.zip'
+            print(f"Downloading {download_url}...")
+            update_url = f"{RESOURCE_SERVER}/{download_url}.zip"
             pack_zip = download(update_url)
 
             new_grapycal_name = version_url_to_version(download_url)
             grapycal_parent = GRAPYCAL_ROOT.parent
             extract_path = grapycal_parent / new_grapycal_name
+            print(f"Extracting to {extract_path}...")
             pack_zip.extractall(extract_path)
+
+            # copy the license file
+            if (GRAPYCAL_ROOT / "license.json").exists():
+                Path(extract_path / "license.json").write_text(
+                    (GRAPYCAL_ROOT / "license.json").read_text()
+                )
+            print("Installing...")
             install(extract_path)
+            install(
+                extract_path,
+            )
 
 
 def license_file_exists():
@@ -146,13 +180,9 @@ def acquire_license():
 
 
 def print_welcome():
-    # not using grapycal.__version__ because it's slow
-    # instead read from __init__.py, find the line __version__ = "..."
-    with open(HERE / "__init__.py") as f:
-        for line in f:
-            if line.startswith("__version__"):
-                version = line.split('"')[1].split('"')[0]
-                break
+    with open(GRAPYCAL_ROOT / "build_info.json") as build_info_file:
+        build_info = json.load(build_info_file)
+        version = build_info["version"]
     print(
         termcolor.colored(
             r"""
@@ -180,7 +210,7 @@ def run():
     print("Checking for updates...")
 
     # if updated, this function will not return back
-    update_if_needed()  
+    update_if_needed()
 
     if not license_file_exists():
         print("License not found. Acquiring license...")

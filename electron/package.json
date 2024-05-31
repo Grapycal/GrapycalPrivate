@@ -1,6 +1,6 @@
 {
   "name": "Grapycal",
-  "version": "0.13.0+dev",
+  "version": "0.15.0+dev",
   "main": "main.js",
   "description": "A visual programming language based on Python",
   "author": {

@@ -94,7 +94,7 @@ class Editor(SObject):
                 f"Node type {node_type} is a singleton and already exists"
             )
             return None
-        with self._server.record():
+        with self._server.record(allow_reentry=True):
             new_node = self.add_child(node_type_cls, is_preview=False, **kwargs)
             assert isinstance(new_node, Node)
             new_node.post_create()
