@@ -10,7 +10,6 @@ from io import BytesIO
 from pathlib import Path
 import sys
 import termcolor
-import subprocess
 
 CWD = os.getcwd()
 HERE = pathlib.Path(__file__).parent
@@ -79,11 +78,11 @@ def update_if_needed():
         )
 
     def install(extract_path: Path):
-        subprocess.call([sys.executable, "install.py"], cwd=extract_path)
-
         # replace new grapycal with the current one
         # notice that after the installer, PATH of grapycal is changed
-        os.execlp("grapycal", "grapycal")
+        os.execl(
+            sys.executable, sys.executable, extract_path / "install.py", "--launch"
+        )
 
     if download_url := check_update():
         need_update = ask_update()
@@ -99,6 +98,11 @@ def update_if_needed():
             print(f"Extracting to {extract_path}...")
             pack_zip.extractall(extract_path)
 
+            # copy the license file
+            if (GRAPYCAL_ROOT / "license.json").exists():
+                Path(extract_path / "license.json").write_text(
+                    (GRAPYCAL_ROOT / "license.json").read_text()
+                )
             print("Installing...")
             install(extract_path)
 

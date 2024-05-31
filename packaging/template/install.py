@@ -11,6 +11,13 @@ parser.add_argument(
     help="Extensions to install",
     default=["grapycal_builtin"],
 )
+parser.add_argument(
+    "--launch",
+    action="store_true",
+    help="Launch grapycal after installation",
+)
+
+orignal_cwd = os.getcwd()
 
 here = os.path.dirname(os.path.abspath(__file__))
 os.chdir(here)
@@ -55,14 +62,21 @@ def pip_install_from_path(path):
         sys.exit(1)
 
 
+args = parser.parse_args()
+
 print("Installing packages...")
 pip_install_from_path("topicsync")
 pip_install_from_path("objectsync")
 pip_install_from_path("backend")
-for ext in parser.parse_args().exts:
+for ext in args.exts:
     assert ext.startswith(
         "grapycal_"
     ), f"Extension name must start with grapycal_, got {ext}"
     pip_install_from_path(ext)
 
-print("Installation complete. Run `python main.py` to start the server.")
+os.chdir(orignal_cwd)
+
+if parser.parse_args().launch:
+    os.execlp("grapycal", "grapycal", "run")
+else:
+    print("Installation complete. Run `grapycal run` to start the server.")
