@@ -239,7 +239,7 @@ def dev():
     os.system(f"python {GRAPYCAL_ROOT/'scripts/build_frontend.py'}")
     try:
         os.system(
-            f'python {HERE/"entry/launcher.py"} --frontend-path {GRAPYCAL_ROOT/"frontend/dist"} --port 7943 --cwd {CWD}'
+            f'python {HERE/"entry/launcher.py"} --extensions-path {GRAPYCAL_ROOT/"extensions"} --frontend-path {GRAPYCAL_ROOT/"frontend/dist"} --port 7943 --cwd {CWD}'
         )
     except KeyboardInterrupt:
         pass
