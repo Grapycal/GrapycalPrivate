@@ -34,6 +34,16 @@ def update_if_needed():
         data={"password": "demo:@J%^INTERACTIVITYcounts2hqw45"},
     )
 
+    def build_info():
+        current_version = ''
+        platform = ''
+        with open(GRAPYCAL_ROOT / 'build_info.json') as build_info_file:
+            build_info = json.load(build_info_file)
+            current_version = build_info['version']
+            platform = build_info['platform']
+        
+        return current_version, platform
+
     def version_url_to_version(url):
         return url.split('/')[-1]
 
@@ -42,12 +52,7 @@ def update_if_needed():
         latest_version_url = session.get(latest_url).text.strip('" ')
         latest_version = version_url_to_version(latest_version_url)
 
-        current_version = ''
-        platform = ''
-        with open(GRAPYCAL_ROOT / 'build_info.json') as build_info_file:
-            build_info = json.load(build_info_file)
-            current_version = build_info['version']
-            platform = build_info['platform']
+        current_version, platform = build_info()
 
         # there will be a grapycal prefix in latest version
         if f'grapycal-{current_version}' == latest_version:
@@ -79,7 +84,11 @@ def update_if_needed():
 
         # replace new grapycal with the current one
         # notice that after the installer, PATH of grapycal is changed
-        os.execlp('grapycal', 'grapycal')
+        _, platform = build_info()
+        if 'windows' in platform:
+            exit(subprocess.call(['grapycal']))
+        else:
+            os.execlp('grapycal', 'grapycal')
 
     if download_url := check_update():
         need_update = ask_update()
@@ -92,7 +101,7 @@ def update_if_needed():
             grapycal_parent = GRAPYCAL_ROOT.parent
             extract_path = grapycal_parent / new_grapycal_name
             pack_zip.extractall(extract_path)
-            install(extract_path)
+            install(extract_path, )
 
 
 def license_file_exists():
