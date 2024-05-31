@@ -27,11 +27,15 @@ def update_if_needed():
     RESOURCE_SERVER = "https://resource.grapycal.com"
 
     # login first
-    session = requests.Session()
-    session.post(
-        f"{RESOURCE_SERVER}/token",
-        data={"password": "demo:@J%^INTERACTIVITYcounts2hqw45"},
-    )
+    try:
+        session = requests.Session()
+        session.post(
+            f"{RESOURCE_SERVER}/token",
+            data={"password": "demo:@J%^INTERACTIVITYcounts2hqw45"},
+        )
+    except Exception:
+        print("Failed to check for updates. No internet connection.")
+        return
 
     def build_info():
         current_version = ""
@@ -83,13 +87,21 @@ def update_if_needed():
         )
 
     def install(extract_path: Path):
-        # replace new grapycal with the current one
         # notice that after the installer, PATH of grapycal is changed
         _, platform = build_info()
         if "windows" in platform:
-            exit(subprocess.call(["grapycal"]))
+            # in windows,
+            os.execl(
+                sys.executable,
+                sys.executable,
+                extract_path / "install.py",
+                "--message",
+                f'"Grapycal updated to {version_url_to_version(extract_path.name)}. Please start Grapycal with `grapycal run` command"',
+            )
         else:
-            os.execlp("grapycal", "grapycal")
+            os.execl(
+                sys.executable, sys.executable, extract_path / "install.py", "--launch"
+            )
 
     if download_url := check_update():
         need_update = ask_update()

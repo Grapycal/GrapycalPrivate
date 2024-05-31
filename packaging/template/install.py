@@ -16,6 +16,11 @@ parser.add_argument(
     action="store_true",
     help="Launch grapycal after installation",
 )
+parser.add_argument(
+    "--message",
+    "-m",
+    help="Message to show after installation",
+)
 
 orignal_cwd = os.getcwd()
 
@@ -76,7 +81,8 @@ for ext in args.exts:
 
 os.chdir(orignal_cwd)
 
+if parser.parse_args().message:
+    print(parser.parse_args().message)
+
 if parser.parse_args().launch:
     os.execlp("grapycal", "grapycal", "run")
-else:
-    print("Installation complete. Run `grapycal run` to start the server.")
