@@ -22,13 +22,13 @@ class Trait:
         self.node = node
 
         # only add the event listeners if the method is overridden, so performance is affected minimally
-        if is_overridden(self.build_node):
+        if is_overridden(self.build_node, Trait):
             self.node.on_build_node += self.build_node
-        if is_overridden(self.init_node):
+        if is_overridden(self.init_node, Trait):
             self.node.on_init_node += self.init_node
-        if is_overridden(self.port_activated):
+        if is_overridden(self.port_activated, Trait):
             self.node.on_port_activated += self.port_activated
-        if is_overridden(self.double_click):
+        if is_overridden(self.double_click, Trait):
             self.node.on_double_click += self.double_click
 
     def get_info(self):
@@ -79,12 +79,83 @@ def get_next_number_string(strings):
     return str(max(numbers) + 1)
 
 
-class InputsTrait(Trait):
+class SourceTrait(Trait):
+    def set_chain(self, chain: "Chain"):
+        self.chain = chain
+
+    def output_to_chain(self, out):
+        self.chain.input(out)
+
+    def output_to_chain_void(self):
+        self.chain.input_void()
+
+
+class SinkTrait(Trait):
+    def input_from_chain(self, inp):
+        raise NotImplementedError
+
+
+class Chain:
+    def __init__(self, *items: "Trait|Callable") -> None:
+        self.items = items
+        self.first: SourceTrait = self.items[0]  # type: ignore
+        assert isinstance(
+            self.first, SourceTrait
+        ), f"First item must be a source trait, got {self.first}"
+        self.last: SinkTrait = self.items[-1]  # type: ignore
+        assert isinstance(
+            self.last, SinkTrait
+        ), f"Last item must be a sink trait, got {self.last}"
+        self.transforms: list[Callable] = []
+        for i, transform in enumerate(self.items[1:-1]):
+            assert isinstance(
+                transform, Callable
+            ), f"Item {i+1} must be a callable, got {transform}"
+            self.transforms.append(transform)
+
+        self.first.set_chain(self)
+
+    def input(self, x):
+        for transform in self.transforms:
+            x = transform(x)
+        self.last.input_from_chain(x)
+
+    def input_void(self):
+        if len(self.transforms) == 0:
+            self.last.input_from_chain(None)
+        else:
+            x = self.transforms[0]()
+            for transform in self.transforms[1:]:
+                x = transform(x)
+            self.last.input_from_chain(x)
+
+    def get_traits(self) -> list[Trait]:
+        return [self.first, self.last]
+
+
+class TriggerTrait(SourceTrait):
+    def __init__(self, port_name="trigger", name: str = "_trigger") -> None:
+        super().__init__(name)
+        self.port_name = port_name
+
+    def build_node(self):
+        self.node.add_in_port(self.port_name)
+
+    def port_activated(self, port: str):
+        self.node.flash_running_indicator()
+        self.output_to_chain_void()
+
+    def double_click(self):
+        self.node.flash_running_indicator()
+        self.output_to_chain_void()
+
+
+class InputsTrait(SourceTrait):
     def __init__(
         self,
-        name,
-        attr_name="inputs",
         ins=[],
+        name="_inputs",
+        attr_name="_inputs",
         expose_attr: bool = False,
         enable_add_button: bool = False,
         on_all_ready: Callable | None = None,
@@ -140,6 +211,7 @@ class InputsTrait(Trait):
             inputs = {p.name.get(): p.get() for p in self.node.in_ports}
             self.on_all_ready.invoke(**inputs)
             self.node.flash_running_indicator()
+            self.output_to_chain(inputs)
 
     def __getitem__(self, idx: int):
         return self.port_names[idx]
@@ -148,9 +220,13 @@ class InputsTrait(Trait):
         return len(self.port_names)
 
 
-class OutputsTrait(Trait):
+class OutputsTrait(SinkTrait):
     def __init__(
-        self, name: str, attr_name="outputs", outs=[], expose_attr: bool = False
+        self,
+        outs=["output"],
+        name: str = "_outputs",
+        attr_name="_outputs",
+        expose_attr: bool = False,
     ) -> None:
         super().__init__(name)
         self.attr_name = attr_name
@@ -189,3 +265,10 @@ class OutputsTrait(Trait):
 
     def push(self, name, value):
         self.node.get_out_port(name).push(value)
+
+    def input_from_chain(self, inp):
+        if len(self.port_names) == 1:
+            self.push(self.port_names[0], inp)
+        else:
+            for name, value in inp.items():
+                self.push(name, value)

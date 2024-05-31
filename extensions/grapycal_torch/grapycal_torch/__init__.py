@@ -23,7 +23,7 @@ from grapycal_torch.basic import CustomModuleNode, FlattenNode, LinearNode
 from grapycal_torch.cnn import Conv2dNode, ConvTranspose2dNode
 from grapycal_torch.conversion import ConvertToNode
 from grapycal_torch.dataloader import DataLoaderNode
-from grapycal_torch.dataset import MnistDatasetNode
+from grapycal_torch.dataset import MnistDatasetNode, ImageDatasetNode
 from grapycal_torch.generated import generated_nodes
 from grapycal_torch.generative import (
     Arange2Node,
@@ -84,6 +84,7 @@ class GrapycalTorch(Extension):
         ReLUNode,
         NetworkInNode,
         MnistDatasetNode,
+        ImageDatasetNode,
         DropoutNode,
         NetworkOutNode,
         DataLoaderNode,
@@ -679,36 +680,6 @@ class ImageDataset(torch.utils.data.Dataset):  # type: ignore
         if self.transform:
             img = self.transform(img)
         return img
-
-
-class ImageDatasetNode(SourceNode):
-    """
-    Loads images from a directory
-    """
-
-    category = "torch/dataset"
-
-    def build_node(self):
-        super().build_node()
-        self.label.set("Image Dataset")
-        self.out = self.add_out_port("Image Dataset")
-        self.dir = self.add_text_control("", "folder", name="folder")
-        self.max_size = self.add_text_control("", "max_size", name="max_size")
-        self.format = self.add_text_control("", "format", name="image_format")
-
-    def init_node(self):
-        super().init_node()
-        self.ds = None
-
-    def restore_from_version(self, version: str, old: NodeInfo):
-        super().restore_from_version(version, old)
-        self.restore_controls("folder", "max_size")
-
-    def task(self):
-        if self.ds is None or self.ds.directory != self.dir.get():
-            self.ds = ImageDataset(self.dir.get(), max_size=int(self.max_size.get()))
-
-        self.out.push(self.ds)
 
 
 class CatDogDataset(torch.utils.data.Dataset):

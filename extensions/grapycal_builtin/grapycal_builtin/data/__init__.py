@@ -194,13 +194,12 @@ class BuildStringNode(Node):
 
     def define_traits(self):
         self.ins = InputsTrait(
-            "ins",
             ins=[""],
             expose_attr=True,
             on_all_ready=self.task,
             enable_add_button=True,
         )
-        self.outs = OutputsTrait("outs", outs=["result"])
+        self.outs = OutputsTrait(outs=["result"])
         return [self.ins, self.outs]
 
     def task(self, **kwargs):
@@ -212,8 +211,8 @@ class BuildDictNode(Node):
     category = "data"
 
     def define_traits(self):
-        self.ins = InputsTrait("ins", expose_attr=True, on_all_ready=self.task)
-        self.outs = OutputsTrait("outs", outs=["result"])
+        self.ins = InputsTrait(expose_attr=True, on_all_ready=self.task)
+        self.outs = OutputsTrait(outs=["result"])
         return [self.ins, self.outs]
 
     def task(self, **kwargs):

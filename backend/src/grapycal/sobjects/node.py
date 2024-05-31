@@ -3,7 +3,7 @@ from pprint import pprint
 
 from grapycal.core.background_runner import RunnerInterrupt
 from grapycal.core.client_msg_types import ClientMsgTypes
-from grapycal.extension_api.trait import Trait
+from grapycal.extension_api.trait import Chain, Trait
 from grapycal.sobjects.controls.keyboardControl import KeyboardControl
 from grapycal.sobjects.controls.sliderControl import SliderControl
 from grapycal.sobjects.controls.toggleControl import ToggleControl
@@ -200,15 +200,31 @@ class Node(SObject, metaclass=NodeMeta):
         self.on_port_activated = Action()
         self.on_double_click = Action()
 
-        trait_list = self.define_traits()
+        define_traits_output = self.define_traits()
+        trait_list: list[Trait] = []
+        if isinstance(define_traits_output, list):
+            for item in define_traits_output:
+                if isinstance(item, Trait):
+                    trait_list.append(item)
+                elif isinstance(item, Chain):
+                    trait_list.extend(item.get_traits())
+                else:
+                    raise ValueError("Invalid trait")
+        elif isinstance(define_traits_output, Trait):
+            trait_list.append(define_traits_output)
+        elif isinstance(define_traits_output, Chain):
+            trait_list.extend(define_traits_output.get_traits())
+        else:
+            raise ValueError("Invalid trait")
+
         self.traits: dict[str, Trait] = {}
-        for trait in trait_list:
-            assert trait.name not in self.traits
-            self.traits[trait.name] = trait
-            trait.set_node(self)
+        for item in trait_list:
+            assert item.name not in self.traits
+            self.traits[item.name] = item
+            item.set_node(self)
         super().initialize(serialized, *args, **kwargs)
 
-    def define_traits(self) -> list[Trait]:
+    def define_traits(self) -> list[Trait | Chain] | Trait | Chain:
         return []
 
     def build(
