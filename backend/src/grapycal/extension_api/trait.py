@@ -81,8 +81,12 @@ def get_next_number_string(strings):
 
 
 class SourceTrait(Trait):
+    def __init__(self, name: str) -> None:
+        super().__init__(name)
+        self.chain: None | Chain = None
+
     def set_chain(self, chain: "Chain"):
-        self.chain: None | Chain = chain
+        self.chain = chain
 
     def output_to_chain(self, out):
         if self.chain is not None:
