@@ -3,6 +3,7 @@ import torchvision
 from grapycal import SourceNode, Node
 from grapycal.stores import main_store
 from torchvision import transforms
+from grapycal import get_resource, background_task
 
 
 class MnistDatasetNode(SourceNode):
@@ -51,6 +52,18 @@ class MnistDatasetNode(SourceNode):
 
 
 class ImageDatasetNode(Node):
+    """
+    Images from the Linnaeus 5 dataset
+    """
+
+    img_classes = {
+        "berry": "dataset/Linnaeus5/train/berry.zip",
+        "bird": "dataset/Linnaeus5/train/bird.zip",
+        "dog": "dataset/Linnaeus5/train/dog.zip",
+        "flower": "dataset/Linnaeus5/train/flower.zip",
+        "other": "dataset/Linnaeus5/train/other.zip",
+    }
+
     def define_traits(self):
         return Chain(
             TriggerTrait(),
@@ -58,5 +71,17 @@ class ImageDatasetNode(Node):
             OutputsTrait(),
         )
 
+    def build_node(self):
+        self.class_control = self.add_option_control(
+            name="class",
+            options=list(self.img_classes.keys()),
+            value="dog",
+            label="Class",
+        )
+
+    @background_task
     def get_dataset(self):
-        return "dataset"
+        class_name = self.class_control.get()
+        path = self.img_classes[class_name]
+        path = get_resource(path)
+        return path

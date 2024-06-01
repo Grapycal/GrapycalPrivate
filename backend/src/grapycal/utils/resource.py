@@ -7,7 +7,7 @@ import requests
 RESOURCE_SERVER = "https://resource.grapycal.com/"
 
 
-def get_remote_resource(path: str):
+def get_resource(path: str):
     if not hasattr(main_store, "settings"):
         raise Exception("only call get_remote_resource after the workspace is set up")
     local_cache_path = (
@@ -20,6 +20,5 @@ def get_remote_resource(path: str):
 
         with open(local_cache_path, "wb") as f:
             f.write(requests.get(remote_url).content)
-        return
 
     return local_cache_path
