@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Callable
 from grapycal.sobjects.controls.textControl import TextControl
 from grapycal.utils.misc import Action
 from objectsync import Topic, SObject, ListTopic
+from grapycal.sobjects.port import InputPort
 
 if TYPE_CHECKING:
     from grapycal.sobjects.node import Node
