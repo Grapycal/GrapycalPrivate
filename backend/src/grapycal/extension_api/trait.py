@@ -1,7 +1,6 @@
 from typing import TYPE_CHECKING, Callable
 
 from grapycal.sobjects.controls.textControl import TextControl
-from grapycal.sobjects.port import InputPort
 from grapycal.utils.misc import Action
 from objectsync import Topic, SObject, ListTopic
 
@@ -81,20 +80,14 @@ def get_next_number_string(strings):
 
 
 class SourceTrait(Trait):
-    def __init__(self, name: str) -> None:
-        super().__init__(name)
-        self.chain: None | Chain = None
-
     def set_chain(self, chain: "Chain"):
         self.chain = chain
 
     def output_to_chain(self, out):
-        if self.chain is not None:
-            self.chain.input(out)
+        self.chain.input(out)
 
     def output_to_chain_void(self):
-        if self.chain is not None:
-            self.chain.input_void()
+        self.chain.input_void()
 
 
 class SinkTrait(Trait):
@@ -148,8 +141,7 @@ class TriggerTrait(SourceTrait):
     def build_node(self):
         self.node.add_in_port(self.port_name)
 
-    def port_activated(self, port: InputPort):
-        port.get()
+    def port_activated(self, port: str):
         self.node.flash_running_indicator()
         self.output_to_chain_void()
 
@@ -206,7 +198,7 @@ class InputsTrait(SourceTrait):
         self.node.add_in_port(
             name,
             1,
-            display_name="",
+            display_name="" if self.enable_add_button else name,
             control_type=TextControl,
             activation_mode=TextControl.ActivationMode.NO_ACTIVATION,
         )
