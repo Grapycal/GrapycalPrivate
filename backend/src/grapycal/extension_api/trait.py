@@ -1,3 +1,5 @@
+import enum
+import functools
 from typing import TYPE_CHECKING, Callable
 
 from grapycal.sobjects.controls.textControl import TextControl
@@ -95,6 +97,12 @@ class SinkTrait(Trait):
         raise NotImplementedError
 
 
+class ChainTaskMode(enum.Enum):
+    ORIGINAL = enum.auto()
+    TASK = enum.auto()
+    BACKGROUND = enum.auto()
+
+
 class Chain:
     def __init__(self, *items: "Trait|Callable") -> None:
         self.items = items
@@ -115,18 +123,57 @@ class Chain:
 
         self.first.set_chain(self)
 
-    def input(self, x):
+        # determine task mode.
+        # if any transform has is_background_task, then the whole chain is a background task
+        # else, if any transform has is_task, then the whole chain is a task
+
+        self.task_mode = ChainTaskMode.ORIGINAL
         for transform in self.transforms:
-            x = transform(x)
+            if getattr(transform, "is_background_task", False):
+                self.task_mode = ChainTaskMode.BACKGROUND
+                break
+            if getattr(transform, "is_task", False):
+                self.task_mode = ChainTaskMode.TASK
+
+        # the task or background task behavior will be managed by the Chain, so we need to
+        # replace the transforms with the original functions if they are wrapped in a task or background task
+        def get_orig(func_or_task):
+            if hasattr(func_or_task, "original_func"):
+                return func_or_task.original_func
+            return func_or_task
+
+        self.transforms = [get_orig(transform) for transform in self.transforms]
+
+    def input(self, x):
+        node = self.first.node
+        if self.task_mode == ChainTaskMode.ORIGINAL:
+            self._input(x)
+        elif self.task_mode == ChainTaskMode.TASK:
+            node._run_directly(functools.partial(self._input, x))
+        elif self.task_mode == ChainTaskMode.BACKGROUND:
+            node._run_in_background(functools.partial(self._input, x))
+
+    def _input(self, x):
+        for transform in self.transforms:
+            x = transform(self.first.node, x)
         self.last.input_from_chain(x)
 
     def input_void(self):
+        node = self.first.node
+        if self.task_mode == ChainTaskMode.ORIGINAL:
+            self._input_void()
+        elif self.task_mode == ChainTaskMode.TASK:
+            node._run_directly(self._input_void)
+        elif self.task_mode == ChainTaskMode.BACKGROUND:
+            node._run_in_background(self._input_void)
+
+    def _input_void(self):
         if len(self.transforms) == 0:
             self.last.input_from_chain(None)
         else:
-            x = self.transforms[0]()
+            x = self.transforms[0](self.first.node)
             for transform in self.transforms[1:]:
-                x = transform(x)
+                x = transform(self.first.node, x)
             self.last.input_from_chain(x)
 
     def get_traits(self) -> list[Trait]:
@@ -141,7 +188,8 @@ class TriggerTrait(SourceTrait):
     def build_node(self):
         self.node.add_in_port(self.port_name)
 
-    def port_activated(self, port: str):
+    def port_activated(self, port: InputPort):
+        port.get_all_available()
         self.node.flash_running_indicator()
         self.output_to_chain_void()
 
