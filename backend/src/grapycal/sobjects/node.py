@@ -145,6 +145,43 @@ def deprecated(message: str, from_version: str, to_version: str):
     return wrapper
 
 
+def background_task(func: Callable):
+    """
+    A decorator to run a task in the background thread.
+    """
+    # TODO: If already in the background thread, just run it.
+
+    def wrapper(self: "Node", *args, **kwargs):
+        self._run_in_background(functools.partial(func, self, *args, **kwargs))
+
+    wrapper.is_background_task = True
+    wrapper.original_func = func
+    wrapper.__name__ = func.__name__
+
+    return wrapper
+
+
+def task(func: Callable):
+    """
+    A decorator to run a task in the node's context (current thread).
+    """
+
+    def wrapper(self: "Node", *args, **kwargs):
+        self.incr_n_running_tasks()
+        try:
+            ret = func(self, *args, **kwargs)
+        except Exception as e:
+            self._on_exception(e, truncate=1)
+        self.decr_n_running_tasks()
+        return ret
+
+    wrapper.is_task = True
+    wrapper.original_func = func
+    wrapper.__name__ = func.__name__
+
+    return wrapper
+
+
 class NodeMeta(ABCMeta):
     class_def_counter = count()
     def_order = {}

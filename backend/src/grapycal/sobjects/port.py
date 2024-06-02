@@ -110,6 +110,18 @@ class InputPort(Port, typing.Generic[T]):
             else [edge.get() for edge in self.edges]
         )
 
+    def get_all_available(self):
+        """
+        Return data from all connected edges that have data.
+        If not using default control, return data from all connected edges.
+        If using default control, return data from the default control.
+        """
+        return (
+            [self.default_control.get()]
+            if self.use_default
+            else [edge.get() for edge in self.edges if edge.is_data_ready()]
+        )
+
     def get(self, allow_no_data=False) -> Any:
         """
         If not using default control, return data from the first connected edge.

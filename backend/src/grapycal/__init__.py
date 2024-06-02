@@ -1,4 +1,5 @@
 __version__ = "0.15.0+dev"
+from grapycal.utils.resource import get_resource
 from objectsync import (
     DictTopic,
     EventTopic,
@@ -29,9 +30,16 @@ from grapycal.sobjects.controls import (
 )
 from grapycal.sobjects.edge import Edge
 from grapycal.sobjects.functionNode import FunctionNode
-from grapycal.sobjects.node import Node, deprecated, singletonNode
+from grapycal.sobjects.node import (
+    Node,
+    background_task,
+    deprecated,
+    singletonNode,
+    task,
+)
 from grapycal.sobjects.port import InputPort, OutputPort, Port
 from grapycal.sobjects.sourceNode import SourceNode
 from grapycal.utils.config import load_config
+
 
 GRID = 17
