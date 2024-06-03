@@ -8,7 +8,7 @@ import threading
 
 
 class IsRunningManager:
-    def __init__(self, running_nodes_topic: ObjSetTopic, clock:Clock):
+    def __init__(self, running_nodes_topic: ObjSetTopic, clock: Clock):
         self._running_nodes_topic = running_nodes_topic
         self._set_running_true = set()
         self._set_running_true_2 = set()
@@ -19,11 +19,14 @@ class IsRunningManager:
 
     def check_running_nodes(self):
         with self._set_running_lock:
-            self._running_nodes_topic.set(list(self._running | self._set_running_true | self._set_running_true_2))
+            running_nodes = list(
+                self._running | self._set_running_true | self._set_running_true_2
+            )
             self._set_running_true_2 = self._set_running_true
             self._set_running_true = set()
+        self._running_nodes_topic.set(running_nodes)
 
-    def set_running(self, node: Node|Edge, running: bool):
+    def set_running(self, node: Node | Edge, running: bool):
         with self._set_running_lock:
             if running:
                 self._set_running_true.add(node)

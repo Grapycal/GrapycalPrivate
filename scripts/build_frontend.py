@@ -4,6 +4,7 @@ import pathlib
 # check frontend is changed from last build (hash.txt)
 
 included = [
+    "frontend/dist",
     "frontend/src",
     "frontend/package.json",
     "frontend/package-lock.json",

@@ -602,6 +602,8 @@ input:enabled, textarea:enabled{
     text-align: center;
     font-size: 10px;
     pointer-events: none;
+    user-select: none; 
+    -webkit-user-select: none;
 }
 
 /* Editor */
