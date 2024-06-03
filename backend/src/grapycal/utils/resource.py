@@ -9,7 +9,7 @@ RESOURCE_SERVER = "https://resource.grapycal.com/"
 
 def get_resource(path: str):
     if not hasattr(main_store, "settings"):
-        raise Exception("only call get_remote_resource after the workspace is set up")
+        raise Exception("only call get_resource after the workspace is set up")
     local_cache_path = (
         pathlib.Path(main_store.settings.data_path.get()) / "gr_resource" / path
     )
