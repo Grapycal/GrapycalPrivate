@@ -137,3 +137,30 @@ class DivisionNode(FunctionNode):
             for d in b[1:]:
                 denominator *= d
         return nominator / denominator
+
+
+class GreaterThanNode(FunctionNode):
+    """
+    Determines whether the sum of `A` is greater than the sum of `B`.
+
+    :inputs:
+        - A: A set of values, `A`
+        - B: A set of values, `B`
+
+    :outputs:
+        -  Greater: True if sum(`A`) > sum(`B`), False otherwise
+    """
+
+    category = "function/math"
+    inputs = ["a", "b"]
+    max_in_degree = [1, 1]
+    outputs = ["a>b"]
+    display_port_names = False
+
+    def build_node(self):
+        super().build_node()
+        self.label.set(">")
+        self.shape.set("round")
+
+    def calculate(self, a, b):
+        return a > b

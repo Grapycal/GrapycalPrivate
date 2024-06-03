@@ -2,6 +2,7 @@ import asyncio
 import importlib.util
 import logging
 from pathlib import Path
+import time
 from typing import TYPE_CHECKING, Any, Callable, Dict, Generic, List, TypeVar
 
 import pkg_resources
@@ -141,19 +142,41 @@ class NodeInfo(SObjectInfo):
 
 
 class Clock:
-    def __init__(self, interval: float):
-        self.interval = interval
+    def __init__(self, resolution: float):
+        self.resolution = resolution
         self.on_tick = Action()
-        self.on_tick_2 = Action()
+        self.listeners: list[list] = []  # callback, interval, next_time
+        self.to_add: dict[Callable, Any] = {}
+        self.to_remove: set[Callable] = set()
 
     async def run(self):
-        i = 0
         while True:
-            await asyncio.sleep(self.interval)
+            for callback in self.to_remove:
+                self.listeners = [l for l in self.listeners if l[0] != callback]
+            self.to_remove = set()
+
+            for to_add in self.to_add.values():
+                self.listeners.append(to_add)
+            self.to_add = {}
+
+            current_time = time.time()
+            await asyncio.sleep(self.resolution)
             self.on_tick.invoke()
-            if i % 2 == 0:
-                self.on_tick_2.invoke()
-            i += 1
+            for listener in self.listeners:
+                callback, interval, next_time = listener
+                if current_time >= next_time:
+                    callback()
+                    next_time = max(
+                        next_time + interval, current_time
+                    )  # if the callback takes too long, skip the next tick
+                    listener[2] = next_time
+
+    def add_listener(self, callback: Callable[[], None], interval: float):
+        # have to avoid race condition
+        self.to_add[callback] = [callback, interval, time.time() + interval]
+
+    def remove_listener(self, callback: Callable[[], None]):
+        self.to_remove.add(callback)
 
 
 def get_package_version(package_name: str) -> str:
