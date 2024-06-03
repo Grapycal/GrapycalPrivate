@@ -83,14 +83,20 @@ def get_next_number_string(strings):
 
 
 class SourceTrait(Trait):
+    def __init__(self, name: str) -> None:
+        super().__init__(name)
+        self.chain: None | Chain = None
+
     def set_chain(self, chain: "Chain"):
         self.chain = chain
-
+        
     def output_to_chain(self, out):
-        self.chain.input(out)
+        if self.chain is not None:
+            self.chain.input(out)
 
     def output_to_chain_void(self):
-        self.chain.input_void()
+        if self.chain is not None:
+            self.chain.input_void()
 
 
 class SinkTrait(Trait):
