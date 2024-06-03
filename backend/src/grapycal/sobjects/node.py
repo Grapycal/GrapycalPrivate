@@ -256,7 +256,7 @@ class Node(SObject, metaclass=NodeMeta):
 
         self.traits: dict[str, Trait] = {}
         for item in trait_list:
-            assert item.name not in self.traits
+            assert item.name not in self.traits, f"duplicate trait name {item.name}. Please specify the traits' names to make them different"
             self.traits[item.name] = item
             item.set_node(self)
         super().initialize(serialized, *args, **kwargs)
