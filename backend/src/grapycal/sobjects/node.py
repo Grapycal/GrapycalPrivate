@@ -207,6 +207,7 @@ class Node(SObject, metaclass=NodeMeta):
     instance: Self  # The singleton instance. Used by singleton nodes.
     _deprecated = False  # TODO: If set to True, the node will be marked as deprecated in the inspector.
     ext: "Extension"
+    search = []
 
     @classmethod
     def get_default_label(cls):
