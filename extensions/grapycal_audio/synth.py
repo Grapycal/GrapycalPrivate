@@ -4,6 +4,7 @@ from grapycal.sobjects.controls.optionControl import OptionControl
 from grapycal.sobjects.controls.textControl import TextControl
 from grapycal.sobjects.edge import Edge
 from grapycal.sobjects.port import InputPort
+from grapycal.utils.resource import get_resource
 from grapycal_audio.utils import Instrument, midi2Freq
 
 
@@ -250,7 +251,9 @@ class InstrumentNode(SynthNode):
         super().init_node()
         self.playing_notes: dict[int, InstrumentNode.Note] = {}
         self.releasing_notes: dict[int, InstrumentNode.Note] = {}
-        self.instrument = Instrument(self.ext.get_data_path("grand_piano"))
+        self.instrument = Instrument(
+            get_resource("download/audio/instrument/grand_piano", is_dir=True)
+        )
         if not self.instrument.files_exist():
             self.print_exception(
                 f"instrument file missing: {self.instrument._root}"

@@ -257,7 +257,9 @@ class Node(SObject, metaclass=NodeMeta):
 
         self.traits: dict[str, Trait] = {}
         for item in trait_list:
-            assert item.name not in self.traits, f"duplicate trait name {item.name}. Please specify the traits' names to make them different"
+            assert (
+                item.name not in self.traits
+            ), f"duplicate trait name {item.name}. Please specify the traits' names to make them different"
             self.traits[item.name] = item
             item.set_node(self)
         super().initialize(serialized, *args, **kwargs)
@@ -1156,7 +1158,7 @@ class Node(SObject, metaclass=NodeMeta):
         else:
             self._run_directly(task, redirect_output=False)
 
-    def print_exception(self, e: Exception | str, truncate=0):
+    def print_exception(self, e: Exception | str, truncate=0, clear_graph=False):
         if isinstance(e, str):
             message = e
         else:
@@ -1170,6 +1172,9 @@ class Node(SObject, metaclass=NodeMeta):
                 self.output.set([])
                 self.output.insert(["error", "Too many output lines. Cleared.\n"])
             self.output.insert(["error", message])
+
+        if clear_graph:
+            main_store.clear_edges_and_tasks()
 
     def flash_running_indicator(self):
         self.incr_n_running_tasks()

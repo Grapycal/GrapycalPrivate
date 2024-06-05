@@ -94,11 +94,11 @@ class ImageDatasetNode(Node):
     """
 
     img_classes = {
-        "berry": "dataset/Linnaeus5/train/berry.zip",
-        "bird": "dataset/Linnaeus5/train/bird.zip",
-        "dog": "dataset/Linnaeus5/train/dog.zip",
-        "flower": "dataset/Linnaeus5/train/flower.zip",
-        "other": "dataset/Linnaeus5/train/other.zip",
+        "berry": "download/image/Linnaeus5/train/berry.zip",
+        "bird": "download/image/Linnaeus5/train/bird.zip",
+        "dog": "download/image/Linnaeus5/train/dog.zip",
+        "flower": "download/image/Linnaeus5/train/flower.zip",
+        "other": "download/image/Linnaeus5/train/other.zip",
     }
 
     def define_traits(self):

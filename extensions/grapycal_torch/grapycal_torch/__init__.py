@@ -31,7 +31,12 @@ from grapycal_torch.generative import (
     ConvolutionKernelNode,
     PerlinNoiseNode,
 )
-from grapycal_torch.loss import BCEWithLogitsLossNode, CrossEntropyLossNode, MSELossNode
+from grapycal_torch.loss import (
+    BCEWithLogitsLossNode,
+    CrossEntropyLossNode,
+    MSELossNode,
+    L1LossNode,
+)
 from grapycal_torch.manager import MNManager, NetManager
 from grapycal_torch.metrics import AccuracyNode
 from grapycal_torch.networkDef import NetworkCallNode, NetworkInNode, NetworkOutNode
@@ -64,6 +69,7 @@ from grapycal_torch.tensor_operations import (
     StackNode,
     ToCudaNode,
     UnsqueezeNode,
+    GetGradientNode,
 )
 from grapycal_torch.transform import ToTensorNode
 
@@ -112,6 +118,7 @@ class GrapycalTorch(Extension):
         CosNode,
         SinNode,
         MSELossNode,
+        L1LossNode,
         SqueezeNode,
         UnsqueezeNode,
         CatNode,
@@ -129,6 +136,7 @@ class GrapycalTorch(Extension):
         RandNode,
         Conv2dNode,
         FConv2DNode,
+        GetGradientNode,
     ] + generated_nodes
 
     def provide_stores(self):
