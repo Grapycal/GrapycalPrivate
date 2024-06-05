@@ -22,6 +22,7 @@ export class Workspace extends CompSObject{
     readonly main_editor = this.getAttribute('main_editor', ObjectTopic<Editor>)
     readonly nodeTypesTopic = this.objectsync.getTopic('node_types',DictTopic<string,any>)
     readonly slashCommandsTopic = this.objectsync.getTopic('slash_commands',DictTopic<string,any>)
+    readonly runnerStatusTopic = this.objectsync.getTopic('runner_status',StringTopic)
 
     protected get template(): string { return `
         <div spellcheck="false" class="full-width full-height" style="display: flex; ">
@@ -76,7 +77,7 @@ export class Workspace extends CompSObject{
         this.selection = new SelectionManager(this)
 
         new Footer().mount(this)
-        new ControlPanel().mount(this)
+        new ControlPanel(this.runnerStatusTopic).mount(this)
 
         this.appNotif.add('Workspace loaded. Have fun!', 5000)
 

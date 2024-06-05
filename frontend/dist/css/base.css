@@ -82,12 +82,23 @@ button{
     box-sizing: border-box;
 }
 
+
 button:hover{
-    background-color: #333333;
+    filter: brightness(150%);
 }
 
 button:active{
     background-color: #4d4d4d;
+}
+
+button:disabled{
+    filter: grayscale(100%) opacity(50%);
+    background-color: var(--z2);
+}
+
+button.active{
+    background-color: var(--t2);
+    outline: #7f7f7f inset 2px;
 }
 
 img{

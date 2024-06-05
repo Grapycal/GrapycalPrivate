@@ -107,15 +107,16 @@ class Workspace:
         # Setup slash commands
         self._setup_slash_commands()
 
+        # The store is a global object that holds all the data and functions that are shared across classes.
         main_store.event_loop = ui_thread_event_loop
+        self._setup_store()
+
         ui_thread_event_loop.create_task(self.auto_save())
+        ui_thread_event_loop.create_task(self.check_runner_state())
         ui_thread_event_loop.create_task(self._objectsync.serve())
 
         # The extension manager starts searching for all extensions available.
         self._extention_manager.start()
-
-        # The store is a global object that holds all the data and functions that are shared across classes.
-        self._setup_store()
 
         # Make SObject tree present. After this, the workspace is ready to be used. Most of the operations will be done on the tree.
         self._load_or_create_workspace()
@@ -210,6 +211,15 @@ class Workspace:
         main_store.vars = self._vars
         main_store.record = self._objectsync.record
         main_store.slash = self.slash
+
+        # runner control. It's put here because it needs main_store.runner
+        self._objectsync.register_service("play", self._play)
+        self._objectsync.register_service("pause", main_store.runner.pause)
+        self._objectsync.register_service("resume", main_store.runner.resume)
+        self._objectsync.register_service("step", main_store.runner.step)
+        self.runner_status = self._objectsync.create_topic(
+            "runner_status", objectsync.StringTopic, is_stateful=False
+        )  # "idle", "running", "paused"
 
     def _load_or_create_workspace(self):
         """
@@ -383,7 +393,7 @@ class Workspace:
 
     def _interrupt(self):
         main_store.runner.interrupt()
-        main_store.runner.clear_tasks()
+        self._clear_edges_and_tasks()
 
     def _client_connected(self, client_id):
         self._objectsync.create_topic(
@@ -400,3 +410,17 @@ class Workspace:
         while True:
             await asyncio.sleep(60)
             self._save_workspace(self.path, send_message=False)
+
+    async def check_runner_state(self):
+        while True:
+            await asyncio.sleep(0.2)
+            if main_store.runner.is_idle():
+                value = "idle"
+            else:
+                value = "running"
+            if main_store.runner.is_paused():
+                value += " paused"
+            self.runner_status.set(value)
+
+    def _play(self):
+        raise NotImplementedError()
