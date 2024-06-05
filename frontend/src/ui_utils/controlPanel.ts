@@ -38,16 +38,16 @@ export class ControlPanel extends Componentable{
             position:absolute;
             display:flex;
             flex-direction:row;
+            gap: 3px;
             bottom: 40px;
             margin: 0 auto;
-            padding: 2px;
+            padding: 3px;
             background-color: var(--z2);
             opacity:0.7;
-            height: 34px;
+            height: 36px;
             z-index:15;
             left: 50%;
             transform: translate(-50%,-50%);
-            border-radius: 10px;
             transition: 0.2s;
         }
         .cont:hover{
