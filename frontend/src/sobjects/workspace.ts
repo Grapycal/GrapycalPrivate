@@ -22,7 +22,6 @@ export class Workspace extends CompSObject{
     readonly main_editor = this.getAttribute('main_editor', ObjectTopic<Editor>)
     readonly nodeTypesTopic = this.objectsync.getTopic('node_types',DictTopic<string,any>)
     readonly slashCommandsTopic = this.objectsync.getTopic('slash_commands',DictTopic<string,any>)
-    readonly runnerStatusTopic = this.objectsync.getTopic('runner_status',StringTopic)
 
     protected get template(): string { return `
         <div spellcheck="false" class="full-width full-height" style="display: flex; ">
@@ -77,7 +76,6 @@ export class Workspace extends CompSObject{
         this.selection = new SelectionManager(this)
 
         new Footer().mount(this)
-        new ControlPanel(this.runnerStatusTopic).mount(this)
 
         this.appNotif.add('Workspace loaded. Have fun!', 5000)
 
@@ -160,7 +158,7 @@ export class WebcamStream extends CompSObject{
 
     private publish(){
         let image = getImageFromStream(this.stream)
-        image.then((blob: Blob)=>{
+        image.then((blob: any)=>{
             let reader = new FileReader()
             reader.onload = (event) => {
                 let buf =Buffer.from( reader.result as ArrayBuffer)
@@ -185,31 +183,21 @@ const canvas = document.createElement('canvas');
 const context = canvas.getContext('2d');
 
 //https://stackoverflow.com/questions/62446301/alternative-for-the-imagecapture-api-for-better-browser-support
-function getImageFromStream(stream: MediaStream) {
+function getImageFromStream(stream: MediaStream): Promise<Blob> {
 
-    if (false && 'ImageCapture' in window) {
+    return new Promise((resolve, reject) => {
+        //const { videoWidth, videoHeight } = video;
+        const { videoWidth, videoHeight } = {videoWidth: 480, videoHeight: 320};
+        canvas.width = videoWidth;
+        canvas.height = videoHeight;
 
-      const videoTrack = stream.getVideoTracks()[0];
-      const imageCapture = new (window as any).ImageCapture(videoTrack);
-      return imageCapture.takePhoto({imageWidth: 48, imageHeight: 32});
-
-    } else {
-
-
-
-      return new Promise((resolve, reject) => {
-          //const { videoWidth, videoHeight } = video;
-          const { videoWidth, videoHeight } = {videoWidth: 480, videoHeight: 320};
-          canvas.width = videoWidth;
-          canvas.height = videoHeight;
-
-          try {
-            context.drawImage(video, 0, 0, videoWidth, videoHeight);
-            canvas.toBlob(resolve, 'image/jpg');
-          } catch (error) {
-            reject(error);
-          }
-        });
-    }
+        try {
+        context.drawImage(video, 0, 0, videoWidth, videoHeight);
+        canvas.toBlob(resolve, 'image/jpg');
+        } catch (error) {
+        reject(error);
+        }
+    });
+    
 
 }

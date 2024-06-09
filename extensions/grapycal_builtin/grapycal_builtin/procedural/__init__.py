@@ -21,17 +21,15 @@ from grapycal import Node
 
 
 class PortalManager:
-    ins = ListDict["InPortalNode"]()
-    outs = ListDict["OutPortalNode"]()
+    ins = ListDict["TriggerNode"]()
+    outs = ListDict["TaskNode"]()
 
 
-class InPortalNode(Node):
+class TriggerNode(Node):
     category = "procedural"
 
     def build_node(self):
         self.shape.set("simple")
-        if self.is_preview.get():
-            self.label.set("In Portal")
         self.name = self.add_attribute("name", StringTopic, editor_type="text")
         self.in_port = self.add_in_port("jump", display_name="")
         self.out_port = self.add_out_port("then", display_name="")
@@ -79,13 +77,11 @@ class InPortalNode(Node):
         return super().destroy()
 
 
-class OutPortalNode(Node):
+class TaskNode(Node):
     category = "procedural"
 
     def build_node(self):
         self.shape.set("simple")
-        if self.is_preview.get():
-            self.label.set("Out Portal")
         self.name = self.add_attribute("name", StringTopic, editor_type="text")
         self.out_port = self.add_out_port("do", display_name="")
         self.css_classes.append("fit-content")

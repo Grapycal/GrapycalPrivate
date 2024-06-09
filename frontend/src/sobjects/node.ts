@@ -400,8 +400,12 @@ export class Node extends CompSObject implements IControlHost {
             if(svgEl == null) return
             base.prepend(svgEl)
             for(let dec of svgEl.querySelectorAll('path,rect,g')){
-                (dec as HTMLElement).style.fill = ''
-                dec.setAttribute('fill','')
+                // if fill is black, change it to currentColor
+                if((dec as SVGElement).getAttribute('fill') == '#000000'){
+                        
+                    (dec as HTMLElement).style.fill = ''
+                    dec.setAttribute('fill','')
+                }
             }
             svgEl.classList.add('node-icon')
             this.moved.invoke()

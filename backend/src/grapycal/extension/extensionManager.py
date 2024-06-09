@@ -107,7 +107,7 @@ class ExtensionManager:
             new_exts.append(
                 get_extension(
                     ext.name,
-                    set(self._objectsync.get_all_node_types().values())
+                    set(self._objectsync.get_all_object_types().values())
                     - set(ext.node_types_d.values()),
                 )
             )
@@ -334,7 +334,7 @@ class ExtensionManager:
 
     def _load_extension(self, name: str) -> Extension:
         extension = self._extensions[name] = get_extension(
-            name, set(self._objectsync.get_all_node_types().values())
+            name, set(self._objectsync.get_all_object_types().values())
         )
         self._register_extension(name)
         self._imported_extensions_topic.add(name, extension.get_info())

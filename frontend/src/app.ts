@@ -21,6 +21,7 @@ import { Settings } from './sobjects/settings'
 import { WebcamStream, Workspace } from './sobjects/workspace'
 import { SoundManager } from './ui_utils/soundManager'
 import { FetchWithCache } from './utils'
+import { ControlPanel } from './ui_utils/controlPanel'
 
 export const soundManager = new SoundManager();
 const fetchWithCache = new FetchWithCache().fetch
@@ -60,6 +61,7 @@ function startObjectSync(wsUrl:string){
     objectsync.register(Workspace);
     objectsync.register(Editor);
     objectsync.register(Settings)
+    objectsync.register(ControlPanel)
     objectsync.register(FileView)
     objectsync.register(Node);
     objectsync.register(Port);

@@ -7,6 +7,7 @@ from typing import Any, Dict
 
 # Import utils from grapycal
 import grapycal
+from grapycal.sobjects.controlPanel import ControlPanel
 import grapycal.utils.logging
 from grapycal.utils.misc import SemVer
 import objectsync
@@ -112,7 +113,6 @@ class Workspace:
         self._setup_store()
 
         ui_thread_event_loop.create_task(self.auto_save())
-        ui_thread_event_loop.create_task(self.check_runner_state())
         ui_thread_event_loop.create_task(self._objectsync.serve())
 
         # The extension manager starts searching for all extensions available.
@@ -139,6 +139,7 @@ class Workspace:
         self._objectsync.register(Editor)
         self._objectsync.register(NodeLibrary)
         self._objectsync.register(Settings)
+        self._objectsync.register(ControlPanel)
         self._objectsync.register(LocalFileView)
         self._objectsync.register(RemoteFileView)
         self._objectsync.register(InputPort)
@@ -410,17 +411,6 @@ class Workspace:
         while True:
             await asyncio.sleep(60)
             self._save_workspace(self.path, send_message=False)
-
-    async def check_runner_state(self):
-        while True:
-            await asyncio.sleep(0.2)
-            if main_store.runner.is_idle():
-                value = "idle"
-            else:
-                value = "running"
-            if main_store.runner.is_paused():
-                value += " paused"
-            self.runner_status.set(value)
 
     def _play(self):
         raise NotImplementedError()

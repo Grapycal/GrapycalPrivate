@@ -32,7 +32,7 @@ export class OptionsEditor extends Editor<StringTopic> {
     readonly connectedAttributes: StringTopic[] = []
     private locked = false;
 
-    private readonly attributeName: HTMLDivElement
+    readonly attributeName: HTMLDivElement
 
     constructor(displayName: string, editorArgs: any, connectedAttributes: Topic<any>[]|null=null) {
         super()
@@ -83,5 +83,15 @@ export class OptionsEditor extends Editor<StringTopic> {
             attr.set(this.selectInput.value)
         }
         this.locked = false
+    }
+
+    setOptions(options: string[]){
+        this.selectInput.innerHTML = ''
+        for (let option of options) {
+            const optionEl = document.createElement('option')
+            optionEl.value = option
+            optionEl.innerText = option
+            this.selectInput.appendChild(optionEl)
+        }
     }
 }
