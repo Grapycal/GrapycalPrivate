@@ -83,7 +83,7 @@ export class ControlPanel extends CompSObject{
             taskSelect.setOptions(tasks)
         })
         this.link2(this.play,'click',()=>{
-            Workspace.instance.objectsync.makeRequest('play')
+            this.makeRequest('play',{task:taskSelect.selectInput.value})
         })  
         this.link2(this.interrupt,'click',()=>{
             Workspace.instance.objectsync.makeRequest('interrupt')

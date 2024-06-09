@@ -86,12 +86,16 @@ export class OptionsEditor extends Editor<StringTopic> {
     }
 
     setOptions(options: string[]){
+        const value = this.selectInput.value
         this.selectInput.innerHTML = ''
         for (let option of options) {
             const optionEl = document.createElement('option')
             optionEl.value = option
             optionEl.innerText = option
             this.selectInput.appendChild(optionEl)
+        }
+        if(options.includes(value)){
+            this.selectInput.value = value
         }
     }
 }

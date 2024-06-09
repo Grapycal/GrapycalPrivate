@@ -24,8 +24,8 @@ class WorkspaceObject(SObject):
         if old is None:
             self.settings = self.add_child(Settings)
             self.webcam = self.add_child(WebcamStream)
-            self.node_library = self.add_child(NodeLibrary)
             self.controlPanel = self.add_child(ControlPanel)
+            self.node_library = self.add_child(NodeLibrary)
         else:
             self.settings = self.add_child(Settings, old=old.get_child("settings"))
             self.webcam = self.add_child(WebcamStream, old=old.get_child("webcam"))
@@ -36,14 +36,14 @@ class WorkspaceObject(SObject):
             else:
                 old_node_library = old.get_child("sidebar")
 
-            self.node_library = self.add_child(NodeLibrary, old=old_node_library)
-
             if old.has_child("controlPanel"):
                 self.controlPanel = self.add_child(
                     ControlPanel, old=old.get_child("controlPanel")
                 )
             else:  # BACKWARD COMPATIBILITY: v0.14.0 and below, controlPanel was not present
                 self.controlPanel = self.add_child(ControlPanel)
+
+            self.node_library = self.add_child(NodeLibrary, old=old_node_library)
 
         main_store.settings = self.settings
         main_store.webcam = self.webcam

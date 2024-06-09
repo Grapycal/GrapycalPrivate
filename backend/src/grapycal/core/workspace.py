@@ -214,7 +214,7 @@ class Workspace:
         main_store.slash = self.slash
 
         # runner control. It's put here because it needs main_store.runner
-        self._objectsync.register_service("play", self._play)
+        # the play is handled by controlPanel.py
         self._objectsync.register_service("pause", main_store.runner.pause)
         self._objectsync.register_service("resume", main_store.runner.resume)
         self._objectsync.register_service("step", main_store.runner.step)
@@ -411,6 +411,3 @@ class Workspace:
         while True:
             await asyncio.sleep(60)
             self._save_workspace(self.path, send_message=False)
-
-    def _play(self):
-        raise NotImplementedError()

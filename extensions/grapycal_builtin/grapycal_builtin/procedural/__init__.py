@@ -3,13 +3,14 @@ from collections import defaultdict
 from typing import Any
 
 from grapycal.extension.utils import NodeInfo
+from grapycal.sobjects.controlPanel import ControlPanel
 from grapycal.sobjects.controls.textControl import TextControl
 from grapycal.sobjects.edge import Edge
 from grapycal.sobjects.functionNode import FunctionNode
 from grapycal.sobjects.port import InputPort
 from objectsync.sobject import SObjectSerialized
 
-from grapycal_builtin.utils import ListDict
+from grapycal_builtin.utils import ListDict, ListDictWithNotify
 
 from .forNode import *
 from .funcDef import *
@@ -20,9 +21,11 @@ from .clock import ClockNode
 from grapycal import Node
 
 
-class PortalManager:
-    ins = ListDict["TriggerNode"]()
-    outs = ListDict["TaskNode"]()
+class TaskNodeManager:
+    trigger_nodes = ListDict["TriggerNode"]()
+    task_nodes = ListDictWithNotify["TaskNode"]()
+    task_nodes.key_added += ControlPanel.add_task
+    task_nodes.key_removed += ControlPanel.remove_task
 
 
 class TriggerNode(Node):
@@ -40,7 +43,7 @@ class TriggerNode(Node):
         if self.is_preview.get():
             return
 
-        PortalManager.ins.append(self.name.get(), self)
+        TaskNodeManager.trigger_nodes.append(self.name.get(), self)
         self.name.on_set2.add_manual(self.on_name_set)
 
     def on_name_set(self, old, new):
@@ -48,13 +51,13 @@ class TriggerNode(Node):
             return
 
         self.label.set(f"{new}")
-        PortalManager.ins.remove(old, self)
-        PortalManager.ins.append(new, self)
+        TaskNodeManager.trigger_nodes.remove(old, self)
+        TaskNodeManager.trigger_nodes.append(new, self)
 
     def edge_activated(self, edge: Edge, port: InputPort):
         data = edge.get()
         self.run(self.after_jump, to_queue=False, data=data)
-        for node in PortalManager.outs.get(self.name.get()):
+        for node in TaskNodeManager.task_nodes.get(self.name.get()):
             node.jump(data)
 
     def double_click(self):
@@ -63,7 +66,7 @@ class TriggerNode(Node):
 
         data = None
         self.run(self.after_jump, to_queue=False, data=data)
-        for node in PortalManager.outs.get(self.name.get()):
+        for node in TaskNodeManager.task_nodes.get(self.name.get()):
             node.jump(data)
 
     def after_jump(self, data):
@@ -73,7 +76,7 @@ class TriggerNode(Node):
         if self.is_preview.get():
             return super().destroy()
 
-        PortalManager.ins.remove(self.name.get(), self)
+        TaskNodeManager.trigger_nodes.remove(self.name.get(), self)
         return super().destroy()
 
 
@@ -90,33 +93,39 @@ class TaskNode(Node):
         if self.is_preview.get():
             return
 
-        PortalManager.outs.append(self.name.get(), self)
+        TaskNodeManager.task_nodes.append(self.name.get(), self)
         self.label.set(f"{self.name.get()}")
         self.name.on_set2.add_manual(self.on_name_set)
+        ControlPanel.on_run_task += self.on_run_task
 
     def on_name_set(self, old, new):
         if self.is_preview.get():
             return
 
         self.label.set(f"{new}")
-        PortalManager.outs.remove(old, self)
-        PortalManager.outs.append(new, self)
+        TaskNodeManager.task_nodes.remove(old, self)
+        TaskNodeManager.task_nodes.append(new, self)
 
     def double_click(self):
         if self.is_preview.get():
             return
 
-        for node in PortalManager.outs.get(self.name.get()):
+        for node in TaskNodeManager.task_nodes.get(self.name.get()):
             node.jump(None)
 
     def jump(self, data):
         self.run(self.out_port.push, data=data)
 
+    def on_run_task(self, task):
+        if task == self.name.get():
+            self.jump(None)
+
     def destroy(self) -> SObjectSerialized:
         if self.is_preview.get():
             return super().destroy()
 
-        PortalManager.outs.remove(self.name.get(), self)
+        TaskNodeManager.task_nodes.remove(self.name.get(), self)
+        ControlPanel.on_run_task -= self.on_run_task
         return super().destroy()
 
 
