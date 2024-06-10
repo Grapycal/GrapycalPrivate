@@ -1,0 +1,19 @@
+[tool.poetry]
+name = "grapycal-audio-torch"
+version = "0.3.0"
+description = "A Grapycal extension for PyTorch"
+authors = ["eri24816 <a931eric@gmail.com>"]
+packages = [
+    { include = "grapycal_torch"}
+]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+torch = "2.*"
+grapycal = ">=0.11.0"
+grapycal-audio = ">=0.0.0"
+grapycal-torch = ">=0.0.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

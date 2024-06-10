@@ -218,9 +218,6 @@ class Workspace:
         self._objectsync.register_service("pause", main_store.runner.pause)
         self._objectsync.register_service("resume", main_store.runner.resume)
         self._objectsync.register_service("step", main_store.runner.step)
-        self.runner_status = self._objectsync.create_topic(
-            "runner_status", objectsync.StringTopic, is_stateful=False
-        )  # "idle", "running", "paused"
 
     def _load_or_create_workspace(self):
         """

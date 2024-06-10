@@ -89,7 +89,7 @@ class SourceTrait(Trait):
 
     def set_chain(self, chain: "Chain"):
         self.chain = chain
-        
+
     def output_to_chain(self, out):
         if self.chain is not None:
             self.chain.input(out)
@@ -193,12 +193,13 @@ class TriggerTrait(SourceTrait):
         self.port_name = port_name
 
     def build_node(self):
-        self.node.add_in_port(self.port_name)
+        self.trigger_port = self.node.add_in_port(self.port_name)
 
     def port_activated(self, port: InputPort):
-        port.get_all_available()
-        self.node.flash_running_indicator()
-        self.output_to_chain_void()
+        if port == self.trigger_port:
+            port.get_all_available()
+            self.node.flash_running_indicator()
+            self.output_to_chain_void()
 
     def double_click(self):
         self.node.flash_running_indicator()

@@ -118,10 +118,10 @@ class Instrument:
         if start >= len(file):
             return np.zeros(length)
         frames = file[start : start + length]
-        frames = np.frombuffer(frames, dtype="int16").astype("float32") / 32768
+        frames = (frames).astype("float32")
         # stereo to mono
-        frames = frames.reshape(-1, 2)
-        frames = frames.mean(axis=1)
+        # frames = frames.reshape(-1, 2)
+        # frames = frames.mean(axis=1)
         # pad with zeros if necessary
         if len(frames) < length:
             frames = np.pad(frames, (0, length - len(frames)))

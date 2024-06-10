@@ -20,7 +20,7 @@ def get_resource(path: str, is_dir: bool = False) -> pathlib.Path:
     else:
         download_path = local_path
 
-    if not download_path.exists():
+    if not local_path.exists():
         download_path.parent.mkdir(parents=True, exist_ok=True)
 
         with open(download_path, "wb") as f:

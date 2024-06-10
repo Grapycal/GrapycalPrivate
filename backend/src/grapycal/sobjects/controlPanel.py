@@ -22,7 +22,9 @@ class ControlPanel(SObject):
 
     def build(self, old=None):
         ControlPanel._instance = self
-        self.runner_status = self.add_attribute("runner_status", StringTopic)
+        self.runner_status = self.add_attribute(
+            "runner_status", StringTopic, is_stateful=False
+        )
         self.task_list = self.add_attribute("task_list", ListTopic)
         self.register_service("play", self.run_task)
         main_store.clock.add_listener(self.check_runner_state, 0.2)
