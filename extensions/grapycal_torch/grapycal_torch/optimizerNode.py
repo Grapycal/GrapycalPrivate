@@ -89,7 +89,7 @@ class TrainerNode(Node):
 
     def init_modules(self):
         for mn in self.get_module_nodes():
-            mn.create_module_and_update_name()
+            mn.create_module_task()
 
     def step(self):
         self.check_modules_to_track_changed()
@@ -117,24 +117,28 @@ class TrainerNode(Node):
 
 
 class TrainNode(Node):
-    '''
+    """
     Train a network using a loss value. Pass in the loss to train for one step.
-    '''
+    """
+
     ext: "GrapycalTorch"
     category = "torch/training"
 
     def build_node(self):
         self.label.set("Train")
-        self.network_port = self.add_in_port(
-            "network", control_type=OptionControl
-        )
+        self.network_port = self.add_in_port("network", control_type=OptionControl)
         self.loss_port = self.add_in_port("loss", 1)
-        self.accumulate_losses = self.add_attribute("accumulate losses", IntTopic, init_value=1, editor_type="int")
+        self.accumulate_losses = self.add_attribute(
+            "accumulate losses", IntTopic, init_value=1, editor_type="int"
+        )
 
     def init_node(self):
         self.network_name = self.network_port.default_control.value
         self.to_unlink = setup_net_name_ctrl(
-            self.network_port.default_control,self.ext, multi=True, set_value=self.is_new
+            self.network_port.default_control,
+            self.ext,
+            multi=True,
+            set_value=self.is_new,
         )
         self.optimizing_modules: set[nn.Module] = set()
         self.optimizer_device = None
@@ -164,7 +168,9 @@ class TrainNode(Node):
         try:
             params_device = self.get_modules()[0].parameters().__next__().device
         except StopIteration | IndexError:
-            params_device = self.get_store(GrapycalTorchStore).settings.default_device.get()
+            params_device = self.get_store(
+                GrapycalTorchStore
+            ).settings.default_device.get()
         if (
             self.optimizing_modules != set(self.get_modules())
             or self.optimizer_device != params_device
@@ -208,7 +214,9 @@ class SaveNode(Node):
         self.save_port = self.add_in_port("save", control_type=ButtonControl)
 
     def init_node(self):
-        self.to_unlink = setup_net_name_ctrl(self.network_port.default_control, self.ext,set_value=self.is_new)
+        self.to_unlink = setup_net_name_ctrl(
+            self.network_port.default_control, self.ext, set_value=self.is_new
+        )
         self.network_name = self.network_port.default_control.value
         self.path = self.path_port.default_control.text
 
@@ -244,7 +252,9 @@ class LoadNode(Node):
         self.load_port = self.add_in_port("load", control_type=ButtonControl)
 
     def init_node(self):
-        self.to_unlink = setup_net_name_ctrl(self.network_port.default_control, self.ext,set_value=self.is_new)
+        self.to_unlink = setup_net_name_ctrl(
+            self.network_port.default_control, self.ext, set_value=self.is_new
+        )
         self.network_name = self.network_port.default_control.value
         self.path = self.path_port.default_control.text
 
@@ -262,7 +272,7 @@ class LoadNode(Node):
         try:
             self.ext.net.load_network(network_name, path, self)
         except Exception as e:
-            self.print_exception(e,-1)
+            self.print_exception(e, -1)
             return
         main_store.send_message_to_all(f"Loaded {network_name} from {path}.")
 

@@ -88,7 +88,7 @@ class ImagePasteNode(SourceNode):
             options=["numpy", "torch"],
         )
         self.out_port = self.add_out_port("img")
-        self.icon_path.set("image")
+        self.icon_path_topic.set("image")
         self.preserve_alpha = self.add_attribute(
             "preserve alpha",
             StringTopic,
@@ -269,7 +269,7 @@ class ImageDisplayNode(Node):
         self.vmax = self.add_attribute("vmax", FloatTopic, 1, editor_type="float")
         self.slice = self.add_text_control(label="slice: ", name="slice", text=":")
         self.in_port = self.add_in_port("data", 1, "")
-        self.icon_path.set("image")
+        self.icon_path_topic.set("image")
         self.width = self.add_attribute("width", IntTopic, 256, editor_type="int")
         self.height = self.add_attribute("height", IntTopic, 256, editor_type="int")
         self.format = self.add_attribute(

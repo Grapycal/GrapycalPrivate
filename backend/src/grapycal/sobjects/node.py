@@ -207,6 +207,7 @@ class Node(SObject, metaclass=NodeMeta):
     instance: Self  # The singleton instance. Used by singleton nodes.
     _deprecated = False  # TODO: If set to True, the node will be marked as deprecated in the inspector.
     ext: "Extension"
+    icon_path: str | None = None
     search = []
 
     @classmethod
@@ -318,10 +319,12 @@ class Node(SObject, metaclass=NodeMeta):
         self.css_classes = self.add_attribute(
             "css_classes", SetTopic, [], restore_from=None
         )
-        self.icon_path = self.add_attribute(
+        self.icon_path_topic = self.add_attribute(
             "icon_path",
             StringTopic,
-            f"{self.__class__.__name__[:-4].lower()}",
+            f"{self.__class__.__name__[:-4].lower()}"
+            if self.icon_path is None
+            else self.icon_path,
             is_stateful=False,
             restore_from=None,
         )
@@ -349,8 +352,11 @@ class Node(SObject, metaclass=NodeMeta):
             is_stateful=False,
         )
 
-        self.build_node(**build_node_args)
+        self.build_node_args = (
+            build_node_args  # some traits may need to access the build_node_args
+        )
         self.on_build_node.invoke()  # not passing build_node_args because traits should be independent of the node type
+        self.build_node(**build_node_args)
         self.is_building = False
 
         # store traits info
@@ -394,8 +400,8 @@ class Node(SObject, metaclass=NodeMeta):
         for name, trait in self.traits.items():
             trait.restore_from_info(trait_info[name])
 
-        self.init_node()
         self.on_init_node.invoke()
+        self.init_node()
 
     def init_node(self):
         """

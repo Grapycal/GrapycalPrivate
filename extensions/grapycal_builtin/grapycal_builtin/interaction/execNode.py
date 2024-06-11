@@ -137,7 +137,7 @@ class ExecNode(SourceNode):
             options=["yes", "no"],
             init_value="yes",
         )
-        self.icon_path.set("python")
+        self.icon_path_topic.set("python")
 
         if self.is_new:
             self.code_control.set(text)
@@ -154,6 +154,9 @@ class ExecNode(SourceNode):
         self.outputs.on_insert.add_auto(self.add_output)
         self.outputs.on_pop.add_auto(self.pop_output)
         self.code_control.on_execute += lambda: self.run(self.task)
+        self.is_async.on_set += lambda v: self.label.set(
+            "Execute" + (" (async)" if v else "")
+        )
 
     def add_input(self, name, _):
         self.add_in_port(name, 1)

@@ -32,7 +32,7 @@ export class ToggleEditor extends Editor<GenericTopic<boolean>> {
             attr = as(attr, GenericTopic<boolean>)
             this.linker.link(attr.onSet, this.updateValue)
         }
-        this.linker.link(inputFinished(this.input),this.inputFinished)
+        this.linker.link2(this.input,"click",this.clicked)
         this.updateValue()
     }
 
@@ -57,7 +57,7 @@ export class ToggleEditor extends Editor<GenericTopic<boolean>> {
         }
     }
 
-    private inputFinished() {
+    private clicked() {
         this.locked = true
         Workspace.instance.record(() => {
             for (let attr of this.connectedAttributes) {

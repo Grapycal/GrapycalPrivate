@@ -1,63 +1,25 @@
-from grapycal import FloatTopic
+from grapycal.extension_api.trait import Parameter
 from torch import nn
 
 from .moduleNode import SimpleModuleNode
 
 
 class ReLUNode(SimpleModuleNode):
-    category = 'torch/neural network'
-    inputs = ['inp']
-    max_in_degree = [1]
-    outputs = ['out']
-    display_port_names = False
+    module_type = nn.ReLU
+    icon_path = "relu"
 
-    def build_node(self):
-        super().build_node()
-        self.label.set('ReLU')
-        self.icon_path.set('relu')
 
-    def create_module(self) -> nn.Module:
-        return nn.ReLU()
-
-    def forward(self, inp):
-        return self.module(inp)
-    
 class LeakyReLUNode(SimpleModuleNode):
-    category = 'torch/neural network'
-    inputs = ['inp']
-    max_in_degree = [1]
-    outputs = ['out']
-    display_port_names = False
+    module_type = nn.LeakyReLU
+    icon_path = "relu"
+    hyper_parameters = [
+        Parameter("negative_slope", "float", 0.01),
+    ]
 
-    def build_node(self):
-        super().build_node()
-        self.label.set('LeakyReLU')
-        self.negative_slope = self.add_attribute('negative_slope', FloatTopic, 0.01, editor_type='float')
-        self.icon_path.set('relu')
+    def get_label(self, params):
+        return f"LeakyReLU {params['negative_slope']}"
 
-    def generate_label(self):
-        return f'LeakyReLU {self.negative_slope.get()}'
 
-    def create_module(self) -> nn.Module:
-        return nn.LeakyReLU(negative_slope=self.negative_slope.get())
-
-    def forward(self, inp):
-        return self.module(inp)
-    
 class SigmoidNode(SimpleModuleNode):
-    category = 'torch/neural network'
-    inputs = ['inp']
-    max_in_degree = [1]
-    outputs = ['out']
-    display_port_names = False
-
-    def build_node(self):
-        super().build_node()
-        self.label.set('Sigmoid')
-
-    def create_module(self) -> nn.Module:
-        return nn.Sigmoid()
-
-    def forward(self, inp):
-        return self.module(inp)
-    
+    module_type = nn.Sigmoid
+    icon_path = "sigmoid"

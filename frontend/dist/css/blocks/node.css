@@ -91,35 +91,38 @@ Define styles for different node categories
     color: var(--cate-color);
 }
 .cate-interaction{
-    --cate-color: #DCDCA8;
+    --cate-color: #FFBF00;
 }
 
 .cate-function{
-    --cate-color: #7bc361;
+    --cate-color: #59C059;
 }
 
 .cate-data{
-    --cate-color: #ce9177;
+    --cate-color: #ffab19;
 }
 
 .cate-test{
-    --cate-color: #569BD1;
+    --cate-color: #36cdd2;
 }
 
 .cate-procedural{
-    --cate-color: #569BD1;
+    --cate-color: #1199fb;
 }
 
 .cate-torch{
-    --cate-color: #9cdafe;
+    --cate-color: #2ae3f8;
 }
 
 .cate-torch-neural-network{
-    --cate-color: #5699ff;
+    --cate-color: #61abff;
+}
+
+.cate-numpy{
+    --cate-color: #EE82EE;
 }
 
 
-/* use more saturated color on label */
 .cate-interaction .node-label{
     --cate-color: #FFBF00;
 }
