@@ -201,8 +201,8 @@ export class EventDispatcher extends Component{
         this.fowardCalled = false;
         const mousePos = new Vector2(event.clientX, event.clientY);
         if(!this._isDragging){
-            this.onDragStart.invoke(event, mousePos);
             this._isDragging = true;
+            this.onDragStart.invoke(event, mousePos);
         }
         this.onDrag.invoke(event, mousePos, this.prevMousePos);
         this.prevMousePos = mousePos;

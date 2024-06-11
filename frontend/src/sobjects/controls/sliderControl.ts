@@ -38,6 +38,20 @@ export class SliderControl extends Control {
         width: 100%;
         height: 100%;
     }
+
+    .control-input {
+        -moz-appearance: textfield;
+    }
+
+    .control-input::-webkit-outer-spin-button{
+        -webkit-appearance: none;
+        margin: 0;
+    }
+
+    .control-input::-webkit-inner-spin-button{
+        -webkit-appearance: none;
+        margin: 0;
+    }
     `}
 
     get min(): number {
@@ -55,6 +69,11 @@ export class SliderControl extends Control {
     protected onStart(): void {
         super.onStart()
         this.slider = this.htmlItem.getEl("slider")
+
+        this.eventDispatcher.setEventElement(this.slider)
+        this.eventDispatcher.isDraggable = ()=>true
+        this.link(this.eventDispatcher.onDragEnd,this.mouseUp)
+        this.link(this.eventDispatcher.onClick,this.mouseUp)
 
         this.numberInput = this.htmlItem.getEl("input")
         this.link2(this.slider, "mousedown", (e) => {
@@ -76,12 +95,10 @@ export class SliderControl extends Control {
         this.slider.step = this.config.get('step')
 
         this.link(this.value.onSet, (value) => {
-            this.slider.value = value
-            this.numberInput.value = value
-            this.slider.style.backgroundImage = `linear-gradient(to right, var(--t1) 0%, var(--t1) ${((value - this.min) / (this.max - this.min)) * 100}%, var(--z0) ${((value - this.min) / (this.max - this.min)) * 100}%, var(--z0) 100%)`
+            this.updateAppearance(value)
         })
         this.link2(this.slider,"input", (e) => {
-            this.input(this.slider.valueAsNumber)
+            this.updateAppearance(this.slider.valueAsNumber)
         })
         this.link2(this.numberInput,"blur", (e) => {
         })
@@ -119,10 +136,27 @@ export class SliderControl extends Control {
             value = this.max
         }
         if (this.config.get('int_mode')) {
+            if(this.value.getValue() === Math.round(value)) {
+                return
+            }
             this.value.set(Math.round(value))
         } else {
+            if (this.value.getValue() === value) {
+                return
+            }
             this.value.set(value)
         }
+    }
+    
+    private mouseUp() {
+        this.input(this.slider.valueAsNumber)
+    }
+
+    private updateAppearance(value: number) {
+        this.slider.valueAsNumber = value
+        this.numberInput.valueAsNumber = value
+        this.slider.style.backgroundImage = `linear-gradient(to right, var(--t1) 0%, var(--t1) ${((value - this.min) / (this.max - this.min)) * 100}%, var(--z0) ${((value - this.min) / (this.max - this.min)) * 100}%, var(--z0) 100%)`
+ 
     }
 
 }
