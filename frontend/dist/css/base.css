@@ -394,6 +394,7 @@ footer{
 
 
     font-size: 12px;
+    line-height: 12px; /* firefox */
 }
 
 :is(.simple-node,.round-node) .slot-input-port .port-label{
@@ -519,6 +520,7 @@ footer{
     width: 100%;
     /* border-radius: 2px; */
     font-size: 12px;
+    line-height: 12px; /* firefox */
     min-height: 15px;
     gap: 4px;
 }
@@ -540,11 +542,16 @@ footer{
 
 input[type="range"]{
     width: 100%;
-    -webkit-appearance: none;
+    appearance: none;
     border-radius: 2px;
     outline: none;
     padding: 0px;
     margin: 0px;
+}
+
+input[type="range"]::-webkit-slider-thumb{
+    width: 1px;
+    appearance: none;
 }
 
 input[type="range"]::-moz-range-thumb{
