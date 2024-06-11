@@ -1,5 +1,6 @@
 from typing import TYPE_CHECKING
 
+from grapycal.extension_api.trait import ClockTrait
 from grapycal.sobjects.controls.optionControl import OptionControl
 from grapycal.sobjects.controls.textControl import TextControl
 from grapycal.sobjects.edge import Edge
@@ -23,13 +24,17 @@ class SynthNode(Node):
     need_mod_t = True
     need_pitch_port = True
 
+    def define_traits(self):
+        return [
+            ClockTrait(self.tick, 0.01, pass_time=True),
+        ]
+
     def build_node(self):
         if self.need_pitch_port:
             self.pitch_port = self.add_in_port("pitch")
         self.out_port = self.add_out_port("samples")
 
     def init_node(self):
-        self.ext.clock.on_tick += self.tick
         self.sample_t = 0
         self.timeout = 0.5  # seconds
 
@@ -38,7 +43,7 @@ class SynthNode(Node):
             self.freq = midi2Freq(self.pitch)
             self.t_mod = 1000 / self.freq if self.need_mod_t else 100000000
         else:
-            self.t_mod = 100000000
+            self.t_mod = 100000000000000000000000
 
     def port_activated(self, port: InputPort):
         super().port_activated(port)
@@ -47,7 +52,7 @@ class SynthNode(Node):
             self.freq = midi2Freq(self.pitch)
             self.t_mod = 1000 / self.freq if self.need_mod_t else 100000000
 
-    def tick(self, t):
+    def tick(self, t: float):
         if len(self.out_port.edges) == 0:
             return
         if (
@@ -72,7 +77,6 @@ class SynthNode(Node):
         pass
 
     def destroy(self):
-        self.ext.clock.on_tick -= self.tick
         return super().destroy()
 
 
@@ -351,6 +355,7 @@ class InstrumentNode(SynthNode):
                         samples_since_offset : samples_since_offset + l
                     ]
                 )
+
             except Exception as e:
                 self.print_exception(e)
                 to_delete.append(note.pitch)

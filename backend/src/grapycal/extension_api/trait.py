@@ -1,8 +1,9 @@
 import enum
 import functools
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING, Any, Callable
 
 from grapycal.sobjects.controls.textControl import TextControl
+from grapycal.stores import main_store
 from grapycal.utils.misc import Action
 from objectsync import Topic, SObject, ListTopic
 from grapycal.sobjects.port import InputPort
@@ -33,6 +34,8 @@ class Trait:
             self.node.on_port_activated += self.port_activated
         if is_overridden(self.double_click, Trait):
             self.node.on_double_click += self.double_click
+        if is_overridden(self.destroy, Trait):
+            self.node.on_destroy += self.destroy
 
     def get_info(self):
         return {
@@ -73,6 +76,12 @@ class Trait:
         """
         called when a node is double clicked
         """
+
+    def destroy(self):
+        """
+        called when the node is destroyed
+        """
+        pass
 
 
 def get_next_number_string(strings):
@@ -328,3 +337,27 @@ class OutputsTrait(SinkTrait):
         else:
             for name, value in inp.items():
                 self.push(name, value)
+
+
+class ClockTrait(Trait):
+    """
+    Adds a clock listener to the node. Automatically removes the listener when the node is destroyed.
+    """
+
+    def __init__(
+        self,
+        callback: Callable[[], Any] | Callable[[float], Any],
+        interval: float,
+        pass_time=False,
+        name="c_lock",
+    ) -> None:
+        super().__init__(name)
+        self.callback = callback
+        self.interval = interval
+        self.pass_time = pass_time
+
+    def init_node(self):
+        main_store.clock.add_listener(self.callback, self.interval, self.pass_time)
+
+    def destroy(self):
+        main_store.clock.remove_listener(self.callback)

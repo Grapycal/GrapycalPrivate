@@ -547,9 +547,11 @@ input[type="range"]{
     margin: 0px;
 }
 
+input[type="range"]::-moz-range-thumb{
+    width: 1px;
+}
+
 input::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    appearance: none;
     width: 1px;
 }
 

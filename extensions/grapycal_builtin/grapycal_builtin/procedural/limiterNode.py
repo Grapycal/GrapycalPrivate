@@ -1,24 +1,29 @@
 import time
 from grapycal import FloatTopic, IntTopic, Node
-from grapycal.extension.utils import NodeInfo
+from grapycal.extension_api.trait import ClockTrait
 from grapycal.sobjects.edge import Edge
 from grapycal.sobjects.port import InputPort
 from threading import Lock
 
-from grapycal.stores import main_store
-
 
 class LimiterNode(Node):
-    category = 'procedural'
+    category = "procedural"
+
+    def define_traits(self):
+        return ClockTrait(self.tick, 0.1)
 
     def build_node(self):
         super().build_node()
-        self.label.set('Limiter')
-        self.shape.set('simple')
-        self.in_port = self.add_in_port('in',display_name='')
-        self.out_port = self.add_out_port('out',display_name='')
-        self.reduce_factor = self.add_attribute('reduce_factor', IntTopic, 10, editor_type='int')
-        self.time_span = self.add_attribute('time_span', FloatTopic, 0.2, editor_type='float')
+        self.label.set("Limiter")
+        self.shape.set("simple")
+        self.in_port = self.add_in_port("in", display_name="")
+        self.out_port = self.add_out_port("out", display_name="")
+        self.reduce_factor = self.add_attribute(
+            "reduce_factor", IntTopic, 10, editor_type="int"
+        )
+        self.time_span = self.add_attribute(
+            "time_span", FloatTopic, 0.2, editor_type="float"
+        )
 
     def init_node(self):
         self.value = None
@@ -26,8 +31,6 @@ class LimiterNode(Node):
         self.lock = Lock()
         self.counter = 0
         self.last_push_time = 0
-        main_store.clock.on_tick += (self.tick)
-
 
     def edge_activated(self, edge: Edge, port: InputPort):
         with self.lock:
@@ -39,7 +42,7 @@ class LimiterNode(Node):
                 return
             if self.counter == self.reduce_factor.get():
                 self.counter = 0
-                self.last_push_time = time.time()   
+                self.last_push_time = time.time()
                 self.has_value = False
                 self.out_port.push(self.value)
                 self.value = None
@@ -51,10 +54,12 @@ class LimiterNode(Node):
             return
 
         with self.lock:
-            if self.value is not None and time.time() - self.last_push_time > self.time_span.get():
+            if (
+                self.value is not None
+                and time.time() - self.last_push_time > self.time_span.get()
+            ):
                 self.counter = 0
-                self.last_push_time = time.time()   
+                self.last_push_time = time.time()
                 self.has_value = False
                 self.out_port.push(self.value)
                 self.value = None
-        

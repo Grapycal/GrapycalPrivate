@@ -85,7 +85,9 @@ class LRUCache:
 class Instrument:
     def __init__(self, root: Path):
         self._root = root
-        self._cache = LRUCache(20)
+        self._cache = LRUCache(
+            100000
+        )  # actually we don't need the cache but it's left here in case we need it in the future.
 
     def files_exist(self):
         for i in range(264):

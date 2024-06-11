@@ -196,7 +196,7 @@ class Workspace:
         main_store.node_types = self._objectsync.create_topic(
             "node_types", objectsync.DictTopic, is_stateful=False
         )
-        main_store.clock = Clock(0.1)
+        main_store.clock = Clock(0.01)
         main_store.event_loop.create_task(main_store.clock.run())
         main_store.redirect = stdout_helper.redirect
         main_store.runner = BackgroundRunner()

@@ -237,6 +237,7 @@ class Node(SObject, metaclass=NodeMeta):
         self.on_init_node = Action()
         self.on_port_activated = Action()
         self.on_double_click = Action()
+        self.on_destroy = Action()
 
         define_traits_output = self.define_traits()
         trait_list: list[Trait] = []
@@ -380,9 +381,7 @@ class Node(SObject, metaclass=NodeMeta):
         self.on("double_click", self.on_double_click.invoke, is_stateful=False)
         self.on("spawn", self.spawn, is_stateful=False)
 
-        self._output_stream = OutputStream(self.raw_print)
-        self._output_stream.set_event_loop(main_store.event_loop)
-        main_store.event_loop.create_task(self._output_stream.run())
+        self._output_stream: OutputStream | None = None
 
         self.globally_exposed_attributes.on_add.add_auto(
             lambda k, v: main_store.settings.entries.add(k, v)
@@ -537,7 +536,9 @@ class Node(SObject, metaclass=NodeMeta):
         Called when the node is destroyed. You can override this method to do something before the node is destroyed.
         Note: Overrided methods should call return super().destroy() at the end.
         """
-        self._output_stream.close()
+        self.on_destroy.invoke()
+        if self._output_stream is not None:
+            self._output_stream.close()
         for port in self.in_ports:
             if len(port.edges) > 0:
                 raise RuntimeError(
@@ -1047,6 +1048,12 @@ class Node(SObject, metaclass=NodeMeta):
         """
         Returns a context manager that redirects stdout to the node's output stream.
         """
+
+        # create the output stream if it doesn't exist
+        if self._output_stream is None:
+            self._output_stream = OutputStream(self.raw_print)
+            self._output_stream.set_event_loop(main_store.event_loop)
+            main_store.event_loop.create_task(self._output_stream.run())
 
         try:
             self._output_stream.enable_flush()

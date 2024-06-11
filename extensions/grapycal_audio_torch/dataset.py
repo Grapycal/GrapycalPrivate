@@ -74,15 +74,13 @@ class PianoRollDataset(Dataset):
     def __len__(self):
         return self.length
 
-    def __getitem__(self, idx, normalized=True) -> torch.Tensor:
+    def __getitem__(self, idx) -> torch.Tensor:
         if self.segment_length:
             piece, start, end = self.segment_id_to_piece[idx]
-            return piece.to_tensor(
-                start, end, padding=True, normalized=normalized
-            )  # [-1,1)
+            return piece.to_tensor(start, end, padding=True, normalized=False)  # [-1,1)
         else:
             return self.pianorolls[idx].to_tensor(
-                0, self.max_duration, padding=True, normalized=normalized
+                0, self.max_duration, padding=True, normalized=False
             )  # [-1,1)
 
     def get_piano_roll(self, idx) -> PianoRoll:
