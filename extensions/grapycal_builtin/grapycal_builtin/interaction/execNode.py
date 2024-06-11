@@ -3,27 +3,40 @@ from grapycal.extension.utils import NodeInfo
 from grapycal.sobjects.edge import Edge
 from grapycal.sobjects.port import InputPort
 from grapycal.sobjects.sourceNode import SourceNode
-from grapycal.sobjects.controls import TextControl
 from grapycal import ListTopic
 
 import ast
 
 from objectsync import StringTopic
+from topicsync.topic import GenericTopic
 
 
-# exec that prints correctly
-def exec_(script, globals=None, locals=None, print_=None):
-    stmts = list(ast.iter_child_nodes(ast.parse(script)))
+def separate_last_expr(code) -> tuple[ast.Module, ast.Expr | None]:
+    stmts = list(ast.iter_child_nodes(ast.parse(code)))
     if stmts == []:
-        return
+        return ast.parse(""), None
     if isinstance(stmts[-1], ast.Expr):
         if len(stmts) > 1:
             ast_module = ast.parse("")
             ast_module.body = stmts[:-1]
-            exec(compile(ast_module, filename="<ast>", mode="exec"), globals, locals)
+            return ast_module, stmts[-1]
+        return ast.parse(""), stmts[-1]
+    else:
+        return ast.parse(code), None
+
+
+# exec that prints correctly
+def exec_(code, globals=None, locals=None, print_=None):
+    # Separate the last expression from the rest of the code
+    rest, last_expr = separate_last_expr(code)
+    # Execute the rest of the code
+    if rest.body:
+        exec(compile(rest, filename="<ast>", mode="exec"), globals, locals)
+    # Evaluate the last expression
+    if last_expr is not None:
         last = eval(
             compile(
-                ast.Expression(body=stmts[-1].value), filename="<ast>", mode="eval"
+                ast.Expression(body=last_expr.value), filename="<ast>", mode="eval"
             ),
             globals,
             locals,
@@ -31,8 +44,56 @@ def exec_(script, globals=None, locals=None, print_=None):
         if last is not None and print_ is not None:
             print_(last)
         return last
-    else:
-        exec(script, globals, locals)
+
+
+async def aexec(code, globals_=None, locals_=None, print_=None):
+    # Separate the last expression from the rest of the code
+    rest, last_expr = separate_last_expr(code)
+
+    """
+    create an ast that wrap rest and last_expr in an async function (add retyrn last_expr at the end of the function)
+    async def __ex():
+        rest
+        return last_expr
+    """
+    if last_expr is not None:
+        rest.body.append(ast.Return(value=last_expr.value))
+
+    # Wrap the code in an async function
+    wrapped_code = ast.Module(
+        body=[
+            ast.AsyncFunctionDef(
+                name="__ex",
+                args=ast.arguments(
+                    args=[],
+                    posonlyargs=[],
+                    vararg=None,
+                    kwonlyargs=[],
+                    kw_defaults=[],
+                    kwarg=None,
+                    defaults=[],
+                ),
+                body=rest.body,
+                decorator_list=[],
+                returns=None,
+            )
+        ],
+        type_ignores=[],
+    )
+    wrapped_code = ast.fix_missing_locations(wrapped_code)
+
+    # Execute the wrapped code to get the function
+    if locals_ is None:
+        locals_ = {}
+    exec(compile(wrapped_code, filename="<ast>", mode="exec"), globals_, locals_)
+    func = locals_["__ex"]
+
+    # Execute the function
+    result = await func()
+    if print_ is not None:
+        print_(result)
+
+    return result
 
 
 class ExecNode(SourceNode):
@@ -63,6 +124,9 @@ class ExecNode(SourceNode):
         self.css_classes.append("fit-content")
         self.output_control = self.add_text_control(
             "", readonly=True, name="output_control"
+        )
+        self.is_async = self.add_attribute(
+            "async", GenericTopic[bool], False, editor_type="toggle"
         )
         self.inputs = self.add_attribute("inputs", ListTopic, [], editor_type="list")
         self.outputs = self.add_attribute("outputs", ListTopic, [], editor_type="list")
@@ -116,23 +180,65 @@ class ExecNode(SourceNode):
             port = self.get_in_port(name)
             if not port.is_all_ready():
                 return
-        self.run(self.task)
+        self.task()
 
     def task(self):
+        if self.is_async.get():
+            self.run(self.async_task, background=False)
+        else:
+            self.run(self.sync_task)
+
+    async def async_task(self):
         self.output_control.set("")
         stmt = self.code_control.text.get()
         for name in self.inputs:
             port = self.get_in_port(name)
             if port.is_all_ready():
                 self.get_vars().update({name: port.get()})
-        self.get_vars().update({"print": self.print, "self": self})
+        locals_ = {
+            "print": self.print,
+            "self": self,
+        }
+        try:
+            result = await aexec(stmt, self.get_vars(), locals_, self.print)
+        except Exception as e:
+            self.print_exception(e, -3)
+            return
+        self.out_port.push(result)
+        for name in self.outputs:
+            self.get_out_port(name).push(self.get_vars()[name])
+
+    def has_await(self, code: str):
+        tree = ast.parse(code)
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Await):
+                return True
+        return False
+
+    def sync_task(self):
+        self.output_control.set("")
+        stmt = self.code_control.text.get()
+        for name in self.inputs:
+            port = self.get_in_port(name)
+            if port.is_all_ready():
+                self.get_vars().update({name: port.get()})
+        locals_ = {
+            "print": self.print,
+            "self": self,
+        }
         try:
             result = exec_(
                 stmt,
                 self.get_vars(),
+                locals_,
                 print_=self.print if self.print_last_expr.get() == "yes" else None,
             )
         except Exception as e:
+            if self.has_await(stmt):
+                self.print_exception(
+                    f"Failed to run: {e}\n The code seems to be async. Please enable the async toggle of the ExecNode to run async code."
+                )
+                return
             self.print_exception(e, -3)
             return
         self.out_port.push(result)

@@ -107,7 +107,7 @@ class ExtensionManager:
             new_exts.append(
                 get_extension(
                     ext.name,
-                    set(self._objectsync.get_all_node_types().values())
+                    set(self._objectsync.get_all_object_types().values())
                     - set(ext.node_types_d.values()),
                 )
             )
@@ -334,7 +334,7 @@ class ExtensionManager:
 
     def _load_extension(self, name: str) -> Extension:
         extension = self._extensions[name] = get_extension(
-            name, set(self._objectsync.get_all_node_types().values())
+            name, set(self._objectsync.get_all_object_types().values())
         )
         self._register_extension(name)
         self._imported_extensions_topic.add(name, extension.get_info())
@@ -360,6 +360,28 @@ class ExtensionManager:
                 source=name,
                 prefix="",
             )
+            if node_type.label_ is not None:
+                main_store.slash.register(
+                    node_type.label_,
+                    lambda ctx,
+                    args,
+                    n=node_type_name: self._create_node_slash_listener(
+                        ctx, args, n
+                    ),  # the lambda is necessary to capture the value of n
+                    source=name,
+                    prefix="",
+                )
+            for port in node_type.search:
+                main_store.slash.register(
+                    port,
+                    lambda ctx,
+                    args,
+                    n=node_type_name: self._create_node_slash_listener(
+                        ctx, args, n
+                    ),  # the lambda is necessary to capture the value of n
+                    source=name,
+                    prefix="",
+                )
         for slash in self._extensions[name].get_slash_commands().values():
             main_store.slash.register(slash["name"], slash["callback"], source=name)
 

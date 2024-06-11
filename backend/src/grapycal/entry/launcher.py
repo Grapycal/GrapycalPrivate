@@ -29,10 +29,14 @@ if __name__ == "__main__":
     else:
         argv = sys.argv[1:]
 
+    executable = "python"
+    if args.profile:
+        executable = "viztracer --output_file prof.html"
+
     while True:
         # Run the server
         server = subprocess.Popen(
-            ["python", os.path.join(here, "run.py")]
+            [*executable.split(" "), os.path.join(here, "run.py")]
             + argv
             + ([workspace_file] if workspace_file is not None else []),
         )

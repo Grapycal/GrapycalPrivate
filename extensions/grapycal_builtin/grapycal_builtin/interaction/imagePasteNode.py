@@ -11,7 +11,7 @@ from grapycal.sobjects.sourceNode import SourceNode
 from matplotlib import pyplot as plt
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
-from topicsync.topic import GenericTopic
+from topicsync.topic import GenericTopic, IntTopic
 
 try:
     import torch
@@ -270,6 +270,11 @@ class ImageDisplayNode(Node):
         self.slice = self.add_text_control(label="slice: ", name="slice", text=":")
         self.in_port = self.add_in_port("data", 1, "")
         self.icon_path.set("image")
+        self.width = self.add_attribute("width", IntTopic, 256, editor_type="int")
+        self.height = self.add_attribute("height", IntTopic, 256, editor_type="int")
+        self.format = self.add_attribute(
+            "format", StringTopic, "jpg", editor_type="options", options=["jpg", "png"]
+        )
 
     def edge_activated(self, edge: Edge, port: InputPort):
         self.run(self.update_image, data=self.in_port.get())
@@ -342,14 +347,14 @@ class ImageDisplayNode(Node):
         data = self.preprocess_data(data)
         # use plt to convert to jpg
         buf = io.BytesIO()
-        fig = plt.figure(figsize=(10, 10))
+        fig = plt.figure(
+            figsize=(self.width.get() / 128 * 1.299, self.height.get() / 128 * 1.299),
+            dpi=128,
+        )  # 1.299 makes pyplot outputs correctly
+
         try:
             # chw -> hwc
-            form = "jpg"
             if data.ndim == 3:
-                if data.shape[0] == 4:
-                    form = "png"
-
                 data = data.transpose(1, 2, 0)
             plt.imshow(
                 data,
@@ -358,8 +363,13 @@ class ImageDisplayNode(Node):
                 vmax=self.vmax.get() if self.use_vmax.get() else None,
             )
             plt.axis("off")
-            plt.savefig(
-                buf, format=form, bbox_inches="tight", transparent="True", pad_inches=0
+            fig.savefig(
+                buf,
+                format=self.format.get(),
+                bbox_inches="tight",
+                transparent=True,
+                pad_inches=0,
+                dpi=128,
             )
         finally:
             plt.close(fig)

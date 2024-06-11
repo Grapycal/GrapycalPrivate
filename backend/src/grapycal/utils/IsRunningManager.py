@@ -15,7 +15,8 @@ class IsRunningManager:
         self._running = set()
         self._set_running_lock = threading.Lock()
 
-        clock.on_tick += self.check_running_nodes
+        clock.add_listener(self.check_running_nodes, 0.1)
+        self.clock = clock
 
     def check_running_nodes(self):
         with self._set_running_lock:
@@ -33,3 +34,6 @@ class IsRunningManager:
                 self._running.add(node)
             else:
                 self._running.discard(node)
+
+    def destroy(self):
+        self.clock.remove_listener(self.check_running_nodes)

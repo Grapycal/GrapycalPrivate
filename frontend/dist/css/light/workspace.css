@@ -35,13 +35,8 @@ button{
 }
 
 button:hover{
-    background-color: #c7c7c7;
+    filter: brightness(1.1);
 }
-
-button:active{
-    background-color: #bebebe;
-}
-
 
 .sidebar-tab-btn{
     border-left: var(--z1) 2px solid;
@@ -49,7 +44,8 @@ button:active{
 
 
 .sidebar-tab-btn.active{
-    background-color: var(--z2);
+    background-color: var(--z1);
+    outline: none;
     border-left: var(--z4) 2px solid;
 }
 

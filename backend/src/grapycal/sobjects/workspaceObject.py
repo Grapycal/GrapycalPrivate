@@ -1,13 +1,11 @@
 import logging
 
+from grapycal.sobjects.controlPanel import ControlPanel
 from grapycal.stores import main_store
 
 logger = logging.getLogger("WORKSPACE")
-from typing import Any, Dict, Self
-from grapycal.sobjects.edge import Edge
 from grapycal.sobjects.editor import Editor
-from grapycal.sobjects.fileView import FileView, LocalFileView, RemoteFileView
-from grapycal.sobjects.node import Node
+from grapycal.sobjects.fileView import LocalFileView, RemoteFileView
 from grapycal.sobjects.nodeLibrary import NodeLibrary
 from grapycal.sobjects.settings import Settings
 from objectsync import (
@@ -16,8 +14,6 @@ from objectsync import (
     SObjectSerialized,
     StringTopic,
     IntTopic,
-    Topic,
-    WrappedTopic,
 )
 
 
@@ -28,16 +24,24 @@ class WorkspaceObject(SObject):
         if old is None:
             self.settings = self.add_child(Settings)
             self.webcam = self.add_child(WebcamStream)
+            self.controlPanel = self.add_child(ControlPanel)
             self.node_library = self.add_child(NodeLibrary)
         else:
             self.settings = self.add_child(Settings, old=old.get_child("settings"))
             self.webcam = self.add_child(WebcamStream, old=old.get_child("webcam"))
 
-            #BACKWARD COMPATIBILITY: v0.11.3 and below, node_library was called sidebar
+            # BACKWARD COMPATIBILITY: v0.11.3 and below, node_library was called sidebar
             if old.has_child("node_library"):
                 old_node_library = old.get_child("node_library")
             else:
                 old_node_library = old.get_child("sidebar")
+
+            if old.has_child("controlPanel"):
+                self.controlPanel = self.add_child(
+                    ControlPanel, old=old.get_child("controlPanel")
+                )
+            else:  # BACKWARD COMPATIBILITY: v0.14.0 and below, controlPanel was not present
+                self.controlPanel = self.add_child(ControlPanel)
 
             self.node_library = self.add_child(NodeLibrary, old=old_node_library)
 
@@ -48,10 +52,10 @@ class WorkspaceObject(SObject):
         if old is None:
             self.main_editor = self.add_child(Editor)
         else:
-            self.main_editor = self.add_child(Editor, old=old.get_child("main_editor") )
-        
+            self.main_editor = self.add_child(Editor, old=old.get_child("main_editor"))
+
         main_store.main_editor = self.main_editor
-        
+
         # Add local file view and remote file view
         self.file_view = self.add_child(LocalFileView, name="Local Files 💻")
 
@@ -70,6 +74,7 @@ class WorkspaceObject(SObject):
 
         # read by frontend
         self.add_attribute("main_editor", ObjTopic).set(self.main_editor)
+
 
 class WebcamStream(SObject):
     frontend_type = "WebcamStream"

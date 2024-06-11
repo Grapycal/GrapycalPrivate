@@ -22,6 +22,7 @@ a{
 
 .sidebar-tab-btn.active{
     background-color: var(--z3);
+    outline: none;
     border-left: var(--z4) 2px solid;
 }
 
@@ -48,12 +49,13 @@ button{
     color: var(--text-high);
 }
 
-button:hover{
-    background-color: var(--z3);
+button:disabled{
+    filter: grayscale(100%) opacity(50%);
+    background-color: var(--z2);
 }
 
-button:active:hover{
-    background-color: var(--z4);
+button.active{
+    background-color: var(--t2);
 }
 
 .option{

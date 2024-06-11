@@ -207,6 +207,7 @@ class Node(SObject, metaclass=NodeMeta):
     instance: Self  # The singleton instance. Used by singleton nodes.
     _deprecated = False  # TODO: If set to True, the node will be marked as deprecated in the inspector.
     ext: "Extension"
+    search = []
 
     @classmethod
     def get_default_label(cls):
@@ -236,6 +237,7 @@ class Node(SObject, metaclass=NodeMeta):
         self.on_init_node = Action()
         self.on_port_activated = Action()
         self.on_double_click = Action()
+        self.on_destroy = Action()
 
         define_traits_output = self.define_traits()
         trait_list: list[Trait] = []
@@ -256,7 +258,9 @@ class Node(SObject, metaclass=NodeMeta):
 
         self.traits: dict[str, Trait] = {}
         for item in trait_list:
-            assert item.name not in self.traits, f"duplicate trait name {item.name}. Please specify the traits' names to make them different"
+            assert (
+                item.name not in self.traits
+            ), f"duplicate trait name {item.name}. Please specify the traits' names to make them different"
             self.traits[item.name] = item
             item.set_node(self)
         super().initialize(serialized, *args, **kwargs)
@@ -377,9 +381,7 @@ class Node(SObject, metaclass=NodeMeta):
         self.on("double_click", self.on_double_click.invoke, is_stateful=False)
         self.on("spawn", self.spawn, is_stateful=False)
 
-        self._output_stream = OutputStream(self.raw_print)
-        self._output_stream.set_event_loop(main_store.event_loop)
-        main_store.event_loop.create_task(self._output_stream.run())
+        self._output_stream: OutputStream | None = None
 
         self.globally_exposed_attributes.on_add.add_auto(
             lambda k, v: main_store.settings.entries.add(k, v)
@@ -534,7 +536,9 @@ class Node(SObject, metaclass=NodeMeta):
         Called when the node is destroyed. You can override this method to do something before the node is destroyed.
         Note: Overrided methods should call return super().destroy() at the end.
         """
-        self._output_stream.close()
+        self.on_destroy.invoke()
+        if self._output_stream is not None:
+            self._output_stream.close()
         for port in self.in_ports:
             if len(port.edges) > 0:
                 raise RuntimeError(
@@ -1045,6 +1049,12 @@ class Node(SObject, metaclass=NodeMeta):
         Returns a context manager that redirects stdout to the node's output stream.
         """
 
+        # create the output stream if it doesn't exist
+        if self._output_stream is None:
+            self._output_stream = OutputStream(self.raw_print)
+            self._output_stream.set_event_loop(main_store.event_loop)
+            main_store.event_loop.create_task(self._output_stream.run())
+
         try:
             self._output_stream.enable_flush()
             with main_store.redirect(self._output_stream):
@@ -1155,7 +1165,7 @@ class Node(SObject, metaclass=NodeMeta):
         else:
             self._run_directly(task, redirect_output=False)
 
-    def print_exception(self, e: Exception | str, truncate=0):
+    def print_exception(self, e: Exception | str, truncate=0, clear_graph=False):
         if isinstance(e, str):
             message = e
         else:
@@ -1169,6 +1179,9 @@ class Node(SObject, metaclass=NodeMeta):
                 self.output.set([])
                 self.output.insert(["error", "Too many output lines. Cleared.\n"])
             self.output.insert(["error", message])
+
+        if clear_graph:
+            main_store.clear_edges_and_tasks()
 
     def flash_running_indicator(self):
         self.incr_n_running_tasks()

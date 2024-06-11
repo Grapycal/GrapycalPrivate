@@ -1,9 +1,10 @@
 from typing import Any
 
 import einops
+from grapycal.sobjects.port import InputPort
 import torch
 import torch.nn.functional as F
-from grapycal import FunctionNode, IntTopic
+from grapycal import FunctionNode, IntTopic, Node
 from grapycal.extension.utils import NodeInfo
 from grapycal.sobjects.controls.sliderControl import SliderControl
 from grapycal.sobjects.controls.textControl import TextControl
@@ -11,162 +12,179 @@ from topicsync.topic import StringTopic
 
 
 class CatNode(FunctionNode):
-    category = 'torch/operations'
-    inputs = ['inputs']
-    outputs = ['out']
+    category = "torch/operations"
+    inputs = ["inputs"]
+    outputs = ["out"]
+
     def build_node(self):
         super().build_node()
-        self.shape.set('round')
-        self.dim = self.add_attribute('dim',IntTopic,0,editor_type='int')
+        self.shape.set("round")
+        self.dim = self.add_attribute("dim", IntTopic, 0, editor_type="int")
         self.dim_changed(self.dim.get())
-    
+
     def init_node(self):
         super().init_node()
         self.dim.on_set.add_manual(self.dim_changed)
         if self.is_new:
             self.dim.set(0)
 
-    def dim_changed(self,dim):
-        self.label.set('🐱'+str(dim))
-    
+    def dim_changed(self, dim):
+        self.label.set("🐱" + str(dim))
+
     def calculate(self, inputs: list[Any]):
-        return torch.cat(inputs,dim=self.dim.get())
+        return torch.cat(inputs, dim=self.dim.get())
+
 
 class StackNode(FunctionNode):
-    category = 'torch/operations'
-    inputs = ['inputs']
-    outputs = ['out']
+    category = "torch/operations"
+    inputs = ["inputs"]
+    outputs = ["out"]
+
     def build_node(self):
         super().build_node()
-        self.dim = self.add_attribute('dim',IntTopic,editor_type='int')
-        self.label.set('☰0')
-        self.shape.set('round')
+        self.dim = self.add_attribute("dim", IntTopic, editor_type="int")
+        self.label.set("☰0")
+        self.shape.set("round")
         self.dim_changed(self.dim.get())
-    
+
     def init_node(self):
         super().init_node()
         self.dim.on_set.add_manual(self.dim_changed)
         if self.is_new:
             self.dim.set(0)
 
-    def dim_changed(self,dim):
-        self.label.set('☰'+str(dim))
-    
+    def dim_changed(self, dim):
+        self.label.set("☰" + str(dim))
+
     def calculate(self, inputs: list[Any]):
-        return torch.stack(inputs,dim=self.dim.get())
-    
+        return torch.stack(inputs, dim=self.dim.get())
+
+
 class UnsqueezeNode(FunctionNode):
-    category = 'torch/operations'
-    inputs = ['inputs']
-    outputs = ['out']
+    category = "torch/operations"
+    inputs = ["inputs"]
+    outputs = ["out"]
     display_port_names = False
+
     def build_node(self):
         super().build_node()
-        self.dim = self.add_attribute('dim',IntTopic,editor_type='int')
-        self.label.set('U0')
-        self.shape.set('round')
+        self.dim = self.add_attribute("dim", IntTopic, editor_type="int")
+        self.label.set("U0")
+        self.shape.set("round")
         self.dim_changed(self.dim.get())
-    
+
     def init_node(self):
         super().init_node()
         self.dim.on_set.add_manual(self.dim_changed)
         if self.is_new:
             self.dim.set(0)
 
-    def dim_changed(self,dim):
-        self.label.set('U'+str(dim))
-    
+    def dim_changed(self, dim):
+        self.label.set("U" + str(dim))
+
     def calculate(self, inputs):
-        return torch.unsqueeze(inputs[0],dim=self.dim.get())
-    
+        return torch.unsqueeze(inputs[0], dim=self.dim.get())
+
+
 class SqueezeNode(FunctionNode):
-    category = 'torch/operations'
-    inputs = ['inputs']
-    outputs = ['out']
+    category = "torch/operations"
+    inputs = ["inputs"]
+    outputs = ["out"]
     display_port_names = False
+
     def build_node(self):
         super().build_node()
-        self.dim = self.add_attribute('dim',IntTopic,editor_type='int')
-        self.label.set('S0')
-        self.shape.set('round')
+        self.dim = self.add_attribute("dim", IntTopic, editor_type="int")
+        self.label.set("S0")
+        self.shape.set("round")
         self.dim_changed(self.dim.get())
-    
+
     def init_node(self):
         super().init_node()
         self.dim.on_set.add_manual(self.dim_changed)
         if self.is_new:
             self.dim.set(0)
 
-    def dim_changed(self,dim):
-        self.label.set('S'+str(dim))
-    
+    def dim_changed(self, dim):
+        self.label.set("S" + str(dim))
+
     def calculate(self, inputs):
-        return torch.squeeze(inputs[0],dim=self.dim.get())
-    
+        return torch.squeeze(inputs[0], dim=self.dim.get())
+
+
 class RearrangeNode(FunctionNode):
-    category = 'torch/operations'
-    inputs = ['inputs']
-    outputs = ['out']
+    category = "torch/operations"
+    inputs = ["inputs"]
+    outputs = ["out"]
+
     def build_node(self):
         super().build_node()
-        self.pattern_control = self.add_control(TextControl,name='pattern_control',label='')
-        self.label.set('Rearrange')
-        self.shape.set('simple')
-        self.css_classes.append('fit-content')
+        self.pattern_control = self.add_control(
+            TextControl, name="pattern_control", label=""
+        )
+        self.label.set("Rearrange")
+        self.shape.set("simple")
+        self.css_classes.append("fit-content")
 
     def init_node(self):
         super().init_node()
         if self.is_new:
-            self.pattern_control.text.set('b c h w -> b (c h w)')
+            self.pattern_control.text.set("b c h w -> b (c h w)")
 
     def calculate(self, inputs):
-        raw_arg = self.pattern_control.text.get().split(',')
+        raw_arg = self.pattern_control.text.get().split(",")
         pattern = raw_arg[0]
         axes_lengths = {}
         for arg in raw_arg[1:]:
-            key,value = arg.split('=')
+            key, value = arg.split("=")
             key = key.strip()
             value = int(value.strip())
             axes_lengths[key] = value
-            
-        return einops.rearrange(inputs[0],pattern,**axes_lengths)
-    
+
+        return einops.rearrange(inputs[0], pattern, **axes_lengths)
+
+
 class BackwardNode(FunctionNode):
-    category = 'torch/operations'
-    inputs = ['inputs']
+    category = "torch/operations"
+    inputs = ["inputs"]
+
     def build_node(self):
         super().build_node()
-        self.label.set('↤')
-        self.shape.set('round')
+        self.label.set("↤")
+        self.shape.set("round")
 
     def calculate(self, inputs: list[Any]):
         inputs[0].backward()
 
+
 class ToCudaNode(FunctionNode):
-    category = 'torch/operations'
-    inputs = ['inputs']
-    outputs = ['tensor']
+    category = "torch/operations"
+    inputs = ["inputs"]
+    outputs = ["tensor"]
     display_port_names = False
+
     def build_node(self):
         super().build_node()
-        self.label.set('cu')
-        self.shape.set('round')
+        self.label.set("cu")
+        self.shape.set("round")
 
     def calculate(self, inputs: list[Any]):
         return inputs[0].cuda()
-    
+
+
 class FConv2DNode(FunctionNode):
-    category = 'torch/operations'
-    inputs = ['x','kernel']
-    max_in_degree = [1,1]
-    outputs = ['result']
+    category = "torch/operations"
+    inputs = ["x", "kernel"]
+    max_in_degree = [1, 1]
+    outputs = ["result"]
+
     def build_node(self):
         super().build_node()
-        self.label.set('Conv2D')
-        self.shape.set('normal')
-        self.icon_path.set('cnn')
+        self.label.set("Conv2D")
+        self.shape.set("normal")
+        self.icon_path.set("cnn")
 
-    def calculate(self, x:torch.Tensor, kernel:torch.Tensor):
+    def calculate(self, x: torch.Tensor, kernel: torch.Tensor):
         is_c1hw = False
         orig_x = x
         if len(x.shape) == 2:
@@ -178,52 +196,58 @@ class FConv2DNode(FunctionNode):
         if len(x.shape) == 3 and x.shape[0] != 1 and kernel.shape[1] == 1:
             is_c1hw = True
             x = x.unsqueeze(1)
-        y = F.conv2d(x,kernel,padding=kernel.shape[-1]//2)
+        y = F.conv2d(x, kernel, padding=kernel.shape[-1] // 2)
         if is_c1hw:
             y = y.squeeze(1)
         if len(orig_x.shape) == 2:
             y = y.squeeze(0)
         return y
-    
+
+
 class SinNode(FunctionNode):
-    category = 'torch/operations'
-    inputs = ['inp']
-    outputs = ['result']
+    category = "torch/operations"
+    inputs = ["inp"]
+    outputs = ["result"]
     max_in_degree = [1]
     display_port_names = False
+
     def build_node(self):
         super().build_node()
-        self.label.set('sin')
-        self.shape.set('round')
+        self.label.set("sin")
+        self.shape.set("round")
 
     def calculate(self, inp):
         return torch.sin(inp)
-    
+
+
 class CosNode(FunctionNode):
-    category = 'torch/operations'
-    inputs = ['inp']
-    outputs = ['result']
+    category = "torch/operations"
+    inputs = ["inp"]
+    outputs = ["result"]
     max_in_degree = [1]
     display_port_names = False
+
     def build_node(self):
         super().build_node()
-        self.label.set('cos')
-        self.shape.set('round')
+        self.label.set("cos")
+        self.shape.set("round")
 
     def calculate(self, inp):
         return torch.cos(inp)
-    
+
+
 class CumprodNode(FunctionNode):
-    category = 'torch/operations'
-    inputs = ['inp']
-    outputs = ['result']
+    category = "torch/operations"
+    inputs = ["inp"]
+    outputs = ["result"]
     max_in_degree = [1]
     display_port_names = False
+
     def build_node(self):
         super().build_node()
-        self.label.set('cumprod 0')
-        self.shape.set('simple')
-        self.dim = self.add_attribute('dim',IntTopic,0,editor_type='int')
+        self.label.set("cumprod 0")
+        self.shape.set("simple")
+        self.dim = self.add_attribute("dim", IntTopic, 0, editor_type="int")
 
     def init_node(self):
         super().init_node()
@@ -231,26 +255,28 @@ class CumprodNode(FunctionNode):
         if self.is_new:
             self.dim.set(0)
 
-    def dim_changed(self,dim):
-        self.label.set('cumprod '+str(dim))
+    def dim_changed(self, dim):
+        self.label.set("cumprod " + str(dim))
 
     def restore_from_version(self, version: str, old: NodeInfo):
         super().restore_from_version(version, old)
-        self.restore_attributes('dim')
+        self.restore_attributes("dim")
 
     def calculate(self, inp):
-        return torch.cumprod(inp,dim=self.dim.get())
-    
+        return torch.cumprod(inp, dim=self.dim.get())
+
+
 class GatherNode(FunctionNode):
-    category = 'torch/operations'
-    inputs = ['inp','index']
-    outputs = ['result']
-    max_in_degree = [1,1]
+    category = "torch/operations"
+    inputs = ["inp", "index"]
+    outputs = ["result"]
+    max_in_degree = [1, 1]
+
     def build_node(self):
         super().build_node()
-        self.label.set('gather 0')
-        self.shape.set('simple')
-        self.dim = self.add_attribute('dim',IntTopic,0,editor_type='int')
+        self.label.set("gather 0")
+        self.shape.set("simple")
+        self.dim = self.add_attribute("dim", IntTopic, 0, editor_type="int")
 
     def init_node(self):
         super().init_node()
@@ -258,59 +284,95 @@ class GatherNode(FunctionNode):
         if self.is_new:
             self.dim.set(0)
 
-    def dim_changed(self,dim):
-        self.label.set('gather '+str(dim))
+    def dim_changed(self, dim):
+        self.label.set("gather " + str(dim))
 
     def restore_from_version(self, version: str, old: NodeInfo):
         super().restore_from_version(version, old)
-        self.restore_attributes('dim')
+        self.restore_attributes("dim")
 
-    def calculate(self, inp,index):
-        return torch.gather(inp,dim=self.dim.get(),index=index)
-    
+    def calculate(self, inp, index):
+        return torch.gather(inp, dim=self.dim.get(), index=index)
+
+
 class ChooseFromTopNode(FunctionNode):
-    category = 'torch/operations'
-    inputs = ['inp']
-    outputs = ['result']
-    max_in_degree = [1,1]
+    category = "torch/operations"
+    inputs = ["inp"]
+    outputs = ["result"]
+    max_in_degree = [1, 1]
+
     def build_node(self):
         super().build_node()
-        self.label.set('ChooseFromTop')
-        self.shape.set('normal')
-        self.mode = self.add_attribute('mode',StringTopic,'probs',editor_type='options',options=['probs','logits'])
-        self.n = self.add_in_port('n',1,control_type=SliderControl,value=20,min=1,max=40,int_mode = True)
+        self.label.set("ChooseFromTop")
+        self.shape.set("normal")
+        self.mode = self.add_attribute(
+            "mode",
+            StringTopic,
+            "probs",
+            editor_type="options",
+            options=["probs", "logits"],
+        )
+        self.n = self.add_in_port(
+            "n", 1, control_type=SliderControl, value=20, min=1, max=40, int_mode=True
+        )
 
     def init_node(self):
         super().init_node()
         self.mode.on_set.add_manual(self.mode_changed)
         self.mode_changed(self.mode.get())
 
-    def mode_changed(self,mode):
-        self.get_in_port('inp').display_name.set(mode)
+    def mode_changed(self, mode):
+        self.get_in_port("inp").display_name.set(mode)
 
     def calculate(self, inp):
-        if self.mode.get() == 'logits':
-            probs = torch.softmax(inp,dim=0)
+        if self.mode.get() == "logits":
+            probs = torch.softmax(inp, dim=0)
         else:
             probs = inp
 
         n = self.n.get()
         ind = torch.topk(probs, n).indices
         top_prob = probs[ind]
-        top_prob = top_prob / (top_prob).sum() # Normalize
-        choice = torch.multinomial(top_prob,1)[0]
+        top_prob = top_prob / (top_prob).sum()  # Normalize
+        choice = torch.multinomial(top_prob, 1)[0]
         token_id = ind[choice]
         return int(token_id)
 
+
 class SoftmaxNode(FunctionNode):
-    category = 'torch/operations'
-    inputs = ['inp']
-    outputs = ['result']
+    category = "torch/operations"
+    inputs = ["inp"]
+    outputs = ["result"]
     max_in_degree = [1]
+
     def build_node(self):
         super().build_node()
-        self.label.set('Softmax')
-        self.shape.set('normal')
+        self.label.set("Softmax")
+        self.shape.set("normal")
 
     def calculate(self, inp):
-        return torch.softmax(inp,dim=0)
+        return torch.softmax(inp, dim=0)
+
+
+class GetGradientNode(Node):
+    """
+    Get the gradient of the input tensor. If the input tensor does not have a gradient, the node registers a hook to get the gradient when it is available and outputs it.
+    """
+
+    category = "torch/operations"
+    label_ = "∇"
+
+    def build_node(self):
+        self.shape.set("round")
+        self.add_in_port("tensor", 1)
+        self.grad_port = self.add_out_port("grad")
+
+    def port_activated(self, port: InputPort):
+        tensor: torch.Tensor = port.get()
+        if tensor.retains_grad is False or tensor.grad is None:
+            tensor.register_hook(self.hook)
+        else:
+            self.grad_port.push(tensor.grad)
+
+    def hook(self, grad):
+        self.grad_port.push(grad)

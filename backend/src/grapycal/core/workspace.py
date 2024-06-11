@@ -7,6 +7,7 @@ from typing import Any, Dict
 
 # Import utils from grapycal
 import grapycal
+from grapycal.sobjects.controlPanel import ControlPanel
 import grapycal.utils.logging
 from grapycal.utils.misc import SemVer
 import objectsync
@@ -107,15 +108,15 @@ class Workspace:
         # Setup slash commands
         self._setup_slash_commands()
 
+        # The store is a global object that holds all the data and functions that are shared across classes.
         main_store.event_loop = ui_thread_event_loop
+        self._setup_store()
+
         ui_thread_event_loop.create_task(self.auto_save())
         ui_thread_event_loop.create_task(self._objectsync.serve())
 
         # The extension manager starts searching for all extensions available.
         self._extention_manager.start()
-
-        # The store is a global object that holds all the data and functions that are shared across classes.
-        self._setup_store()
 
         # Make SObject tree present. After this, the workspace is ready to be used. Most of the operations will be done on the tree.
         self._load_or_create_workspace()
@@ -138,6 +139,7 @@ class Workspace:
         self._objectsync.register(Editor)
         self._objectsync.register(NodeLibrary)
         self._objectsync.register(Settings)
+        self._objectsync.register(ControlPanel)
         self._objectsync.register(LocalFileView)
         self._objectsync.register(RemoteFileView)
         self._objectsync.register(InputPort)
@@ -194,7 +196,7 @@ class Workspace:
         main_store.node_types = self._objectsync.create_topic(
             "node_types", objectsync.DictTopic, is_stateful=False
         )
-        main_store.clock = Clock(0.1)
+        main_store.clock = Clock(0.01)
         main_store.event_loop.create_task(main_store.clock.run())
         main_store.redirect = stdout_helper.redirect
         main_store.runner = BackgroundRunner()
@@ -210,6 +212,12 @@ class Workspace:
         main_store.vars = self._vars
         main_store.record = self._objectsync.record
         main_store.slash = self.slash
+
+        # runner control. It's put here because it needs main_store.runner
+        # the play is handled by controlPanel.py
+        self._objectsync.register_service("pause", main_store.runner.pause)
+        self._objectsync.register_service("resume", main_store.runner.resume)
+        self._objectsync.register_service("step", main_store.runner.step)
 
     def _load_or_create_workspace(self):
         """
@@ -383,7 +391,7 @@ class Workspace:
 
     def _interrupt(self):
         main_store.runner.interrupt()
-        main_store.runner.clear_tasks()
+        self._clear_edges_and_tasks()
 
     def _client_connected(self, client_id):
         self._objectsync.create_topic(

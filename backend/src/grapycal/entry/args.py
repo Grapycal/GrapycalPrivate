@@ -16,6 +16,12 @@ def parse_args(sync=True):
     parser.add_argument("--cwd", type=str, help="working directory")
     parser.add_argument("--port", type=int, help="port to listen on")
     parser.add_argument("--host", type=str, help="host to listen on")
+    parser.add_argument(
+        "--profile",
+        "-p",
+        action="store_true",
+        help="profile the server with viztracer. The output will be in prof.html",
+    )
     args = parser.parse_args()
 
     if isinstance(args.file, str):

@@ -82,12 +82,23 @@ button{
     box-sizing: border-box;
 }
 
+
 button:hover{
-    background-color: #333333;
+    filter: brightness(150%);
 }
 
 button:active{
     background-color: #4d4d4d;
+}
+
+button:disabled{
+    filter: grayscale(100%) opacity(50%);
+    background-color: var(--z2);
+}
+
+button.active{
+    background-color: var(--t2);
+    outline: #7f7f7f inset 2px;
 }
 
 img{
@@ -383,6 +394,7 @@ footer{
 
 
     font-size: 12px;
+    line-height: 12px; /* firefox */
 }
 
 :is(.simple-node,.round-node) .slot-input-port .port-label{
@@ -508,6 +520,7 @@ footer{
     width: 100%;
     /* border-radius: 2px; */
     font-size: 12px;
+    line-height: 12px; /* firefox */
     min-height: 15px;
     gap: 4px;
 }
@@ -529,16 +542,23 @@ footer{
 
 input[type="range"]{
     width: 100%;
-    -webkit-appearance: none;
+    appearance: none;
     border-radius: 2px;
     outline: none;
     padding: 0px;
     margin: 0px;
 }
 
-input::-webkit-slider-thumb {
-    -webkit-appearance: none;
+input[type="range"]::-webkit-slider-thumb{
+    width: 1px;
     appearance: none;
+}
+
+input[type="range"]::-moz-range-thumb{
+    width: 1px;
+}
+
+input::-webkit-slider-thumb {
     width: 1px;
 }
 

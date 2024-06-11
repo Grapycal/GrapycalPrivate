@@ -495,3 +495,7 @@ class Editor(SObject):
         self._restored_nodes = [node for _, node in new_nodes.values()]
 
         return new_node_ids, new_edge_ids
+
+    def destroy(self) -> SObjectSerialized:
+        self.is_running_manager.destroy()
+        return super().destroy()
