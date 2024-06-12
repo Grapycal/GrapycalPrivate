@@ -48,6 +48,9 @@ def update_if_needed():
         return current_version, platform
 
     def version_url_to_version(url):
+        return url.split("/")[-1].split("+")[0]
+
+    def version_url_to_full_build_name(url):
         return url.split("/")[-1]
 
     def check_update():
@@ -111,7 +114,7 @@ def update_if_needed():
             update_url = f"{RESOURCE_SERVER}/{download_url}.zip"
             pack_zip = download(update_url)
 
-            new_grapycal_name = version_url_to_version(download_url)
+            new_grapycal_name = version_url_to_full_build_name(download_url)
             grapycal_parent = GRAPYCAL_ROOT.parent
             extract_path = grapycal_parent / new_grapycal_name
             print(f"Extracting to {extract_path}...")
@@ -124,9 +127,6 @@ def update_if_needed():
                 )
             print("Installing...")
             install(extract_path)
-            install(
-                extract_path,
-            )
 
 
 def license_file_exists():
