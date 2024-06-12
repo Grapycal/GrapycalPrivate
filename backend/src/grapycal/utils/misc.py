@@ -62,10 +62,19 @@ class SemVer:
     def __lt__(self, other: "SemVer") -> bool:
         if self.major < other.major:
             return True
+        if self.major > other.major:
+            return False
         if self.minor < other.minor:
             return True
+        if self.minor > other.minor:
+            return False
         if self.patch < other.patch:
             return True
+        if self.patch > other.patch:
+            return False
+
+        if self.pre == other.pre:
+            return False
         if self.pre is None:
             return False
         if other.pre is None:
