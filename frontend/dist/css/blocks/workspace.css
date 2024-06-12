@@ -58,9 +58,6 @@ button.active{
     background-color: var(--t2);
 }
 
-.option{
-    background-color: var(--z2);
-}
 .option:hover{
     background-color: var(--z3);
 }

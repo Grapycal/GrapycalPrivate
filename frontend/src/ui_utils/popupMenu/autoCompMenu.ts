@@ -202,7 +202,6 @@ export class AutoCompMenu extends PopupMenu{
             width: 100%;
             box-sizing: border-box;
             border: none;
-            background-color: var(--z1);
             color: var(--text-high);
         }
         .search{

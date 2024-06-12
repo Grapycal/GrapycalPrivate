@@ -13,8 +13,7 @@ export class SlashCommandMenu extends AutoCompMenu{
     get style(){
         return super.style+`
             .base{
-
-                background-color: var(--z2);
+                backdrop-filter: blur(7px) brightness(0.8);
                 border: 1px solid var(--text-low);
                 box-shadow: 0px 0px 5px 0px black;
 
@@ -22,7 +21,7 @@ export class SlashCommandMenu extends AutoCompMenu{
                 overflow-y: auto;
             }
             .search-container{
-                border-bottom: 1px solid var(--text-low);
+                /*border-bottom: 1px solid var(--text-low);*/
             }
             .search{
                 

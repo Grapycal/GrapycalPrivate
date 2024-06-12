@@ -64,10 +64,10 @@ class AppNotificationItem extends Componentable{
         .item{
             min-height: 100px;
             width: 350px;
-            background: var(--z2);
-            border: var(--success) solid 1px;
+            border: var(--text-low) solid 1px;
             border-radius: 8px;
             padding: 10px;
+            backdrop-filter: blur(10px);
             }
         }
         `

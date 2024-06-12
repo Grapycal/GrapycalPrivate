@@ -29,7 +29,11 @@ export { fetchWithCache }
 
 function tryReconnect(): void{
     if(Workspace.instance != null)
-        Workspace.instance.appNotif.add('Connection to server lost. Reconnecting...',4000)
+        Workspace.instance.appNotif.add('Connection to server lost. Reconnecting...',1000000000)
+    tryReconnect_()
+}
+
+function tryReconnect_(): void{
     fetch(getWsUrl().replace('ws://','http://'), {
         method: "HEAD",
         signal: AbortSignal.timeout(2000),
@@ -41,7 +45,7 @@ function tryReconnect(): void{
     .catch((error) => {
         print('failed to reconnect');
         // wait for 2 seconds before trying again
-        setTimeout(tryReconnect, 2000);
+        setTimeout(tryReconnect_, 2000);
     });
 }
 

@@ -35,9 +35,7 @@ button{
     color: var(--text-high);
 }
 
-.option{
-    background-color: var(--z2);
-}
+
 .option:hover{
     background-color: var(--z3);
 }
