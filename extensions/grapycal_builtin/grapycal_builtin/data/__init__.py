@@ -382,6 +382,7 @@ class EmaNode(Node):
             self.run(self.task, data=edge.get())
 
     def task(self, data):
+        # TODO: detach if tensor
         if self.ema is None:
             self.ema = data
         else:

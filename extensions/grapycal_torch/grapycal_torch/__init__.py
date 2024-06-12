@@ -3,6 +3,13 @@ import io
 from pathlib import Path
 from typing import Dict, List, Literal, Sequence, Tuple, Type, cast
 
+from grapycal_torch.transformer import (
+    BinaryPositionalEncodingNode,
+    LinearPositionalEncodingNode,
+    MultiHeadAttentionNode,
+    TransformerDecoderLayerNode,
+    TransformerEncoderLayerNode,
+)
 import matplotlib
 import torch
 from grapycal import (
@@ -137,6 +144,11 @@ class GrapycalTorch(Extension):
         Conv2dNode,
         FConv2DNode,
         GetGradientNode,
+        TransformerEncoderLayerNode,
+        TransformerDecoderLayerNode,
+        MultiHeadAttentionNode,
+        BinaryPositionalEncodingNode,
+        LinearPositionalEncodingNode,
     ] + generated_nodes
 
     def provide_stores(self):

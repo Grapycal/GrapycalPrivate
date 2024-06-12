@@ -311,7 +311,6 @@ footer{
 .main-section{
     gap:2px;
     padding: 4px 0px 7.5px 0px;
-    z-index: -2; /* to avoid blocking port hitbox */
 }
 
 .main-section:has(.slot-input-port:empty):has(.slot-output-port:empty):has(.slot-control:empty){
@@ -421,6 +420,7 @@ footer{
     position: relative;
     gap:2px;
     align-items: center;
+    z-index: 5; /* to be above the main section */
 }
 
 .slot-input-port:empty{

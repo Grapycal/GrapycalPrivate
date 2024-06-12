@@ -30,8 +30,6 @@ class FunctionNode(Node):
             assert len(self.inputs) == 0
             self.add_in_port("trigger")
 
-        self.shape.set("round")
-
     def edge_activated(self, edge: Edge, port):
         if self.is_source:
             edge.get()
