@@ -91,7 +91,9 @@ def function2node(spec: F2NSpec) -> type[FunctionNode] | None:
     out_ports = ["return"]
     doc = spec.doc or spec.func.__doc__ or "Sorry, no docstring for this function."
     doc = doc_prettify(doc)
-    _category = spec.category or spec.func.__module__.replace(".", "/")
+    _category = spec.category or spec.func.__module__.removeprefix("grapycal_").replace(
+        ".", "/"
+    )
     shape = "normal"
 
     name = spec.func_name or spec.func.__name__

@@ -29,7 +29,7 @@ class CatNode(FunctionNode):
             self.dim.set(0)
 
     def dim_changed(self, dim):
-        self.label.set("🐱" + str(dim))
+        self.label.set("C" + str(dim))
 
     def calculate(self, inputs: list[Any]):
         return torch.cat(inputs, dim=self.dim.get())
