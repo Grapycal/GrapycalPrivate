@@ -1,82 +1,32 @@
-from grapycal import FloatTopic, IntTopic
-from grapycal.extension.utils import NodeInfo
+from grapycal.extension_api.trait import Parameter
 from torch import nn
 
 from .moduleNode import SimpleModuleNode
 
 
 class BatchNorm2dNode(SimpleModuleNode):
-    category = 'torch/neural network'
-    inputs = ['inp']
-    max_in_degree = [None]
-    outputs = ['out']
-    display_port_names = False
+    module_type = nn.BatchNorm2d
+    hyper_parameters = [
+        Parameter("num_features", "int", 1),
+        Parameter("eps", "float", 1e-05),
+        Parameter("momentum", "float", 0.1),
+        Parameter("affine", "bool", True),
+        Parameter("track_running_stats", "bool", True),
+    ]
 
-    def build_node(self,num_features=1):
-        super().build_node()
-        self.label.set('BatchNorm2d')
-        self.num_features = self.add_attribute('num_features',IntTopic,num_features,editor_type='int')
-        self.icon_path.set('bn')
+    def get_label(self, params):
+        return f"BatchNorm2d {params['num_features']}"
 
-    def restore_from_version(self, version: str, old: NodeInfo):
-        super().restore_from_version(version, old)
-        self.restore_attributes('num_features')
-
-    def create_module(self) -> nn.Module:
-        return nn.BatchNorm2d(self.num_features.get())
-    
-    def generate_label(self):
-        return f'BatchNorm2d {self.num_features.get()}'
-
-    def forward(self, inp):
-        return self.module(inp)
 
 class Dropout2dNode(SimpleModuleNode):
-    category = 'torch/neural network'
-    inputs = ['inp']
-    max_in_degree = [None]
-    outputs = ['out']
-    display_port_names = False
+    module_type = nn.Dropout2d
+    hyper_parameters = [
+        Parameter("p", "float", 0.5),
+    ]
 
-    def build_node(self):
-        super().build_node()
-        self.label.set('Dropout2d')
-        self.p = self.add_attribute('p',FloatTopic,0.5,editor_type='float')
-
-    def restore_from_version(self, version: str, old: NodeInfo):
-        super().restore_from_version(version, old)
-        self.restore_attributes('p')
-
-    def create_module(self) -> nn.Module:
-        return nn.Dropout2d(self.p.get())
-    
-    def generate_label(self):
-        return f'Dropout2d {self.p.get()}'
-
-    def forward(self, inp):
-        return self.module(inp)
 
 class DropoutNode(SimpleModuleNode):
-    category = 'torch/neural network'
-    inputs = ['inp']
-    max_in_degree = [None]
-    outputs = ['out']
-    display_port_names = False
-
-    def build_node(self):
-        super().build_node()
-        self.label.set('Dropout')
-        self.p = self.add_attribute('p',FloatTopic,0.5,editor_type='float')
-
-    def restore_from_version(self, version: str, old: NodeInfo):
-        super().restore_from_version(version, old)
-        self.restore_attributes('p')
-
-    def create_module(self) -> nn.Module:
-        return nn.Dropout(self.p.get())
-    
-    def generate_label(self):
-        return f'Dropout {self.p.get()}'
-
-    def forward(self, inp):
-        return self.module(inp)
+    module_type = nn.Dropout
+    hyper_parameters = [
+        Parameter("p", "float", 0.5),
+    ]

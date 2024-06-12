@@ -1,7 +1,8 @@
 from abc import abstractmethod
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, final
 
-from grapycal import EventTopic
+from grapycal import EventTopic, task
+from grapycal.extension_api.trait import Parameter, ParameterTrait
 from grapycal.sobjects.edge import Edge
 from grapycal.sobjects.node import Node
 from grapycal.sobjects.port import InputPort
@@ -59,15 +60,15 @@ class ModuleNode(Node):
 
     ext: "GrapycalTorch"
     category = "torch/neural network"
+    icon_path = "nn"
 
     def build_node(self):
         # TODO: save and load
         self.shape.set("simple")
         self.label.set("Module")
         self.create_module_topic = self.add_attribute(
-            "create_module", EventTopic, editor_type="button", is_stateful=False
+            "reset", EventTopic, editor_type="button", is_stateful=False
         )
-        self.icon_path.set("nn")
 
         # the node's id changes when it's loaded from a file, so it needs another id to identify the state dict
         # initialized by manager and can be modified by the user
@@ -78,16 +79,14 @@ class ModuleNode(Node):
     def init_node(self):
         self.torch_store = self.get_store(GrapycalTorchStore)
         self.module: nn.Module | None = None
-        self.create_module_topic.on_emit.add_manual(
-            lambda: self.run(self.create_module_and_update_name)
-        )
+        self.create_module_topic.on_emit.add_manual(self.create_module_task)
         self.module_mover = ModuleMover()
         self.torch_store.mn.add(self)
 
-    def create_module_and_update_name(self):
+    @task
+    def create_module_task(self):
         self.module = self.create_module()
         self.module_mover.set_actual_device("cpu")
-        self.label.set(self.generate_label())
         num_params = sum(p.numel() for p in self.module.parameters() if p.requires_grad)
         if num_params >= 1000000:
             param_str = f"{num_params/1000000:.1f}M"
@@ -104,13 +103,6 @@ class ModuleNode(Node):
     def create_module(self) -> nn.Module:
         pass
 
-    def generate_label(self):
-        """
-        Return a string to be displayed on the node
-        The default is str(self.module), which is often too long. Override this method to provide a better label
-        """
-        return str(self.module)
-
     @abstractmethod
     def forward(self):
         """
@@ -126,7 +118,7 @@ class ModuleNode(Node):
 
     def task(self):
         if self.module is None:
-            self.create_module_and_update_name()
+            self.create_module_task()
         if self.module_mover.move_if_needed(self.module):  # type: ignore
             self.print("moved to", self.module_mover.get_target_device())
         self.forward()
@@ -150,12 +142,12 @@ class ModuleNode(Node):
 
     def get_state_dict(self):
         if self.module is None:
-            self.create_module_and_update_name()
+            self.create_module_task()
         return self.module.state_dict()
 
     def load_state_dict(self, state_dict):
         if self.module is None:
-            self.create_module_and_update_name()
+            self.create_module_task()
         self.module.load_state_dict(state_dict)
 
     def destroy(self):
@@ -164,19 +156,54 @@ class ModuleNode(Node):
 
 
 class SimpleModuleNode(ModuleNode):
-    inputs = []
-    max_in_degree = []
-    outputs = []
-    display_port_names = True
+    module_type: type[nn.Module] = nn.Module
+    inputs: list[str] = []
+    max_in_degree = [1]
+    outputs = ["output"]
+    display_port_names: bool | None = None
+    hyper_parameters = []
+    """
+    define the hyper parameters of the module. They will be passed in the constructor of the module.
 
-    def build_node(self):
+        Example::
+
+            return [
+                Parameter("in_channels", "int", 1),
+                Parameter("out_channels", "int", 1),
+                Parameter("kernel_size", "str", "3"),
+                Parameter("padding", "str", "1"),
+                Parameter("stride", "str", "1"),
+                Parameter("dilation", "str", "1"),
+            ]
+    """
+
+    def define_traits(self):
+        self.parameter_trait = ParameterTrait(self.define_hyper_parameters())
+        self.parameter_trait.on_update += self.parameter_changed
+        return [
+            self.parameter_trait,
+        ]
+
+    def detect_inputs(self) -> list[str]:
+        func = self.module_type.forward
+        if hasattr(func, "__annotations__"):
+            return list(func.__annotations__.keys() - {"return"})
+        return ["input"]
+
+    def build_node(self, *args, **kwargs):
         super().build_node()
+        if self.inputs == []:
+            self.inputs = self.detect_inputs()
         self._max_in_degree = self.max_in_degree[:]
         while len(self._max_in_degree) < len(self.inputs):
             self._max_in_degree.append(1)
         for i in range(len(self._max_in_degree)):
             if self._max_in_degree[i] is None:
                 self._max_in_degree[i] = 64
+
+        if self.display_port_names is None:
+            self.display_port_names = len(self.inputs) > 1 or len(self.outputs) > 1
+
         for name, max_edges in zip(self.inputs, self._max_in_degree):  # type: ignore
             display_name = name if self.display_port_names else ""
             self.add_in_port(name, max_edges, display_name=display_name)
@@ -184,9 +211,14 @@ class SimpleModuleNode(ModuleNode):
             display_name = name if self.display_port_names else ""
             self.add_out_port(name, display_name=display_name)
 
+    def init_node(self):
+        super().init_node()
+        self._param_dirty = True
+        self.parameter_changed(self.parameter_trait.get_values())
+
     def task(self):
-        if self.module is None:
-            self.create_module_and_update_name()
+        if self._param_dirty:
+            self.create_module_task()
         if self.module_mover.move_if_needed(self.module):  # type: ignore
             self.print("moved to", self.module_mover.get_target_device())
 
@@ -214,6 +246,30 @@ class SimpleModuleNode(ModuleNode):
             for port, data in zip(self.out_ports, result):
                 port.push(data)
 
-    @abstractmethod
+    @final
+    def create_module(self) -> nn.Module:
+        self._param_dirty = False
+        return self.module_type(**self.parameter_trait.get_values())
+
     def forward(self, **inputs) -> Any:
-        pass
+        """
+        Override to define the forward pass of the module. The inputs are passed as keyword arguments.
+        If not overridden, the default implementation will call self.module(**inputs). If there is only one input, it will call self.module(value).
+        """
+        if len(inputs) == 1:
+            return self.module(list(inputs.values())[0])
+        return self.module(**inputs)
+
+    def define_hyper_parameters(self) -> list[Parameter]:
+        return self.hyper_parameters
+
+    def parameter_changed(self, params):
+        self.label.set(self.get_label(params))
+        self._param_dirty = True
+
+    def get_label(self, params):
+        return (
+            self.module_type.__name__
+            + " "
+            + " ".join(f"{k}={v}" for k, v in params.items())
+        )

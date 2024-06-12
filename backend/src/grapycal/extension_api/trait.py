@@ -1,12 +1,14 @@
 import enum
 import functools
-from typing import TYPE_CHECKING, Any, Callable
+from typing import TYPE_CHECKING, Any, Callable, Literal
 
 from grapycal.sobjects.controls.textControl import TextControl
 from grapycal.stores import main_store
 from grapycal.utils.misc import Action
 from objectsync import Topic, SObject, ListTopic
 from grapycal.sobjects.port import InputPort
+from grapycal import IntTopic, FloatTopic, StringTopic
+from topicsync.topic import GenericTopic
 
 if TYPE_CHECKING:
     from grapycal.sobjects.node import Node
@@ -361,3 +363,88 @@ class ClockTrait(Trait):
 
     def destroy(self):
         main_store.clock.remove_listener(self.callback)
+
+
+class Parameter:
+    DEFAULT_INIT_VALUE = object()
+
+    def __init__(
+        self,
+        name,
+        type: Literal["int", "float", "str", "bool"] = "str",
+        init_value=DEFAULT_INIT_VALUE,
+    ):
+        self.name = name
+        self.init_value = init_value
+        self.type = type
+
+
+class ParameterTrait(Trait):
+    def __init__(self, parameters: list[Parameter], name="_parameter") -> None:
+        super().__init__(name)
+        self.parameters = parameters
+        self.attrs: dict[str, Topic] = {}
+        self.on_update = Action()
+
+    def build_node(self):
+        for param in self.parameters:
+            attr_name = f"{self.name}.{param.name}"
+
+            if param.name in self.node.build_node_args:
+                init_value = self.node.build_node_args[param.name]
+            else:
+                init_value = param.init_value
+
+            if param.type == "int":
+                attr_type = IntTopic
+                editor_type = "int"
+                if init_value is Parameter.DEFAULT_INIT_VALUE:
+                    init_value = 0
+                if isinstance(init_value, str):
+                    init_value = int(init_value)
+
+            elif param.type == "float":
+                attr_type = FloatTopic
+                editor_type = "float"
+                if init_value is Parameter.DEFAULT_INIT_VALUE:
+                    init_value = 0.0
+                if isinstance(init_value, str):
+                    init_value = float(init_value)
+
+            elif param.type == "str":
+                attr_type = StringTopic
+                editor_type = "text"
+                if init_value is Parameter.DEFAULT_INIT_VALUE:
+                    init_value = ""
+                if not isinstance(init_value, str):
+                    init_value = str(init_value)
+
+            elif param.type == "bool":
+                attr_type = GenericTopic[bool]
+                editor_type = "toggle"
+                if init_value is Parameter.DEFAULT_INIT_VALUE:
+                    init_value = False
+                if isinstance(init_value, str):
+                    init_value = init_value.lower() == "true"
+
+            else:
+                raise ValueError(
+                    f"Unknown type {param.type} for parameter {param.name}"
+                )
+            attr = self.node.add_attribute(
+                attr_name,
+                attr_type,
+                init_value,
+                editor_type=editor_type,
+                display_name=param.name,
+            )
+
+    def init_node(self):
+        for param in self.parameters:
+            attr_name = f"{self.name}.{param.name}"
+            attr = self.node.get_attribute(attr_name, Topic)
+            attr.on_set += lambda _: self.on_update.invoke(self.get_values())
+            self.attrs[param.name] = attr
+
+    def get_values(self):
+        return {name: attr.get() for name, attr in self.attrs.items()}

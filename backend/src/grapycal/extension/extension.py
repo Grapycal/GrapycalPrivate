@@ -228,8 +228,7 @@ def load_or_reload_module(module_name: str):
         # Check if the module is obfuscated by checking if it is started with # Pyarmor
 
         file = sys.modules[module_name].__file__
-        assert file is not None
-        if open(file).readline().startswith("# Pyarmor"):
+        if file is not None and open(file).readline().startswith("# Pyarmor"):
             raise ImportError(
                 f"Only source code extensions can be reloaded. {module_name} is not. If you want to reload it, please restart the app."
             )
