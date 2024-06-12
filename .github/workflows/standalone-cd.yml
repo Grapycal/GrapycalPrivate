@@ -93,7 +93,7 @@ jobs:
 
   build-docker:
     # only run if the tag is not prerelease
-    if: !contains(github.ref, '-a') && !contains(github.ref, '-b')
+    if: ! contains(github.ref, '-a') && ! contains(github.ref, '-b')
     needs: build
     runs-on: ubuntu-latest
     steps:
