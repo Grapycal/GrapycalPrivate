@@ -110,7 +110,6 @@ export class ControlPanel extends CompSObject{
                 this.pause.classList.remove('active')
             }
             this.step.disabled = !(status.includes('paused') && status.includes('running'))
-            console.log('runnerStatusTopic',status)
         })
     }
 }

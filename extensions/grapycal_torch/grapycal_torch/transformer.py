@@ -72,7 +72,6 @@ class BinaryPositionalEncodingNode(FunctionNode):
         res = []
         for i in range(length):
             res.append([int(x) for x in f"{i:0{dim}b}"])
-        print(torch.tensor(res, dtype=torch.float32).unsqueeze(0).shape)
         return (
             torch.tensor(res, dtype=torch.float32).unsqueeze(0).repeat(batch_size, 1, 1)
         )

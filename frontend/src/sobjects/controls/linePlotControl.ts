@@ -229,7 +229,7 @@ export class LinePlotControl extends Control{
         geometry.setAttribute( 'position', new THREE.BufferAttribute( positions, 3 ) );
         geometry.setDrawRange(0,4)
 
-        const material = new THREE.LineBasicMaterial( { color: 0x888888, linewidth:3 } );
+        const material = new THREE.LineBasicMaterial( { color: 0x888888, linewidth:2 } );
         const axis = new THREE.LineSegments( geometry, material );
         this.baseObject.add(axis);
     }
@@ -334,7 +334,7 @@ export class LinePlotControl extends Control{
             0x3333bb,
             0x888888,
         ] [this.lines.size % 7]
-        const material = new THREE.LineBasicMaterial( { color: color , linewidth:5 } );
+        const material = new THREE.LineBasicMaterial( { color: color , linewidth:1 } );
         const line = new THREE.Line( geometry, material );
         this.baseObject.add( line );
         this.lines.set(name,line);

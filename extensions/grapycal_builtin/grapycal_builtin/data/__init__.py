@@ -6,6 +6,7 @@ from grapycal.extension_api.trait import (
     InputsTrait,
     OutputsTrait,
 )
+from grapycal.extension_api.utils import is_torch_tensor
 from grapycal.sobjects.controls import TextControl
 from grapycal.sobjects.controls.buttonControl import ButtonControl
 from grapycal.sobjects.edge import Edge
@@ -382,7 +383,9 @@ class EmaNode(Node):
             self.run(self.task, data=edge.get())
 
     def task(self, data):
-        # TODO: detach if tensor
+        # prevent memory leak
+        if is_torch_tensor(data):
+            data = data.detach()
         if self.ema is None:
             self.ema = data
         else:
@@ -430,6 +433,9 @@ class MeanNode(Node):
             self.run(self.task, data=edge.get())
 
     def task(self, data):
+        # prevent memory leak
+        if is_torch_tensor(data):
+            data = data.detach()
         self.sum += data
         self.num += 1
         if self.num % self.output_interval.get() == 0:

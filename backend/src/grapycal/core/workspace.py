@@ -10,6 +10,7 @@ import grapycal
 from grapycal.sobjects.controlPanel import ControlPanel
 import grapycal.utils.logging
 from grapycal.utils.misc import SemVer
+from grapycal.utils.os_stat import OSStat
 import objectsync
 from dacite import from_dict
 from grapycal.core import running_module, stdout_helper
@@ -89,6 +90,7 @@ class Workspace:
             "slash_commands", objectsync.DictTopic
         )
         self.slash = SlashCommandManager(self._slash_commands_topic)
+        self._os_stat = OSStat()
         stdout_helper.enable_proxy(redirect_error=False)
 
     def run(self, ui_thread_event_loop: asyncio.AbstractEventLoop, run_runner=True):
@@ -114,6 +116,8 @@ class Workspace:
 
         ui_thread_event_loop.create_task(self.auto_save())
         ui_thread_event_loop.create_task(self._objectsync.serve())
+
+        main_store.clock.add_listener(self._update_os_stat, 2)
 
         # The extension manager starts searching for all extensions available.
         self._extention_manager.start()
@@ -169,6 +173,9 @@ class Workspace:
         )
         self._objectsync.create_topic(
             "meta", objectsync.DictTopic, {"workspace name": self.path}
+        )
+        self._os_stat_topic = self._objectsync.create_topic(
+            "os_stat", objectsync.DictTopic, self._os_stat.get_os_stat()
         )
 
         self._objectsync.register_service("exit", self._exit)
@@ -408,3 +415,6 @@ class Workspace:
         while True:
             await asyncio.sleep(60)
             self._save_workspace(self.path, send_message=False)
+
+    def _update_os_stat(self):
+        self._os_stat_topic.set(self._os_stat.get_os_stat())

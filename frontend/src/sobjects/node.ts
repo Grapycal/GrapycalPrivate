@@ -457,6 +457,10 @@ export class Node extends CompSObject implements IControlHost {
         }else{
             (this.htmlItem.baseElement as HTMLElement).style.minWidth = this.minWidth + 'px'
         }
+
+        for(let className of Node.getCssClassesFromCategory(this.category.getValue())){
+            this.htmlItem.baseElement.classList.add(className)
+        }
     }
 
     private minWidth: number = 0;
