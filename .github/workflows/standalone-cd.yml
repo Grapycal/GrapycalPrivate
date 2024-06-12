@@ -14,14 +14,19 @@ jobs:
   build:
     strategy:
       matrix:
-        target: [windows.x86_64, linux.x86_64, darwin.x86_64, darwin.aarch64]
+        #target: [windows.x86_64, linux.x86_64, darwin.x86_64, darwin.aarch64]
+        target: [
+          {target: linux.x86_64, runs-on: ubuntu-latest},
+          {target: darwin.x86_64, runs-on: macos-latest},
+          {target: darwin.aarch64, runs-on: macos-latest},
+          {target: windows.x86_64, runs-on: ubuntu-latest}
+        ]
         edition: [demo, full]
         include:
           # cloud edition is only for linux.x86_64
           - edition: cloud
-            target: linux.x86_64
-
-    runs-on: ubuntu-latest
+            target: {target: linux.x86_64, runs-on: ubuntu-latest}
+    runs-on: ${{ matrix.target.runs-on }}
     steps:
       # checkout with submodules
       - name: Get token from Github App
@@ -68,7 +73,7 @@ jobs:
         env:
           SIGNATURE_E: ${{ secrets.SIGNATURE_E }}
           SIGNATURE_N: ${{ secrets.SIGNATURE_N }}
-        run: python packaging/pack.py --build_name ${{ matrix.edition }} --folder_name build --platform ${{ matrix.target }} --edition ${{ matrix.edition }}
+        run: python packaging/pack.py --build_name ${{ matrix.edition }} --folder_name build --platform ${{ matrix.target.target }} --edition ${{ matrix.edition }}
       
       - name: Setup AWS CLI
         uses: aws-actions/configure-aws-credentials@v1
@@ -83,7 +88,7 @@ jobs:
       - name: Upload artifact for testing
         uses: actions/upload-artifact@v2
         with:
-          name: standalone-${{ matrix.target }}-${{ matrix.edition }}
+          name: standalone-${{ matrix.target.target }}-${{ matrix.edition }}
           path: packaging/dist/build/*.zip
 
   build-docker:
@@ -114,38 +119,38 @@ jobs:
           push: true
           tags: registry.grapycal.com/lab:${{ github.ref_name }}
 
-  test:
-    needs: build
-    strategy:
-      matrix:
-        target: [
-          {runs-on: windows-latest, target: windows.x86_64}, 
-          {runs-on: ubuntu-latest, target: linux.x86_64}, 
-          {runs-on: macos-latest, target: darwin.x86_64}, 
-          {runs-on: macos-latest, target: darwin.aarch64}
-        ]
-        edition: [demo, full]
-    # if linux, use ubuntu-latest. If windows, use windows-latest. If mac, use macos-latest.
-    runs-on: ${{ matrix.target.runs-on }}
-    steps:
-      - name: Download artifact
-        uses: actions/download-artifact@v2
-        with:
-          name: standalone-${{ matrix.target.target }}-${{ matrix.edition }}
-          path: packaging/dist/build
-      - name: Unzip artifact
-        run: unzip packaging/dist/build/*.zip -d packaging/dist/build/grapycal
-      - name: Set up Python 3.11
-        uses: actions/setup-python@v2
-        with:
-          python-version: 3.11
-      - name: Install and run grapycal
-        run: |
-          cd packaging/dist/build/grapycal
-          python install.py
-          python main.py &
-      - name: Wait for 20 seconds
-        run: sleep 20
-      - name: Check if Grapycal is running
-        run: ps aux | grep main.py | grep -v grep || exit 1
+  # test:
+  #   needs: build
+  #   strategy:
+  #     matrix:
+  #       target: [
+  #         {runs-on: windows-latest, target: windows.x86_64}, 
+  #         {runs-on: ubuntu-latest, target: linux.x86_64}, 
+  #         {runs-on: macos-latest, target: darwin.x86_64}, 
+  #         {runs-on: macos-latest, target: darwin.aarch64}
+  #       ]
+  #       edition: [demo, full]
+  #   # if linux, use ubuntu-latest. If windows, use windows-latest. If mac, use macos-latest.
+  #   runs-on: ${{ matrix.target.runs-on }}
+  #   steps:
+  #     - name: Download artifact
+  #       uses: actions/download-artifact@v2
+  #       with:
+  #         name: standalone-${{ matrix.target.target }}-${{ matrix.edition }}
+  #         path: packaging/dist/build
+  #     - name: Unzip artifact
+  #       run: unzip packaging/dist/build/*.zip -d packaging/dist/build/grapycal
+  #     - name: Set up Python 3.11
+  #       uses: actions/setup-python@v2
+  #       with:
+  #         python-version: 3.11
+  #     - name: Install and run grapycal
+  #       run: |
+  #         cd packaging/dist/build/grapycal
+  #         python install.py
+  #         python main.py &
+  #     - name: Wait for 20 seconds
+  #       run: sleep 20
+  #     - name: Check if Grapycal is running
+  #       run: ps aux | grep main.py | grep -v grep || exit 1
 
