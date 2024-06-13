@@ -87,3 +87,19 @@ class DiscordCommandNode(Node):
              f'async def {cmd_name}(interaction:Interaction, {params_str}):\n'
              f'    cb.push("callback", (interaction, {params_str_without_type}))\n'
              f'bot.tree.add_command({cmd_name}, override=True)', globals_dict, locals_dict)
+        
+class DiscordInterRespSendMsgNode(Node):
+    category = 'discordpy'
+
+    def define_traits(self):
+        self.ins = InputsTrait(
+            ins=["interaction", "content"],
+            on_all_ready=self.task,
+        )
+        return [self.ins]
+    
+    def task(self, interaction:Interaction, content):
+        self.run(self.send, interaction=interaction, content=content)
+
+    async def send(self, interaction:Interaction, content):
+        await interaction.response.send_message(content=content)
