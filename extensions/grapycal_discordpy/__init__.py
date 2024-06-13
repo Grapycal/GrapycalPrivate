@@ -79,14 +79,12 @@ class DiscordCommandNode(Node):
         for key in ['bot', 'cmd_name', 'cmd_description']:
             params.pop(key)
         params_str = ', '.join([f'{key}:{value}' for key, value in params.items()])
-        params_str_without_type = ', '.join([f'{key}' for key, value in params.items()])
+        params_str_without_type = ', '.join(params.keys())
         
-        locals_dict = locals()
-        globals_dict = globals()
         exec(f'@bot.tree.command(name="{cmd_name}", description="{cmd_description}")\n'
              f'async def {cmd_name}(interaction:Interaction, {params_str}):\n'
              f'    cb.push("callback", (interaction, {params_str_without_type}))\n'
-             f'bot.tree.add_command({cmd_name}, override=True)', globals_dict, locals_dict)
+             f'bot.tree.add_command({cmd_name}, override=True)')
         
 class DiscordInterRespSendMsgNode(Node):
     category = 'discordpy'
