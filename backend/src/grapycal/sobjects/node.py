@@ -172,6 +172,7 @@ def task(func: Callable):
             ret = func(self, *args, **kwargs)
         except Exception as e:
             self._on_exception(e, truncate=1)
+            ret = None
         self.decr_n_running_tasks()
         return ret
 
@@ -457,10 +458,13 @@ class Node(SObject, metaclass=NodeMeta):
                 continue
             new_attr = self.get_attribute(new_name)
             old_attr = self.old_node_info[old_name]  # type: ignore # not self.is_new grarauntees old_node_info is not None
-            if isinstance(new_attr, WrappedTopic):
-                new_attr.set_raw(old_attr)
-            else:
-                new_attr.set(old_attr)
+            try:  # Validator may fail and raise an exception.
+                if isinstance(new_attr, WrappedTopic):
+                    new_attr.set_raw(old_attr)
+                else:
+                    new_attr.set(old_attr)
+            except Exception:
+                logger.warning(f"Failed to restore attribute {new_name} in {self}")
 
     def restore_controls(self, *control_names: str | tuple[str, str]):
         """

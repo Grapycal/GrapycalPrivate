@@ -9,10 +9,10 @@ class Conv2dNode(SimpleModuleNode):
     hyper_parameters = [
         Parameter("in_channels", "int", 1),
         Parameter("out_channels", "int", 1),
-        Parameter("kernel_size", "str", "3"),
-        Parameter("padding", "str", "1"),
-        Parameter("stride", "str", "1"),
-        Parameter("dilation", "str", "1"),
+        Parameter("kernel_size", "int", 1),
+        Parameter("padding", "int", 1),
+        Parameter("stride", "int", 1),
+        Parameter("dilation", "int", 1),
     ]
 
     def get_label(self, params):
@@ -25,10 +25,10 @@ class ConvTranspose2dNode(SimpleModuleNode):
     hyper_parameters = [
         Parameter("in_channels", "int", 1),
         Parameter("out_channels", "int", 1),
-        Parameter("kernel_size", "str", "3"),
-        Parameter("padding", "str", "1"),
-        Parameter("stride", "str", "1"),
-        Parameter("dilation", "str", "1"),
+        Parameter("kernel_size", "int", 3),
+        Parameter("padding", "int", 1),
+        Parameter("stride", "int", 1),
+        Parameter("dilation", "int", 1),
     ]
 
     def get_label(self, params):
