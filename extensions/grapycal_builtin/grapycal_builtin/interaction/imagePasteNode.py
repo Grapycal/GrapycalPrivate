@@ -2,6 +2,7 @@ import io
 from contextlib import contextmanager
 from typing import Generator, Tuple
 
+from grapycal.extension_api.trait import Chain, Parameter, ParameterTrait, Trait
 import matplotlib
 from grapycal import FloatTopic, StringTopic, to_numpy
 from grapycal.sobjects.edge import Edge
@@ -11,7 +12,7 @@ from grapycal.sobjects.sourceNode import SourceNode
 from matplotlib import pyplot as plt
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
-from topicsync.topic import GenericTopic, IntTopic
+from topicsync.topic import GenericTopic
 
 try:
     import torch
@@ -35,6 +36,7 @@ except ImportError:
 
 plt.style.use("dark_background")
 matplotlib.use("Agg")
+plt.ioff()
 
 
 def render_from_fig(
@@ -164,6 +166,15 @@ class ImageDisplayNode(Node):
 
     category = "interaction"
 
+    def define_traits(self) -> list[Trait | Chain] | Trait | Chain:
+        self.size_param = ParameterTrait(
+            [
+                Parameter("width", "int", 256),
+                Parameter("height", "int", 256),
+            ]
+        )
+        return self.size_param
+
     def build_node(self):
         self.label.set("Display Image")
         self.shape.set("simple")
@@ -270,11 +281,22 @@ class ImageDisplayNode(Node):
         self.slice = self.add_text_control(label="slice: ", name="slice", text=":")
         self.in_port = self.add_in_port("data", 1, "")
         self.icon_path_topic.set("image")
-        self.width = self.add_attribute("width", IntTopic, 256, editor_type="int")
-        self.height = self.add_attribute("height", IntTopic, 256, editor_type="int")
         self.format = self.add_attribute(
             "format", StringTopic, "jpg", editor_type="options", options=["jpg", "png"]
         )
+
+    def init_node(self):
+        self.create_figure(self.size_param.get_values())
+        self.size_param.on_update += self.create_figure
+
+    def create_figure(self, size):
+        if hasattr(self, "fig"):
+            plt.close(self.fig)
+        self.fig = plt.figure(
+            figsize=(size["width"] / 128 * 1.299, size["height"] / 128 * 1.299),
+            dpi=128,
+        )  # 1.299 makes pyplot outputs correctly
+        self.ax = self.fig.gca()
 
     def edge_activated(self, edge: Edge, port: InputPort):
         self.run(self.update_image, data=self.in_port.get())
@@ -347,23 +369,19 @@ class ImageDisplayNode(Node):
         data = self.preprocess_data(data)
         # use plt to convert to jpg
         buf = io.BytesIO()
-        fig = plt.figure(
-            figsize=(self.width.get() / 128 * 1.299, self.height.get() / 128 * 1.299),
-            dpi=128,
-        )  # 1.299 makes pyplot outputs correctly
 
         try:
             # chw -> hwc
             if data.ndim == 3:
                 data = data.transpose(1, 2, 0)
-            plt.imshow(
+            self.ax.imshow(
                 data,
                 cmap=self.cmap.get(),
                 vmin=self.vmin.get() if self.use_vmin.get() else None,
                 vmax=self.vmax.get() if self.use_vmax.get() else None,
             )
-            plt.axis("off")
-            fig.savefig(
+            self.ax.axis("off")
+            self.fig.savefig(
                 buf,
                 format=self.format.get(),
                 bbox_inches="tight",
@@ -372,11 +390,16 @@ class ImageDisplayNode(Node):
                 dpi=128,
             )
         finally:
-            plt.close(fig)
-        self.img.set(buf)
+            self.img.set(buf)
+            buf.close()
+            self.ax.clear()
 
     def input_edge_removed(self, edge: Edge, port: InputPort):
         self.img.set(None)
+
+    def destroy(self):
+        plt.close(self.fig)
+        return super().destroy()
 
 
 class BarPlotNode(Node):
