@@ -136,7 +136,7 @@ class To(Step):
             dst.mkdir(parents=True, exist_ok=True)
         for f in src.iterdir():
             if f.is_dir():
-                shutil.copytree(f, dst / f.name)
+                shutil.copytree(f, dst / f.name, dirs_exist_ok=True)
             else:
                 shutil.copy(f, dst / f.name)
         return StepResult(dst)
@@ -168,7 +168,7 @@ class ToRelative(Step):
         for f in src.iterdir():
             if f.is_dir():
                 iprint(f"copying {f} to {dst / self.subfolder / f.name}")
-                shutil.copytree(f, dst / self.subfolder / f.name)
+                shutil.copytree(f, dst / self.subfolder / f.name, dirs_exist_ok=True)
             else:
                 iprint(f"copying {f} to {dst / self.subfolder}")
                 shutil.copy(f, dst / self.subfolder / f.name)
