@@ -24,7 +24,7 @@ if __name__ == "__main__":
 
     args = parse_args(sync=False)
     if args.file is not None:
-        workspace_file = os.path.abspath(args.file)
+        # workspace_file = os.path.abspath(args.file)
         argv = sys.argv[1:-1]
     else:
         argv = sys.argv[1:]
