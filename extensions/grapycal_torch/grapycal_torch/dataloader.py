@@ -4,6 +4,7 @@ from grapycal.sobjects.port import InputPort
 from grapycal.stores import main_store
 from grapycal_torch.store import GrapycalTorchStore
 from topicsync.topic import GenericTopic
+from torch import Tensor
 from torch.utils.data import DataLoader
 
 
@@ -56,7 +57,18 @@ class DataLoaderNode(Node):
                     )
                     return
                 if self.to_defalut_device.get():
-                    batch = self.get_store(GrapycalTorchStore).to_default_device(batch)
+                    if isinstance(batch, dict):
+                        for key in batch:
+                            if isinstance(batch[key], Tensor):
+                                batch[key] = self.get_store(
+                                    GrapycalTorchStore
+                                ).to_default_device(batch[key])
+                    elif isinstance(batch, Tensor):
+                        batch = self.get_store(GrapycalTorchStore).to_default_device(
+                            batch
+                        )
+                    else:
+                        pass
                 self.out.push(batch)
                 self.flash_running_indicator()
                 yield

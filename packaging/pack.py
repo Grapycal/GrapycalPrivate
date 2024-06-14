@@ -73,7 +73,7 @@ class StepResult:
         # then copy the other result into the new folder
         for f in other.dir.iterdir():
             if f.is_dir():
-                shutil.copytree(f, dst / f.name)
+                shutil.copytree(f, dst / f.name, dirs_exist_ok=True)
             else:
                 shutil.copy(f, dst / f.name)
         return StepResult(dst)
@@ -136,7 +136,7 @@ class To(Step):
             dst.mkdir(parents=True, exist_ok=True)
         for f in src.iterdir():
             if f.is_dir():
-                shutil.copytree(f, dst / f.name)
+                shutil.copytree(f, dst / f.name, dirs_exist_ok=True)
             else:
                 shutil.copy(f, dst / f.name)
         return StepResult(dst)
@@ -168,7 +168,7 @@ class ToRelative(Step):
         for f in src.iterdir():
             if f.is_dir():
                 iprint(f"copying {f} to {dst / self.subfolder / f.name}")
-                shutil.copytree(f, dst / self.subfolder / f.name)
+                shutil.copytree(f, dst / self.subfolder / f.name, dirs_exist_ok=True)
             else:
                 iprint(f"copying {f} to {dst / self.subfolder}")
                 shutil.copy(f, dst / self.subfolder / f.name)
@@ -314,17 +314,17 @@ class PackGrapycal(Step):
             + From(src / "extensions/grapycal_builtin")
             * PackPythonPackage(
                 edition=self.edition,
-                package_src_dir="extensions/grapycal_builtin",
+                package_src_dir="grapycal_builtin",
                 pyarmor_config=self.pyarmor_config.copyWith(prefix="grapycal"),
             )
-            * ToRelative("grapycal_builtin")
+            * ToRelative("extensions/grapycal_builtin")
             + From(src / "extensions/grapycal_torch")
             * PackPythonPackage(
                 edition=self.edition,
-                package_src_dir="extensions/grapycal_torch",
+                package_src_dir="grapycal_torch",
                 pyarmor_config=self.pyarmor_config.copyWith(prefix="grapycal"),
             )
-            * ToRelative("grapycal_torch")
+            * ToRelative("extensions/grapycal_torch")
             + From(src / "frontend") * PackFrontend() * ToRelative("frontend")
             + From(src / "packaging/template")
         ) * To(dst)
