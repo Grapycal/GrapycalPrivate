@@ -81,6 +81,11 @@ class DiscordCommandNode(Node):
         params_str = ', '.join([f'{key}:{value}' for key, value in params.items()])
         params_str_without_type = ', '.join(params.keys())
         
+        try:
+            bot.tree.remove_command(cmd_name)
+        except:
+            pass
+
         exec(f'@bot.tree.command(name="{cmd_name}", description="{cmd_description}")\n'
              f'async def {cmd_name}(interaction:Interaction, {params_str}):\n'
              f'    cb.push("callback", (interaction, {params_str_without_type}))\n'
