@@ -2,15 +2,9 @@ import os
 import sys
 import subprocess
 import argparse
+import importlib.util
 
 parser = argparse.ArgumentParser()
-parser.add_argument(
-    "--exts",
-    "-e",
-    nargs="+",
-    help="Extensions to install",
-    default=["grapycal_builtin"],
-)
 parser.add_argument(
     "--launch",
     action="store_true",
@@ -73,11 +67,21 @@ print("Installing packages...")
 pip_install_from_path("topicsync")
 pip_install_from_path("objectsync")
 pip_install_from_path("backend")
-for ext in args.exts:
-    assert ext.startswith(
-        "grapycal_"
-    ), f"Extension name must start with grapycal_, got {ext}"
-    pip_install_from_path(ext)
+pip_install_from_path("extensions/grapycal_builtin")
+
+# check any other extensions are installed, if so, install them of new version
+extensions = os.listdir("extensions")
+for ext_name in extensions:
+    if ext_name in ["grapycal_builtin"]:
+        continue
+    if importlib.util.find_spec(ext_name) is None:
+        print(f"Extension {ext_name} is not installed. Skipping...")
+        continue
+    ext_path = os.path.join("extensions", ext_name)
+    if not os.path.isdir(ext_path):
+        continue
+    print(f"Installing extension {ext_name}...")
+    pip_install_from_path(ext_path)
 
 os.chdir(orignal_cwd)
 
