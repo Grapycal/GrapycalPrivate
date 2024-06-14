@@ -3,6 +3,7 @@ from pprint import pprint
 
 from grapycal.core.background_runner import RunnerInterrupt
 from grapycal.core.client_msg_types import ClientMsgTypes
+from grapycal.core.typing import GType, AnyType
 from grapycal.extension_api.trait import Chain, Trait
 from grapycal.sobjects.controls.keyboardControl import KeyboardControl
 from grapycal.sobjects.controls.sliderControl import SliderControl
@@ -563,6 +564,7 @@ class Node(SObject, metaclass=NodeMeta):
         control_type: type[T] = NullControl,
         control_name=None,
         restore_from: str | None | RESTORE_FROM = RESTORE_FROM.SAME,
+        datatype: GType = AnyType,
         **control_kwargs,
     ) -> InputPort[T]:
         """
@@ -579,6 +581,7 @@ class Node(SObject, metaclass=NodeMeta):
             max_edges=max_edges,
             display_name=display_name,
             control_name=control_name,
+            datatype=datatype,
             **control_kwargs,
         )
         self.in_ports.insert(port)
@@ -604,12 +607,12 @@ class Node(SObject, metaclass=NodeMeta):
                 self.restore_controls((restore_from, name))
         return port
 
-    def add_out_port(self, name: str, max_edges=64, display_name=None):
+    def add_out_port(self, name: str, max_edges=64, display_name=None, datatype: GType=AnyType):
         """
         Add an output port to the node.
         """
         port = self.add_child(
-            OutputPort, name=name, max_edges=max_edges, display_name=display_name
+            OutputPort, name=name, max_edges=max_edges, display_name=display_name, datatype=datatype
         )
         self.out_ports.insert(port)
         return port
