@@ -3,6 +3,7 @@ import os
 import pathlib
 import threading
 import time
+from typing import Callable
 import webbrowser
 import psutil
 import zipfile
@@ -15,6 +16,62 @@ CWD = os.getcwd()
 HERE = pathlib.Path(__file__).parent
 GRAPYCAL_ROOT = HERE.parent.parent.parent
 os.environ["GRAPYCAL_ROOT"] = str(GRAPYCAL_ROOT)
+
+
+class CmdSelector:
+    def __init__(self, args, prefix=""):
+        self.args = args
+        self.prefix = prefix
+
+    def select(
+        self,
+        mapping: dict[str | None, Callable[[], None] | Callable[["CmdSelector"], None]],
+    ):
+        if len(self.args) == 0 and None in mapping:
+            return mapping[None]()  # type: ignore
+
+        if len(self.args) > 0:
+            cmd = self.args[0]
+            if cmd in mapping:
+                # if the function do not receive any argument, do not pass anything
+                if mapping[cmd].__code__.co_argcount == 0:
+                    return mapping[cmd]()  # type: ignore
+                else:
+                    return mapping[cmd](
+                        CmdSelector(self.args[1:], self.prefix + " " + cmd)
+                    )  # type: ignore
+
+        keys = [
+            key is not None and key or "" for key in mapping.keys()
+        ]  # replace None with ""
+        if len(self.args) > 0:
+            print(f"Unknown command: {self.prefix} {self.args[0]}")
+        print("Usage:")
+        for key in keys:
+            doc = mapping[key].__doc__
+            if doc is None:
+                doc = ""
+            else:
+                doc = ": " + doc.strip()
+            print(f"  {self.prefix} {key} {doc}")
+
+    def current(self):
+        return self.args[0]
+
+    def has_current(self):
+        return len(self.args) > 0
+
+    def next(self):
+        return self.args[1]
+
+    def has_next(self):
+        return len(self.args) > 1
+
+
+def pip_install_from_path(path):
+    if os.system(f"pip install -e {path}") != 0:
+        print(f"Failed to install {path}")
+        sys.exit(1)
 
 
 def input_colored(prompt):
@@ -207,6 +264,9 @@ def print_welcome():
 
 
 def run():
+    """
+    Run Grapycal
+    """
     print("Checking for updates...")
 
     # if updated, this function will not return back
@@ -235,6 +295,9 @@ def run():
 
 
 def dev():
+    """
+    Development mode. Debug use only.
+    """
     # python scripts/build_frontend.py
     os.system(f"python {GRAPYCAL_ROOT/'scripts/build_frontend.py'}")
     try:
@@ -245,11 +308,49 @@ def dev():
         pass
 
 
+def ext(cmds: CmdSelector):
+    """
+    Extension management
+    """
+
+    def install_ext():
+        if not cmds.has_next():
+            print("Please specify the extension name.")
+            return
+        ext_name = cmds.next()
+        if not ext_name.startswith("grapycal_"):
+            ext_name = "grapycal_" + ext_name
+        print(f"Installing extension {ext_name}...")
+        pip_install_from_path(GRAPYCAL_ROOT / "extensions" / ext_name)
+        print(f"Extension {ext_name} installed.")
+
+    def uninstall_ext():
+        if not cmds.has_next():
+            print("Please specify the extension name.")
+            return
+        ext_name = cmds.next()
+        if not ext_name.startswith("grapycal_"):
+            ext_name = "grapycal_" + ext_name
+        print(f"Uninstalling extension {ext_name}...")
+        os.system(f"pip uninstall -y {ext_name}")
+        print(f"Extension {ext_name} uninstalled.")
+
+    cmds.select(
+        {
+            "install": install_ext,
+            "uninstall": uninstall_ext,
+        }
+    )
+
+
 def main():
-    command = sys.argv[1] if len(sys.argv) > 1 else "run"
-    if command == "run":
-        run()
-    elif command == "dev":
-        dev()
-    else:
-        print("Avaliable commands: run, dev")
+    cmds = CmdSelector(sys.argv[1:], "grapycal")
+    cmds.select(
+        {
+            "run": run,
+            "ext": ext,
+        }
+        | (
+            {"dev": dev} if not Path(GRAPYCAL_ROOT / "build_info.json").exists() else {}
+        )  # hide dev command if it's a release build
+    )
