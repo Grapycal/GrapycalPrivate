@@ -208,9 +208,6 @@ export class Edge extends CompSObject {
             this.dotAnimation.start()
         }
 
-        // when parent changed, the edge becomes "idle in the editor"
-        // so we should set the type_incompatible of all ports to false
-        this.cancelTypeConstraints()
     }
 
     private cancelTypeConstraints() {
@@ -347,6 +344,7 @@ export class Edge extends CompSObject {
             this.editor.createEdge(tail.id,head.id)
             this.objectsync.clearPretendedChanges();
         }
+        this.state = EdgeState.Idle
     }
 
 

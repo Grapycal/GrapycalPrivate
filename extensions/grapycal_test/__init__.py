@@ -3,6 +3,7 @@ import io
 import json
 from typing import Any, Dict, List
 
+from grapycal.core.typing import PlainType
 import websockets
 from grapycal import (
     ButtonControl,
@@ -114,3 +115,16 @@ class DefaultTestNode(DVfunctionNode):
 
     def calculate(self, **kwargs):
         return kwargs
+
+
+class Test1Node(Node):
+    category = "test"
+
+    def build_node(self):
+        self.add_in_port("int", datatype=PlainType(int))
+        self.add_in_port("string", datatype=PlainType(str))
+        self.add_out_port("int", datatype=PlainType(int))
+        self.add_out_port("string", datatype=PlainType(str))
+
+        self.int_topic = self.add_attribute("some_int_topic", IntTopic)
+        self.string_topic = self.add_attribute("some_string_topic", StringTopic)
