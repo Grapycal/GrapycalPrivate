@@ -314,17 +314,17 @@ class PackGrapycal(Step):
             + From(src / "extensions/grapycal_builtin")
             * PackPythonPackage(
                 edition=self.edition,
-                package_src_dir="extensions/grapycal_builtin",
+                package_src_dir="grapycal_builtin",
                 pyarmor_config=self.pyarmor_config.copyWith(prefix="grapycal"),
             )
-            * ToRelative("grapycal_builtin")
+            * ToRelative("extensions/grapycal_builtin")
             + From(src / "extensions/grapycal_torch")
             * PackPythonPackage(
                 edition=self.edition,
-                package_src_dir="extensions/grapycal_torch",
+                package_src_dir="grapycal_torch",
                 pyarmor_config=self.pyarmor_config.copyWith(prefix="grapycal"),
             )
-            * ToRelative("grapycal_torch")
+            * ToRelative("extensions/grapycal_torch")
             + From(src / "frontend") * PackFrontend() * ToRelative("frontend")
             + From(src / "packaging/template")
         ) * To(dst)
