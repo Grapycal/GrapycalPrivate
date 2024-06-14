@@ -3,6 +3,7 @@ from typing import TYPE_CHECKING, Any, List
 
 from objectsync import IntTopic, SObject, StringTopic
 
+from grapycal.core.typing import GType, AnyType
 from grapycal.sobjects.controls.control import ValuedControl
 from grapycal.sobjects.controls.nullControl import NullControl
 from grapycal.utils.misc import Action
@@ -15,7 +16,7 @@ if TYPE_CHECKING:
 class Port(SObject):
     frontend_type = "Port"
 
-    def build(self, name="port", max_edges=64, display_name=None):
+    def build(self, name="port", max_edges=64, display_name=None, datatype: GType=AnyType):
         self.node: Node = self.get_parent()  # type: ignore
         self.name = self.add_attribute("name", StringTopic, name)
         self.display_name = self.add_attribute(
@@ -23,6 +24,8 @@ class Port(SObject):
         )
         self.max_edges = self.add_attribute("max_edges", IntTopic, max_edges)
         self.is_input = self.add_attribute("is_input", IntTopic, 0)
+        self.register_service('get_type_unconnectable_ports', self.get_type_unconnectable_ports)
+        self.datatype = datatype
 
     def init(self):
         self.edges: List[Edge] = []
@@ -44,6 +47,17 @@ class Port(SObject):
     def get_name(self):
         return self.name.get()
 
+    def get_type_unconnectable_ports(self) -> List[str]:  # return IDs of connectable ports
+        if isinstance(self, InputPort):
+            return list(map(
+                lambda port: port.get_id(),
+                self.node.editor.top_down_search(type=OutputPort, accept=lambda out_port: not out_port.can_connect_to(self))
+            ))
+        else:  # is OutputPort
+            return list(map(
+                lambda port: port.get_id(),
+                self.node.editor.top_down_search(type=InputPort, accept=lambda in_port: not self.can_connect_to(in_port))
+            ))
 
 T = typing.TypeVar("T", bound="ValuedControl")
 
@@ -56,9 +70,10 @@ class InputPort(Port, typing.Generic[T]):
         max_edges=64,
         display_name=None,
         control_name=None,
+        datatype: GType=AnyType,
         **control_kwargs,
     ):
-        super().build(name, max_edges, display_name)
+        super().build(name, max_edges, display_name, datatype)
         self.is_input.set(1)
 
         self.default_control = self.add_child(control_type, **control_kwargs)
@@ -155,8 +170,8 @@ class InputPort(Port, typing.Generic[T]):
 
 
 class OutputPort(Port):
-    def build(self, name="port", max_edges=64, display_name=None):
-        super().build(name, max_edges, display_name)
+    def build(self, name="port", max_edges=64, display_name=None, datatype: GType=AnyType):
+        super().build(name, max_edges, display_name, datatype)
         self.is_input.set(0)
 
     def init(self):
@@ -191,3 +206,6 @@ class OutputPort(Port):
         """
         self._retain = False
         self._retained_data = None  # Release memory
+
+    def can_connect_to(self, in_port: InputPort):
+        return self.datatype >> in_port.datatype
