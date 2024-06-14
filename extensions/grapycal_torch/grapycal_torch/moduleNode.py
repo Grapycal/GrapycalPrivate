@@ -157,7 +157,7 @@ class ModuleNode(Node):
 
 class SimpleModuleNode(ModuleNode):
     module_type: type[nn.Module] = nn.Module
-    inputs: list[str] = ["input"]
+    inputs: list[str] = []
     max_in_degree = [1]
     outputs = ["output"]
     display_port_names: bool | None = None
