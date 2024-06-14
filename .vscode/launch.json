@@ -11,6 +11,7 @@
             "request": "attach",
             "processId": "${command:pickProcess}",
             "logToFile": true,
+            "justMyCode": false,
         },
     ],
     

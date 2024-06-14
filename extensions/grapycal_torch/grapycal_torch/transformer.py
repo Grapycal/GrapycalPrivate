@@ -94,3 +94,22 @@ class LinearPositionalEncodingNode(FunctionNode):
         return (
             torch.tensor(res, dtype=torch.float32).unsqueeze(0).repeat(batch_size, 1, 1)
         )
+
+
+class SinusoidalPositionalEncodingNode(FunctionNode):
+    """
+    looks like this:
+    sin(0) cos(0) sin(1) cos(1) sin(2) cos(2) ...
+    """
+
+    inputs = ["length", "dim", "batch_size"]
+    max_in_degree = [1, 1, 1]
+    outputs = ["output"]
+
+    def calculate(self, length: int, dim: int, batch_size: int) -> torch.Tensor:
+        res = []
+        for d in range(dim // 2):
+            res.append(torch.sin(torch.arange(length) / 10000 ** (2 * d / dim)))
+        for d in range(dim // 2):
+            res.append(torch.cos(torch.arange(length) / 10000 ** (2 * d / dim)))
+        return torch.stack(res, dim=1).unsqueeze(0).repeat(batch_size, 1, 1)
