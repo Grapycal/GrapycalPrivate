@@ -7,10 +7,10 @@ class MaxPool2dNode(SimpleModuleNode):
     module_type = nn.MaxPool2d
     icon_path = "cnn"
     hyper_parameters = [
-        Parameter("kernel_size", "str", "2"),
-        Parameter("stride", "str", "2"),
-        Parameter("padding", "str", "0"),
-        Parameter("dilation", "str", "1"),
+        Parameter("kernel_size", "int", 2),
+        Parameter("stride", "int", 2),
+        Parameter("padding", "int", 0),
+        Parameter("dilation", "int", 1),
     ]
 
     def get_label(self, params):
