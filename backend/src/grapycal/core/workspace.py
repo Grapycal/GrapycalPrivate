@@ -272,11 +272,11 @@ class Workspace:
         node_count = len(main_store.main_editor.top_down_search(type=Node))
         edge_count = len(main_store.main_editor.top_down_search(type=Edge))
         logger.info(
-            f"Workspace saved to {path}. Node count: {node_count}. Edge count: {edge_count}. File size: {file_size // 1024} KB."
+            f"Workspace saved to {path}. {node_count} nodes, {edge_count} edges, {file_size // 1024} KB."
         )
         if send_message:
             self._send_message_to_all(
-                f"Workspace saved to {path}. Node count: {node_count}. Edge count: {edge_count}. File size: {file_size // 1024} KB."
+                f"Workspace saved to {path}. {node_count} nodes, {edge_count} edges, {file_size // 1024} KB."
             )
 
     def _load_workspace(self, path: str) -> None:
