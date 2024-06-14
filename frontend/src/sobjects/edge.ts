@@ -65,7 +65,25 @@ export class Edge extends CompSObject {
     /* Other Fields */
     editor: Editor
     dotAnimation: DotAnimation
-    state: EdgeState = EdgeState.Idle
+    _state: EdgeState = EdgeState.Idle
+    get state(): EdgeState { return this._state }
+    set state(value: EdgeState) {
+        console.log(`Edge id: ${this.id} from state: ${EdgeState[this._state]}`)
+        this._state = value
+        console.log(`Edge id: ${this.id} set to state: ${EdgeState[value]}`)
+        if(value == EdgeState.DraggingTail || value == EdgeState.DraggingHead) {
+            let connected_port = value == EdgeState.DraggingTail ? this.head : this.tail
+            connected_port.getValue()?.getTypeUnconnectablePortsId().then((portsId: string[]) => {
+                for(let id of portsId){
+                    as(this.objectsync.getObject(id), Port).type_incompatible = true
+                }
+            })
+        } else {
+            // Since edge is idle now, the type_incompatible of all ports should be false
+            // Notice that this behavior also happens at onParentChangedTo
+            this.cancelTypeConstraints()
+        }
+    }
 
     constructor(objectsync: ObjectSyncClient, id: string) {
         super(objectsync, id)
@@ -188,6 +206,16 @@ export class Edge extends CompSObject {
         if(this.editor.isRunning(this)){
             this.svg.classList.add('data-ready')
             this.dotAnimation.start()
+        }
+
+        // when parent changed, the edge becomes "idle in the editor"
+        // so we should set the type_incompatible of all ports to false
+        this.cancelTypeConstraints()
+    }
+
+    private cancelTypeConstraints() {
+        for(let port of this.editor.TopDownSearch(Port)){
+            port.type_incompatible = false
         }
     }
 

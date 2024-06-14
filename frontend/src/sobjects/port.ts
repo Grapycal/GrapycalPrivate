@@ -18,6 +18,17 @@ export class Port extends CompSObject implements IControlHost {
     default_control_display: string
     orientation: number=0;
 
+    // This will be set to true if the type is incompatible during the edge creation period
+    // Otherwise, it will be set to false, including those time when the port is not being connected
+    _type_incompatible: boolean = false;
+    get type_incompatible(): boolean {
+        return this._type_incompatible
+    }
+    set type_incompatible(value: boolean) {
+        this._type_incompatible = value
+        this.updateAcceptsEdgeClass()
+    }
+
     private node: Node = null;
     
     element = document.createElement('div')
@@ -151,8 +162,15 @@ export class Port extends CompSObject implements IControlHost {
 
     public acceptsEdge(delta:number=0): boolean {
         if(this.node!=null && this.node.isPreview) return false
+        if (this.type_incompatible) return false
         if(this.max_edges.getValue() > this.edges.length+delta) return true
         return false
+    }
+
+    public getTypeUnconnectablePortsId(): Promise<string[]> {
+        return new Promise((resolve) => {
+            this.makeRequest("get_type_unconnectable_ports",{}, resolve)
+        })
     }
 
     private isInputChanged(is_input: number): void {
