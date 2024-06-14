@@ -7,6 +7,7 @@ from grapycal_torch.transformer import (
     BinaryPositionalEncodingNode,
     LinearPositionalEncodingNode,
     MultiHeadAttentionNode,
+    RotaryPositionalEmbeddingNode,
     SinusoidalPositionalEncodingNode,
     TransformerDecoderLayerNode,
     TransformerEncoderLayerNode,
@@ -151,6 +152,7 @@ class GrapycalTorch(Extension):
         BinaryPositionalEncodingNode,
         LinearPositionalEncodingNode,
         SinusoidalPositionalEncodingNode,
+        RotaryPositionalEmbeddingNode,
     ] + generated_nodes
 
     def provide_stores(self):

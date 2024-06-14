@@ -113,3 +113,58 @@ class SinusoidalPositionalEncodingNode(FunctionNode):
         for d in range(dim // 2):
             res.append(torch.cos(torch.arange(length) / 10000 ** (2 * d / dim)))
         return torch.stack(res, dim=1).unsqueeze(0).repeat(batch_size, 1, 1)
+
+
+class RotaryPositionalEmbedding(nn.Module):
+    def __init__(self, d_model, max_seq_len):
+        super(RotaryPositionalEmbedding, self).__init__()
+
+        # # Create a rotation matrix.
+        # self.rotation_matrix = torch.zeros(d_model, d_model, device=torch.device("cuda"))
+        # for i in range(d_model):
+        #     for j in range(d_model):
+        #         self.rotation_matrix[i, j] = torch.cos(i * j * 0.01)
+
+        # # Create a positional embedding matrix.
+        # self.positional_embedding = torch.zeros(max_seq_len, d_model, device=torch.device("cuda"))
+        # for i in range(max_seq_len):
+        #     for j in range(d_model):
+        #         self.positional_embedding[i, j] = torch.cos(i * j * 0.01)
+
+        # Create a rotation matrix.
+        i, j = torch.meshgrid(torch.arange(d_model), torch.arange(d_model))
+        self.rotation_matrix = torch.cos(i * j * 0.01)
+        self.register_buffer("rotation_matrix", self.rotation_matrix)
+
+        # Create a positional embedding matrix.
+        i, j = torch.meshgrid(torch.arange(max_seq_len), torch.arange(d_model))
+        self.positional_embedding = torch.cos(i * j * 0.01)
+        self.register_buffer("positional_embedding", self.positional_embedding)
+
+    def forward(self, x):
+        """
+        Args:
+            x: A tensor of shape (batch_size, seq_len, d_model).
+
+        Returns:
+            A tensor of shape (batch_size, seq_len, d_model).
+        """
+
+        # Add the positional embedding to the input tensor.
+        x += self.positional_embedding
+
+        # Apply the rotation matrix to the input tensor.
+        x = torch.matmul(x, self.rotation_matrix)
+
+        return x
+
+
+class RotaryPositionalEmbeddingNode(SimpleModuleNode):
+    module_type = RotaryPositionalEmbedding
+    hyper_parameters = [
+        Parameter("d_model", "int", 1),
+        Parameter("max_seq_len", "int", 1),
+    ]
+
+    def get_label(self, params):
+        return f"RoPE dim={params['d_model']}, max_len={params['max_seq_len']}"
