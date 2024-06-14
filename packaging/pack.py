@@ -73,7 +73,7 @@ class StepResult:
         # then copy the other result into the new folder
         for f in other.dir.iterdir():
             if f.is_dir():
-                shutil.copytree(f, dst / f.name)
+                shutil.copytree(f, dst / f.name, dirs_exist_ok=True)
             else:
                 shutil.copy(f, dst / f.name)
         return StepResult(dst)
