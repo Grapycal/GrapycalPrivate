@@ -4,6 +4,7 @@ from discord import app_commands, Interaction
 from discord.ext import commands
 from grapycal.extension_api.trait import InputsTrait, OutputsTrait
 from grapycal.sobjects.port import InputPort
+import inspect
 
 class DiscordBotNode(Node):
     category = 'discordpy'
@@ -71,23 +72,40 @@ class DiscordCommandNode(Node):
         self.bot = bot
         cmd_name = kwargs['cmd_name']
         cmd_description = kwargs['cmd_description']
-        global cb
-        cb = self.cb
-        
 
         params = kwargs.copy()
         for key in ['bot', 'cmd_name', 'cmd_description']:
             params.pop(key)
-        params_str = ', '.join([f'{key}:{value}' for key, value in params.items()])
-        params_str_without_type = ', '.join(params.keys())
         
+        async def callback(interaction:Interaction, **params):
+            self.cb.push('callback', (interaction, params))
+
+        parameters = [
+            # Required parameter
+            inspect.Parameter(
+                name='interaction', # Parameter name
+                annotation=discord.Interaction, # Parameter type
+                kind=inspect.Parameter.POSITIONAL_OR_KEYWORD,
+            ),
+        ]
+        for n, t in params.items():
+            parameters.append(
+                inspect.Parameter(
+                    name=n,
+                    annotation=type(t),
+                    kind=inspect.Parameter.POSITIONAL_OR_KEYWORD,
+                )
+            )
+
+        callback.__signature__ = inspect.Signature(parameters)
+        command = app_commands.Command(
+            name=cmd_name,
+            description=cmd_description,
+            callback=callback,
+        )
         
-        bot.tree.remove_command(cmd_name)
-        exec(f'@bot.tree.command(name="{cmd_name}", description="{cmd_description}")\n'
-             f'async def {cmd_name}(interaction:Interaction, {params_str}):\n'
-             f'    cb.push("callback", (interaction, {params_str_without_type}))\n'
-             f'bot.tree.add_command({cmd_name}, override=True)')
-        
+        bot.tree.add_command(command)
+
 class DiscordInterRespSendMsgNode(Node):
     category = 'discordpy'
 
