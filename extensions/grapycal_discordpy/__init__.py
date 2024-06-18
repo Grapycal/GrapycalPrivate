@@ -112,11 +112,22 @@ class DiscordCommandNode(Node):
                 kind=inspect.Parameter.POSITIONAL_OR_KEYWORD,
             ),
         ]
+        types = {
+            "str": str,
+            "int": int,
+            "bool": bool,
+            "User": discord.User,
+            "TextChannel": discord.TextChannel,
+            "VoiceChannel": discord.VoiceChannel,
+            "CategoryChannel": discord.CategoryChannel,
+            "Role": discord.Role,
+            "Attachment": discord.Attachment,
+        }
         for n, t in params.items():
             parameters.append(
                 inspect.Parameter(
                     name=n,
-                    annotation=type(t),
+                    annotation=types[t],
                     kind=inspect.Parameter.POSITIONAL_OR_KEYWORD,
                 )
             )
