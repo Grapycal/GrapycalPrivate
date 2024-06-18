@@ -6,6 +6,7 @@ from grapycal.extension_api.trait import InputsTrait, OutputsTrait
 from grapycal.sobjects.port import InputPort
 from objectsync.sobject import SObjectSerialized
 import inspect
+from typing import Union
 
 from topicsync.topic import GenericTopic
 
@@ -122,6 +123,7 @@ class DiscordCommandNode(Node):
             "CategoryChannel": discord.CategoryChannel,
             "Role": discord.Role,
             "Attachment": discord.Attachment,
+            "Mentionable": Union[discord.User, discord.Role],
         }
         for n, t in params.items():
             parameters.append(
