@@ -122,8 +122,9 @@ class DiscordCommandNode(Node):
             "VoiceChannel": discord.VoiceChannel,
             "CategoryChannel": discord.CategoryChannel,
             "Role": discord.Role,
-            "Attachment": discord.Attachment,
             "Mentionable": Union[discord.User, discord.Role],
+            "float": float,
+            "Attachment": discord.Attachment,
         }
         for n, t in params.items():
             parameters.append(
