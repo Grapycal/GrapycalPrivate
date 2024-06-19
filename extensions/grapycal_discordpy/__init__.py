@@ -101,7 +101,7 @@ class DiscordCommandNode(Node):
                 self.cb.push('interaction', interaction)
                 self.cb.push('params', params)
         else:
-            def callback(interaction:Interaction, **params):
+            async def callback(interaction:Interaction, **params):
                 self.cb.push('interaction', interaction)
                 self.cb.push('params', params)
 
