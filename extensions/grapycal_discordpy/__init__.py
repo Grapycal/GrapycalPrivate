@@ -76,6 +76,7 @@ class DiscordCommandNode(Node):
         self.is_defer = self.add_attribute(
             "is_defer", GenericTopic[bool], False, editor_type="toggle"
         )
+        self.css_classes.append("fit-content")
 
     def double_click(self):
         if self.bot:
