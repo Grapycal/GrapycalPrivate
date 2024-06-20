@@ -17,6 +17,8 @@ class GrapycalTorchStore:
     def to_tensor(self, data, device: str = "default"):
         if device == "default":
             device = self.settings.default_device.get()
+        if isinstance(data, torch.Tensor):
+            return data.to(device)
         return torch.tensor(data, device=device)
 
     def to_default_device(self, data):
