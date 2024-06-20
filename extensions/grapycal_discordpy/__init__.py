@@ -6,6 +6,9 @@ from grapycal.extension_api.trait import InputsTrait, OutputsTrait
 from grapycal.sobjects.port import InputPort
 from objectsync.sobject import SObjectSerialized
 import inspect
+from typing import Union
+
+from topicsync.topic import GenericTopic
 
 class DiscordBotNode(Node):
     category = "discordpy"
@@ -62,9 +65,18 @@ class DiscordCommandNode(Node):
         )
 
         self.cb = OutputsTrait(
-            outs=["callback"],
+            outs=["interaction", "params"],
         )
         return [self.cmd, self.cmd_params, self.cb]
+    
+    def build_node(self):
+        self.output_control = self.add_text_control(
+            "", readonly=True, name="output_control"
+        )
+        self.is_defer = self.add_attribute(
+            "is_defer", GenericTopic[bool], False, editor_type="toggle"
+        )
+        self.css_classes.append("fit-content")
 
     def double_click(self):
         if self.bot:
@@ -72,6 +84,7 @@ class DiscordCommandNode(Node):
 
     async def sync(self):
         await self.bot.tree.sync()
+        self.output_control.set("Commands synced")
 
     def task(self, **kwargs):
         bot: commands.Bot = kwargs["bot"]
@@ -83,8 +96,15 @@ class DiscordCommandNode(Node):
         for key in ["bot", "cmd_name", "cmd_description"]:
             params.pop(key)
         
-        async def callback(interaction:Interaction, **params):
-            self.cb.push('callback', (interaction, params))
+        if self.is_defer.get():
+            async def callback(interaction:Interaction, **params):
+                await interaction.response.defer()
+                self.cb.push('interaction', interaction)
+                self.cb.push('params', params)
+        else:
+            async def callback(interaction:Interaction, **params):
+                self.cb.push('interaction', interaction)
+                self.cb.push('params', params)
 
         parameters = [
             # Required parameter
@@ -94,11 +114,24 @@ class DiscordCommandNode(Node):
                 kind=inspect.Parameter.POSITIONAL_OR_KEYWORD,
             ),
         ]
+        types = {
+            "str": str,
+            "int": int,
+            "bool": bool,
+            "User": discord.User,
+            "TextChannel": discord.TextChannel,
+            "VoiceChannel": discord.VoiceChannel,
+            "CategoryChannel": discord.CategoryChannel,
+            "Role": discord.Role,
+            "Mentionable": Union[discord.User, discord.Role],
+            "float": float,
+            "Attachment": discord.Attachment,
+        }
         for n, t in params.items():
             parameters.append(
                 inspect.Parameter(
                     name=n,
-                    annotation=type(t),
+                    annotation=types[t],
                     kind=inspect.Parameter.POSITIONAL_OR_KEYWORD,
                 )
             )
@@ -110,9 +143,11 @@ class DiscordCommandNode(Node):
             callback=callback,
         )
         
+        bot.tree.remove_command(cmd_name)
         bot.tree.add_command(command)
+        self.output_control.set(f"Command {cmd_name} added")
 
-class DiscordInterRespSendMsgNode(Node):
+class DiscordSendMessageNode(Node):
     category = "discordpy"
 
     def define_traits(self):
@@ -126,4 +161,7 @@ class DiscordInterRespSendMsgNode(Node):
         self.run(self.send, interaction=interaction, content=content)
 
     async def send(self, interaction: Interaction, content):
-        await interaction.response.send_message(content=content)
+        if interaction.response.is_done():
+            await interaction.followup.send(content=content)
+        else:
+            await interaction.response.send_message(content=content)
