@@ -134,12 +134,17 @@ class Editor(SObject):
         new_edge = self.create_edge(tail, head, new_edge_id)
         return new_edge.get_id()
 
-    def restore(self, nodes: list[SObjectSerialized], edges: list[SObjectSerialized]):
+    def restore(
+        self,
+        nodes: list[SObjectSerialized],
+        edges: list[SObjectSerialized],
+        same_session: bool = True,
+    ):
         """
         Restore the nodes and edges. This method is called by Editor.restore_entire_editor(), Editor._paste() and ExtensionManager.update_extension().
         """
         with self._server.record(allow_reentry=True):
-            new_node_ids, new_edge_ids = self._restore(nodes, edges)
+            new_node_ids, new_edge_ids = self._restore(nodes, edges, same_session)
             for node in self._restored_nodes:
                 node.post_create()
 
@@ -169,7 +174,7 @@ class Editor(SObject):
         Returns a list of serialized objects
         """
 
-        result = {"nodes": [], "edges": []}  # type: dict[str,list[Dict[str,Any]]]
+        result = {"nodes": [], "edges": [], "session_id": main_store.session_id}
 
         for id in ids:
             obj = self._server.get_object(id)
@@ -192,6 +197,10 @@ class Editor(SObject):
             # convert the dicts to SObjectSerialized
             nodes = [from_dict(SObjectSerialized, d) for d in data["nodes"]]
             edges = [from_dict(SObjectSerialized, d) for d in data["edges"]]
+            if "session_id" not in data:  # BACKWARD_COMPATIBILITY: 0.18.0
+                session_id = -1
+            else:
+                session_id = data["session_id"]
         except Exception:
             user_logger.info("Invalid paste content")
             return
@@ -226,7 +235,11 @@ class Editor(SObject):
                         attr[2] = new_translation
 
         with self._server.record():
-            self.restore(nodes=nodes, edges=edges)
+            self.restore(
+                nodes=nodes,
+                edges=edges,
+                same_session=session_id == main_store.session_id,
+            )
             for node_id in self._new_node_ids:
                 node = self._server.get_object(node_id)
                 node.add_tag(f"pasted_by_{sender}")
@@ -324,7 +337,10 @@ class Editor(SObject):
     """
 
     def _restore(
-        self, node_list: list[SObjectSerialized], edge_list: list[SObjectSerialized]
+        self,
+        node_list: list[SObjectSerialized],
+        edge_list: list[SObjectSerialized],
+        same_session: bool,
     ):
         """
         The actual algorithm to restore the nodes and edges. This method is called by restore().
@@ -334,14 +350,14 @@ class Editor(SObject):
         nodes: dict[str, SObjectSerialized] = {}
         edges: dict[str, SObjectSerialized] = {}
         for obj in node_list:
-            if obj.id in self._server._objects:
+            if obj.id in self._server._objects or not same_session:
                 new_id = f"r_{main_store.next_id()}"  # r means restored
             else:
                 new_id = obj.id  # if possible, keep the old id
             nodes[new_id] = obj
 
         for obj in edge_list:
-            if obj.id in self._server._objects:
+            if obj.id in self._server._objects or not same_session:
                 new_id = f"r_{main_store.next_id()}"
             else:
                 new_id = obj.id
@@ -436,11 +452,12 @@ class Editor(SObject):
             try:
                 is_input, port_name, old_node_id = port_map_1[old_port_id]
             except KeyError:
-                # fallback to finding the existing port
-                if old_port_id in existing_ports:
-                    return old_port_id
-                else:
-                    return None
+                # fallback to finding the existing port if same_session is True
+                if same_session:
+                    if old_port_id in existing_ports:
+                        return old_port_id
+                    else:
+                        return None
 
             new_node_id = id_map[old_node_id]
 

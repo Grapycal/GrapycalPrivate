@@ -2,6 +2,7 @@ import asyncio
 import importlib.metadata
 import logging
 import os
+import random
 import signal
 from typing import Any, Dict
 
@@ -219,6 +220,7 @@ class Workspace:
         main_store.vars = self._vars
         main_store.record = self._objectsync.record
         main_store.slash = self.slash
+        main_store.session_id = random.randint(0, 1000000000)
 
         # runner control. It's put here because it needs main_store.runner
         # the play is handled by controlPanel.py
