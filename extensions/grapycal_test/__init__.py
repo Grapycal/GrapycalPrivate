@@ -4,6 +4,7 @@ import json
 from typing import Any, Dict, List
 
 from grapycal.core.typing import PlainType
+from grapycal.extension_api.decor import func
 import websockets
 from grapycal import (
     ButtonControl,
@@ -128,3 +129,9 @@ class Test1Node(Node):
 
         self.int_topic = self.add_attribute("some_int_topic", IntTopic)
         self.string_topic = self.add_attribute("some_string_topic", StringTopic)
+
+
+class Test2Node(Node):
+    @func()
+    def add(self, a: str, b: str) -> str:
+        return a + b

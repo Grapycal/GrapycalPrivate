@@ -4,7 +4,7 @@ from pprint import pprint
 from grapycal.core.background_runner import RunnerInterrupt
 from grapycal.core.client_msg_types import ClientMsgTypes
 from grapycal.core.typing import GType, AnyType
-from grapycal.extension_api.node_def import get_node_def_info
+from grapycal.extension_api.node_def import generate_traits, get_node_def_info
 from grapycal.extension_api.trait import Chain, Trait
 from grapycal.sobjects.controls.keyboardControl import KeyboardControl
 from grapycal.sobjects.controls.sliderControl import SliderControl
@@ -246,8 +246,11 @@ class Node(SObject, metaclass=NodeMeta):
         self.on_double_click = Action()
         self.on_destroy = Action()
 
-        define_traits_output = self.define_traits()
         trait_list: list[Trait] = []
+
+        trait_list += self.define_traits_gen()
+
+        define_traits_output = self.define_traits()
         if isinstance(define_traits_output, list):
             for item in define_traits_output:
                 if isinstance(item, Trait):
@@ -272,8 +275,8 @@ class Node(SObject, metaclass=NodeMeta):
             item.set_node(self)
         super().initialize(serialized, *args, **kwargs)
 
-    def define_traits_(self) -> list[Trait | Chain] | Trait | Chain:
-        return []
+    def define_traits_gen(self) -> list[Trait]:
+        return generate_traits(self._node_def_info)
 
     def define_traits(self) -> list[Trait | Chain] | Trait | Chain:
         return []
