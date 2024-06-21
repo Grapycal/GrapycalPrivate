@@ -4,6 +4,7 @@ from pprint import pprint
 from grapycal.core.background_runner import RunnerInterrupt
 from grapycal.core.client_msg_types import ClientMsgTypes
 from grapycal.core.typing import GType, AnyType
+from grapycal.extension_api.node_def import get_node_def_info
 from grapycal.extension_api.trait import Chain, Trait
 from grapycal.sobjects.controls.keyboardControl import KeyboardControl
 from grapycal.sobjects.controls.sliderControl import SliderControl
@@ -194,6 +195,9 @@ class NodeMeta(ABCMeta):
             False  # True if @sigletonNode. Used internally by the ExtensionManager.
         )
         self._auto_instantiate = True  # Used internally by the ExtensionManager.
+        self._node_def_info = get_node_def_info(
+            attrs
+        )  # used to generate traits out of high level node def interface
         return super().__init__(name, bases, attrs)
 
 
@@ -267,6 +271,9 @@ class Node(SObject, metaclass=NodeMeta):
             self.traits[item.name] = item
             item.set_node(self)
         super().initialize(serialized, *args, **kwargs)
+
+    def define_traits_(self) -> list[Trait | Chain] | Trait | Chain:
+        return []
 
     def define_traits(self) -> list[Trait | Chain] | Trait | Chain:
         return []
@@ -620,12 +627,18 @@ class Node(SObject, metaclass=NodeMeta):
                 self.restore_controls((restore_from, name))
         return port
 
-    def add_out_port(self, name: str, max_edges=64, display_name=None, datatype: GType=AnyType):
+    def add_out_port(
+        self, name: str, max_edges=64, display_name=None, datatype: GType = AnyType
+    ):
         """
         Add an output port to the node.
         """
         port = self.add_child(
-            OutputPort, name=name, max_edges=max_edges, display_name=display_name, datatype=datatype
+            OutputPort,
+            name=name,
+            max_edges=max_edges,
+            display_name=display_name,
+            datatype=datatype,
         )
         self.out_ports.insert(port)
         return port
