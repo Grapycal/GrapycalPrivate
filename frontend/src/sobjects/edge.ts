@@ -80,7 +80,6 @@ export class Edge extends CompSObject {
             })
         } else {
             // Since edge is idle now, the type_incompatible of all ports should be false
-            // Notice that this behavior also happens at onParentChangedTo
             this.cancelTypeConstraints()
         }
     }
