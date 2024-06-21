@@ -34,8 +34,8 @@ class SliderControl(ValuedControl[None]):
     def init(self):
         self.on_set = self.value.on_set
 
-    def set_activation_callback(self, callback):
-        self.on_set += callback
+    # def set_activation_callback(self, callback):
+    #     self.on_set += callback
 
     def get(self) -> int | float:
         if self.config["int_mode"]:

@@ -1,9 +1,9 @@
 from topicsync.topic import GenericTopic, StringTopic
 
-from grapycal.sobjects.controls.control import Control
+from grapycal.sobjects.controls.control import ValuedControl
 
 
-class ToggleControl(Control):
+class ToggleControl(ValuedControl[bool]):
     """ """
 
     frontend_type = "ToggleControl"
@@ -15,3 +15,15 @@ class ToggleControl(Control):
 
     def set(self, value: bool):
         self.value.set(value)
+
+    def value_ready(self) -> bool:
+        return True
+
+    def take_label(self, label):
+        if self.label.get() == "":
+            self.label.set(label)
+            return True
+        return False
+
+    def get(self) -> bool:
+        return self.value.get()

@@ -11,7 +11,9 @@ from typing import TYPE_CHECKING, Any
 
 from grapycal.core.typing import AnyType, GType
 from grapycal.sobjects.controls.nullControl import NullControl
+from grapycal.sobjects.controls.sliderControl import SliderControl
 from grapycal.sobjects.controls.textControl import TextControl
+from grapycal.sobjects.controls.toggleControl import ToggleControl
 from grapycal.sobjects.port import OutputPort
 from objectsync.topic import ObjDictTopic
 from .trait import Trait
@@ -45,7 +47,7 @@ class NodeFunc:
     name: str
     inputs: dict[str, GType]
     outputs: dict[str, GType]
-    background = True
+    background: bool = True
 
 
 @dataclass
@@ -104,6 +106,10 @@ class DecorTrait(Trait):
             control_type = NullControl
         elif gtype >> str:
             control_type = TextControl
+        elif gtype >> bool:
+            control_type = ToggleControl
+        elif gtype >> int:
+            control_type = SliderControl
         else:
             raise NotImplementedError(f"Unsupported GType {gtype} for input port.")
         # TODO: add more control types
@@ -112,34 +118,47 @@ class DecorTrait(Trait):
         )
 
     def port_activated(self, port: InputPort):
+        peeked_ports: set[InputPort] = set()
         for node_func in self.node_funcs.values():
             if any(
-                port.get_name() == f"{self.name}.in.{name}"
-                for name in node_func.inputs.keys()
+                port.get_name() == f"{self.name}.in.{name}" for name in node_func.inputs
             ):
                 if all(
                     self.in_ports[f"{self.name}.in.{name}"].is_all_ready()
-                    for name in node_func.inputs.keys()
+                    for name in node_func.inputs
                 ):
                     func = getattr(self.node, node_func.name)
                     inputs = {
-                        name: self.in_ports[f"{self.name}.in.{name}"].get()
-                        for name in node_func.inputs.keys()
+                        name: self.in_ports[f"{self.name}.in.{name}"].peek()
+                        for name in node_func.inputs
                     }
+                    for name in node_func.inputs:
+                        peeked_ports.add(self.in_ports[f"{self.name}.in.{name}"])
                     if node_func.background:
                         self.node.run(
-                            lambda: self.func_finished(func(**inputs), node_func),
+                            lambda func=func,
+                            inputs=inputs,
+                            node_func=node_func: self.func_finished(  # The node_func=node_func trick is to avoid the late binding problem
+                                func(**inputs), node_func
+                            ),
                             background=True,
                         )
                     else:
                         self.node.run(
-                            lambda: self.func_finished(func(**inputs), node_func),
+                            lambda func=func,
+                            inputs=inputs,
+                            node_func=node_func: self.func_finished(
+                                func(**inputs), node_func
+                            ),
                             background=False,
                         )
 
+        for peeked_port in peeked_ports:
+            peeked_port.get()
+
     def func_finished(self, outputs, node_func: NodeFunc):
         if len(node_func.outputs) == 1:
-            name = f"{self.name}.out.{list(node_func.outputs.keys())[0]}"
+            name = f"{self.name}.out.{list(node_func.outputs)[0]}"
             self.out_ports[name].push(outputs)
         else:
             for name, output in outputs.items():
@@ -163,15 +182,30 @@ def consistent_annotations(annotations: "list[type]") -> bool:
 
 def collect_input_output_params(
     funcs: dict[str, MethodType], param_funcs: "dict[str, MethodType]"
-) -> tuple[dict[str, list[Any]], dict[str, list[Any]], dict[str, list[Any]]]:
+) -> tuple[
+    dict[str, list[Any]],
+    dict[str, list[Any]],
+    dict[str, list[Any]],
+    dict[str, NodeFunc],
+    dict[str, NodeParam],
+]:
     inputs = defaultdict(list)
     outputs = defaultdict(list)
     params = defaultdict(list)
+    node_funcs: dict[str, NodeFunc] = {}
+    node_params: dict[str, NodeParam] = {}
     for func in funcs.values():
+        cur_inputs: dict[str, GType] = {}
+        cur_outputs: dict[str, GType] = {}
         if "return" in func.__annotations__:
             outputs[func.__name__].append(func.__annotations__["return"])
+            cur_outputs.update(
+                {func.__name__: AnyType}
+            )  # The actual type will be filled in later
         else:
             outputs[func.__name__].append(None)
+            cur_outputs.update({"return": AnyType})
+
         signature = inspect.signature(func)
         for name, arg in signature.parameters.items():
             if name == "self":
@@ -179,15 +213,24 @@ def collect_input_output_params(
             inputs[name].append(
                 arg.annotation if arg.annotation != inspect.Parameter.empty else None
             )
+            cur_inputs.update({name: AnyType})
+
+        node_funcs[func.__name__] = NodeFunc(
+            name=func.__name__, inputs=cur_inputs, outputs=cur_outputs
+        )
 
     for param in param_funcs.values():
         signature = inspect.signature(param)
+        cur_params: dict[str, GType] = {}
         for name, arg in signature.parameters.items():
             params[name].append(
                 arg.annotation if arg.annotation != inspect.Parameter.empty else None
             )
+            cur_params.update({name: AnyType})
 
-    return inputs, outputs, params
+        node_params[param.__name__] = NodeParam(name=param.__name__, params=cur_params)
+
+    return inputs, outputs, params, node_funcs, node_params
 
 
 def consistent_input_output_params(
@@ -229,8 +272,8 @@ def annotations_to_gtype(annotations: "list[Any]") -> "GType":
 def generate_traits(node_def_info: NodeDefInfo) -> "list[Trait]":
     traits: "list[Trait]" = []
 
-    inputs_dict_list, outputs_dict_list, params_dict_list = collect_input_output_params(
-        node_def_info.funcs, node_def_info.params
+    inputs_dict_list, outputs_dict_list, params_dict_list, node_funcs, node_params = (
+        collect_input_output_params(node_def_info.funcs, node_def_info.params)
     )
 
     if not consistent_input_output_params(
@@ -251,21 +294,13 @@ def generate_traits(node_def_info: NodeDefInfo) -> "list[Trait]":
         for name, annotations in params_dict_list.items()
     }
 
-    node_funcs = {
-        name: NodeFunc(
-            name=name,
-            inputs={name: inputs[name] for name in inputs_dict_list},
-            outputs={name: outputs[name] for name in outputs_dict_list},
-        )
-        for name in node_def_info.funcs
-    }
+    # fill in the actual types for node_funcs and node_params
+    for node_func in node_funcs.values():
+        node_func.inputs = {name: inputs[name] for name in node_func.inputs}
+        node_func.outputs = {name: outputs[name] for name in node_func.outputs}
 
-    node_params = {
-        name: NodeParam(
-            name=name, params={name: params[name] for name in params_dict_list}
-        )
-        for name in node_def_info.params
-    }
+    for node_param in node_params.values():
+        node_param.params = {name: params[name] for name in node_param.params}
 
     traits.append(DecorTrait(inputs, outputs, params, node_funcs, node_params))
     return traits

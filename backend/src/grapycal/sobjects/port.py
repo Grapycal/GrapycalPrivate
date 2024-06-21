@@ -165,6 +165,17 @@ class InputPort(Port, typing.Generic[T]):
             return None
         return self.edges[0].get()
 
+    def peek(self, allow_no_data=False) -> Any:
+        """
+        If not using default control, return data from the first connected edge without taking it.
+        If using default control, return data from the default control.
+        """
+        if self.use_default:
+            return self.default_control.get()
+        elif allow_no_data and not self.is_all_ready():
+            return None
+        return self.edges[0].peek()
+
     def activated_by_edge(self, edge: "Edge"):
         try:
             self.default_control.set_with_value_from_edge(edge.peek())

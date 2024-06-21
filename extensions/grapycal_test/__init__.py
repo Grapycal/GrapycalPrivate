@@ -5,6 +5,7 @@ from typing import Any, Dict, List
 
 from grapycal.core.typing import PlainType
 from grapycal.extension_api.decor import func
+from grapycal.sobjects.controls.sliderControl import SliderControl
 import websockets
 from grapycal import (
     ButtonControl,
@@ -96,9 +97,6 @@ class TestNode(FunctionNode):
         return kwargs
 
 
-import requests
-
-
 class DefaultTestNode(DVfunctionNode):
     category = "test"
     default_value = [{"a": 1, "b": 2, "c": 3}]
@@ -131,7 +129,27 @@ class Test1Node(Node):
         self.string_topic = self.add_attribute("some_string_topic", StringTopic)
 
 
-class Test2Node(Node):
+class OldAddNode(Node):
+    def build_node(self):
+        self.a = self.add_in_port(
+            "a", datatype=PlainType(int), control_type=SliderControl
+        )
+        self.b = self.add_in_port(
+            "b", datatype=PlainType(int), control_type=SliderControl
+        )
+        self.result = self.add_out_port("result", datatype=PlainType(int))
+
+    def port_activated(self, port: InputPort):
+        if port == self.a or port == self.b:
+            if self.a.is_all_ready() and self.b.is_all_ready():
+                self.result.push(self.a.get() + self.b.get())
+
+
+class NewAddNode(Node):
     @func()
-    def add(self, a: str, b: str) -> str:
-        return a + b
+    def sum(self, a: int, b: int, c: int) -> int:
+        return a + b + c
+
+    @func()
+    def diff(self, a: int, b: int) -> int:
+        return a - b
