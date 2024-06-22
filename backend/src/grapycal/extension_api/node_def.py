@@ -124,11 +124,22 @@ class DecorTrait(Trait):
                 self.port_info_dict[f"{self.name}.param.{name}"].used_by_params.append(
                     param
                 )
+            param_callback = getattr(self.node, param.name)
+            self.node.run(  # Call the param callback once to initialize the param
+                lambda param_callback=param_callback, param=param: param_callback(
+                    **{
+                        name: self.param_ports[f"{self.name}.param.{name}"].get()
+                        for name in param.params
+                    }
+                ),
+                background=True,
+            )
 
     def add_input_or_param_port(
         self, name: str, display_name: str, gtype: GType
     ) -> "InputPort":
-        editor_args = {}
+        control_kwargs: dict[str, Any] = {}
+        editor_args: dict[str, Any] = {}
 
         if gtype == AnyType:
             control_type = NullControl
@@ -141,13 +152,27 @@ class DecorTrait(Trait):
             editor_type = "toggle"
         elif gtype >> int:
             control_type = SliderControl
+            control_kwargs = {"int_mode": True}
             editor_type = "int"
+        elif gtype >> float:
+            control_type = SliderControl
+            control_kwargs = {"int_mode": False}
+            editor_type = "float"
+
         else:
-            raise NotImplementedError(f"Unsupported GType {gtype} for input port.")
+            logger.warning(
+                f"Not support gtype {gtype} for port {name} yet. Will not add control."
+            )
+            control_type = NullControl
+            editor_type = None
         # TODO: add more control types
 
         port = self.node.add_in_port(
-            name, 1, display_name=display_name, control_type=control_type
+            name,
+            1,
+            display_name=display_name,
+            control_type=control_type,
+            **control_kwargs,
         )
         if editor_type is not None:
             self.node.expose_attribute(
