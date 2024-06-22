@@ -1,4 +1,4 @@
-from objectsync import DictTopic, FloatTopic, StringTopic
+from objectsync import DictTopic, FloatTopic, StringTopic, Topic
 
 from grapycal.sobjects.controls.control import ValuedControl
 
@@ -41,6 +41,9 @@ class SliderControl(ValuedControl[None]):
         if self.config["int_mode"]:
             return int(self.value.get())
         return self.value.get()
+
+    def get_value_topic(self) -> Topic:
+        return self.value
 
     def get_int(self) -> int:
         return int(self.value.get())

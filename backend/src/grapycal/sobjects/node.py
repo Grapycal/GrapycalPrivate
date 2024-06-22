@@ -1022,6 +1022,8 @@ class Node(SObject, metaclass=NodeMeta):
                     "editor_args": editor_args,
                 },
             )
+        else:
+            raise ValueError(f"Invalid target {target}")
 
     def print(self, *objs, sep=" ", end="\n", **kwargs):
         """

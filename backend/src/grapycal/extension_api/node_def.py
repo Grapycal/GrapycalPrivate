@@ -56,6 +56,13 @@ class NodeParam:
     params: dict[str, GType]
 
 
+@dataclass
+class PortInfo:
+    is_func: bool
+    used_by_funcs: list[NodeFunc]
+    used_by_params: list[NodeParam]
+
+
 class DecorTrait(Trait):
     def __init__(
         self,
@@ -85,7 +92,7 @@ class DecorTrait(Trait):
 
         # generate input ports for function inputs
         for name, gtype in self.inputs.items():
-            self.in_ports[f"{self.name}.in.{name}"] = self.add_in_port(
+            self.in_ports[f"{self.name}.in.{name}"] = self.add_input_or_param_port(
                 f"{self.name}.in.{name}", name, gtype
             )
 
@@ -97,64 +104,115 @@ class DecorTrait(Trait):
 
         # generate param ports for function params
         for name, gtype in self.params.items():
-            self.param_ports[f"{self.name}.param.{name}"] = self.add_in_port(
-                f"{self.name}.param.{name}", name, gtype
+            self.param_ports[f"{self.name}.param.{name}"] = (
+                self.add_input_or_param_port(f"{self.name}.param.{name}", name, gtype)
             )
 
-    def add_in_port(self, name: str, display_name: str, gtype: GType) -> "InputPort":
+    def init_node(self):
+        self.port_info_dict: defaultdict[str, PortInfo] = defaultdict(
+            lambda: PortInfo(False, [], [])
+        )
+        for node_func in self.node_funcs.values():
+            for name in node_func.inputs:
+                self.port_info_dict[f"{self.name}.in.{name}"].is_func = True
+                self.port_info_dict[f"{self.name}.in.{name}"].used_by_funcs.append(
+                    node_func
+                )
+        for param in self.node_params.values():
+            for name in param.params:
+                self.port_info_dict[f"{self.name}.param.{name}"].is_func = False
+                self.port_info_dict[f"{self.name}.param.{name}"].used_by_params.append(
+                    param
+                )
+
+    def add_input_or_param_port(
+        self, name: str, display_name: str, gtype: GType
+    ) -> "InputPort":
+        editor_args = {}
+
         if gtype == AnyType:
             control_type = NullControl
+            editor_type = None
         elif gtype >> str:
             control_type = TextControl
+            editor_type = "text"
         elif gtype >> bool:
             control_type = ToggleControl
+            editor_type = "toggle"
         elif gtype >> int:
             control_type = SliderControl
+            editor_type = "int"
         else:
             raise NotImplementedError(f"Unsupported GType {gtype} for input port.")
         # TODO: add more control types
-        return self.node.add_in_port(
+
+        port = self.node.add_in_port(
             name, 1, display_name=display_name, control_type=control_type
         )
+        if editor_type is not None:
+            self.node.expose_attribute(
+                port.default_control.get_value_topic(),
+                editor_type,
+                display_name=display_name,
+                **editor_args,
+            )
+        return port
 
     def port_activated(self, port: InputPort):
+        port_info = self.port_info_dict[port.get_name()]
         peeked_ports: set[InputPort] = set()
-        for node_func in self.node_funcs.values():
-            if any(
-                port.get_name() == f"{self.name}.in.{name}" for name in node_func.inputs
+        for node_func in port_info.used_by_funcs:
+            # A func requires all its inputs to be ready before it can be executed
+            if all(
+                self.in_ports[f"{self.name}.in.{name}"].is_all_ready()
+                for name in node_func.inputs
             ):
-                if all(
-                    self.in_ports[f"{self.name}.in.{name}"].is_all_ready()
+                func = getattr(self.node, node_func.name)
+                inputs = {
+                    name: self.in_ports[f"{self.name}.in.{name}"].peek()
                     for name in node_func.inputs
-                ):
-                    func = getattr(self.node, node_func.name)
-                    inputs = {
-                        name: self.in_ports[f"{self.name}.in.{name}"].peek()
-                        for name in node_func.inputs
-                    }
-                    for name in node_func.inputs:
-                        peeked_ports.add(self.in_ports[f"{self.name}.in.{name}"])
-                    if node_func.background:
-                        self.node.run(
-                            lambda func=func,
-                            inputs=inputs,
-                            node_func=node_func: self.func_finished(  # The node_func=node_func trick is to avoid the late binding problem
-                                func(**inputs), node_func
-                            ),
-                            background=True,
-                        )
-                    else:
-                        self.node.run(
-                            lambda func=func,
-                            inputs=inputs,
-                            node_func=node_func: self.func_finished(
-                                func(**inputs), node_func
-                            ),
-                            background=False,
-                        )
+                }
+                for name in node_func.inputs:
+                    peeked_ports.add(self.in_ports[f"{self.name}.in.{name}"])
+                if node_func.background:
+                    self.node.run(
+                        lambda func=func,
+                        inputs=inputs,
+                        node_func=node_func: self.func_finished(  # The node_func=node_func trick is to avoid the late binding problem
+                            func(**inputs), node_func
+                        ),
+                        background=True,
+                    )
+                else:
+                    self.node.run(
+                        lambda func=func,
+                        inputs=inputs,
+                        node_func=node_func: self.func_finished(
+                            func(**inputs), node_func
+                        ),
+                        background=False,
+                    )
 
         for peeked_port in peeked_ports:
             peeked_port.get()
+
+        if not port_info.is_func:  # If the port is a param port
+            for node_param in port_info.used_by_params:
+                # A param callback is called when any of its input ports are activated
+                param_callback = getattr(self.node, node_param.name)
+                params = self.collect_params(node_param)
+                self.node.run(
+                    lambda param_callback=param_callback, params=params: param_callback(
+                        **params
+                    ),
+                    background=True,
+                )
+
+    def collect_params(self, node_param: NodeParam):
+        params = {}
+        for name in node_param.params:
+            params[name] = self.param_ports[f"{self.name}.param.{name}"].get()
+        return params
 
     def func_finished(self, outputs, node_func: NodeFunc):
         if len(node_func.outputs) == 1:
@@ -204,7 +262,7 @@ def collect_input_output_params(
             )  # The actual type will be filled in later
         else:
             outputs[func.__name__].append(None)
-            cur_outputs.update({"return": AnyType})
+            cur_outputs.update({func.__name__: AnyType})
 
         signature = inspect.signature(func)
         for name, arg in signature.parameters.items():
@@ -223,6 +281,8 @@ def collect_input_output_params(
         signature = inspect.signature(param)
         cur_params: dict[str, GType] = {}
         for name, arg in signature.parameters.items():
+            if name == "self":
+                continue
             params[name].append(
                 arg.annotation if arg.annotation != inspect.Parameter.empty else None
             )

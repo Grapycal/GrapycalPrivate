@@ -1,3 +1,4 @@
+from objectsync import Topic
 from topicsync.topic import GenericTopic, StringTopic
 
 from grapycal.sobjects.controls.control import ValuedControl
@@ -18,6 +19,9 @@ class ToggleControl(ValuedControl[bool]):
 
     def value_ready(self) -> bool:
         return True
+
+    def get_value_topic(self) -> Topic:
+        return self.value
 
     def take_label(self, label):
         if self.label.get() == "":

@@ -4,7 +4,7 @@ import json
 from typing import Any, Dict, List
 
 from grapycal.core.typing import PlainType
-from grapycal.extension_api.decor import func
+from grapycal.extension_api.decor import func, param
 from grapycal.sobjects.controls.sliderControl import SliderControl
 import websockets
 from grapycal import (
@@ -148,8 +148,17 @@ class OldAddNode(Node):
 class NewAddNode(Node):
     @func()
     def sum(self, a: int, b: int, c: int) -> int:
-        return a + b + c
+        return a + b + c + self.bias
 
     @func()
     def diff(self, a: int, b: int) -> int:
         return a - b
+
+    @param()
+    def param(self, bias: int) -> None:
+        self.bias = bias
+        self.label.set(f"bias: {bias}")
+
+    @func()
+    def aaa(self, t: str):
+        return t

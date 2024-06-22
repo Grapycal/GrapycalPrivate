@@ -63,6 +63,9 @@ class TextControl(ValuedControl[str]):
     def value_ready(self) -> bool:
         return True
 
+    def get_value_topic(self):
+        return self.text
+
     def set_activation_callback(self, callback):
         if self.activation_mode.get() == TextControl.ActivationMode.ON_CHANGE:
             self.text.on_set += callback

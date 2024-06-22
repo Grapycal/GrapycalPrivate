@@ -8,6 +8,7 @@ from grapycal.utils.misc import Action
 from objectsync import Topic, SObject, ListTopic
 from grapycal.sobjects.port import InputPort
 from grapycal import IntTopic, FloatTopic, StringTopic
+from objectsync.topic import WrappedTopic
 from topicsync.topic import GenericTopic
 
 if TYPE_CHECKING:
@@ -44,7 +45,7 @@ class Trait:
             "attr_refs": {
                 name: obj.get_name().split("/")[-1]
                 for name, obj in self.__dict__.items()
-                if isinstance(obj, Topic)
+                if isinstance(obj, Topic | WrappedTopic)
             },
             "sobject_refs": {
                 name: obj.get_id()
