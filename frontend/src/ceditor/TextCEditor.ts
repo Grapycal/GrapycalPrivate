@@ -1,15 +1,21 @@
-import { EventTopic, IntTopic, StringTopic } from "objectsync-client"
+import { Action, EventTopic, IntTopic, ObjectSyncClient, StringTopic, Topic } from "objectsync-client"
 
 import { BindInputBoxAndTopic } from "../ui_utils/interaction"
 import { TextBox} from "../utils"
 import { Componentable } from "../component/componentable"
 import { Control } from "../sobjects/controls/control"
+import { TextControl } from "../sobjects/controls/textControl"
+import { CEditor } from "./CEditor"
 
+enum UpdateMode {
+    CHANGE = 0,
+    FINISH = 1,
+}
 
-export class TextCEditor extends Componentable {
+    
+export class TextCEditor extends CEditor {
 
     textBox: TextBox
-    control: Control
 
     protected get template (){return `
     <div class="control flex-horiz">
@@ -24,54 +30,39 @@ export class TextCEditor extends Componentable {
         }
     `
 
-    text: StringTopic
-    label: StringTopic
-    editable: IntTopic
-    placeholder: StringTopic
-
-    constructor(control:Control) {
+    constructor(objectsync:ObjectSyncClient, topics: StringTopic[], label:string, editable:number, placeholder:string, updateMode:number){
         super()
-        this.control = control
-        this.text = this.control.getAttribute("text", StringTopic)
-        this.label = this.control.getAttribute("label", StringTopic)
-        this.editable = this.control.getAttribute("editable", IntTopic)
-        this.placeholder = this.control.getAttribute("placeholder", StringTopic)
 
-        this.textBox = new TextBox(this.htmlItem.getElByClass("control"),this.editable.getValue()==0)
+        this.textBox = new TextBox(this.htmlItem.getElByClass("control"),editable==0)
         // Line height is 17px. The control should be 15+17(n-1)px tall, where n is the number of lines.
         this.textBox.heightDelta = -2
-        if(this.editable.getValue()==0){
+        if(editable==0){
             (this.htmlItem.baseElement as HTMLDivElement).style.minHeight = "0px"
         }
         this.textBox.textarea.classList.add("control-text","text-field")
-        this.textBox.value = this.text.getValue()
-        this.textBox.onResize.add(()=>{this.control.node.moved.invoke()})
+        //this.textBox.value = this.text.getValue()
+        this.textBox.onResize.add(this.onResize.invoke)
 
-        new BindInputBoxAndTopic(this,this.textBox, this.text,this.objectsync,true)
-
-        this.link2(this.textBox as any, "blur", () => {
-            this.control.makeRequest('finish')
-        })
+        let bindInputBox = new BindInputBoxAndTopic(
+            this,
+            this.textBox, 
+            topics,
+            objectsync,
+            updateMode == UpdateMode.CHANGE
+        )
 
         let labelEl = this.htmlItem.getEl("label", HTMLDivElement)
-        this.link(this.label.onSet, (label) => {
-            if (label == '') {
-                labelEl.style.display = 'none'
-                return
-            }
-            //replace spaces with non-breaking spaces
-            label = label.replace(/ /g, "\u00a0")
+        if (label == '') {
+            labelEl.style.display = 'none'
+            return
+        }
+        //replace spaces with non-breaking spaces
+        label = label.replace(/ /g, "\u00a0")
 
-            labelEl.innerHTML = label
-        })
-
-        this.link(this.editable.onSet, (editable) => {
-            this.textBox.disabled = !editable
-        })
-
-        this.link(this.placeholder.onSet, (placeholder) => {
-            this.textBox.placeholder = placeholder
-        })
+        labelEl.innerHTML = label
+        
+        this.textBox.disabled = !editable       
+        this.textBox.placeholder = placeholder
     }
 
 }

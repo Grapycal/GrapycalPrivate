@@ -31,27 +31,39 @@ export class BindInputBoxAndTopic extends Component{
     private objectsync: ObjectSyncClient
     private linker: Linker
     private locked = false
+    private _updateEveryInput: boolean
+    public set updateEveryInput(value: boolean){
+        this._updateEveryInput = value
+    }
     constructor(object:IComponentable, input: HTMLInputElement|HTMLTextAreaElement|TextBox, topic: StringTopic|StringTopic[], objectsync:ObjectSyncClient, updateEveryInput: boolean = false){
         super(object)
         this.input = input
         this.topics = topic instanceof Array ? topic : [topic]
         this.objectsync = objectsync
+        this._updateEveryInput = updateEveryInput
         if (!this.hasComponent(Linker)) {
             this.linker = new Linker(this.object)
         }else{
             this.linker = this.getComponent(Linker)
         }
 
-        this.linker.link2(this.input, "blur", this.inputChanged, this)
+        this.linker.link2(this.input, "blur", () => {
+            if(!this._updateEveryInput){
+                this.inputChanged()
+            }
+        }, this)
         this.linker.link2(this.input, "keydown", (e) => {
-            if (e.key === "Enter") {
+            if (e.key === "Enter" && !this._updateEveryInput) {
                 this.inputChanged()
             }
         }, this)
         
-        if (updateEveryInput) {
-            this.linker.link2(this.input, "input", this.inputChanged, this)
-        }
+        this.linker.link2(this.input, "input", () => {
+            if(this._updateEveryInput){
+                this.inputChanged()
+            }
+        }, this)
+        
 
         if(this.topics.length == 1){
             this.linker.link(this.topics[0].onInsert, this.onInsert, this)

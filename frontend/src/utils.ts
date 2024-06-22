@@ -428,3 +428,11 @@ export function getImageFromClipboard(e: ClipboardEvent, callback: (base64String
     }
     no_image_callback()
 }
+
+
+export class TopicBus<T extends Topic<DT>,DT=any>{
+    topics: T[] = []
+    constructor(topics: T[]){
+        this.topics = topics
+    }
+}
