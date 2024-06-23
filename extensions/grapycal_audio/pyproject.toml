@@ -1,0 +1,19 @@
+[tool.poetry]
+name = "grapycal-audio"
+version = "0.1.0"
+description = "A Grapycal extension for Audio processing"
+authors = ["eri24816 <a931eric@gmail.com>"]
+packages = [
+    { include = "grapycal_audio"}
+]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+grapycal = ">=0.18.0"
+librosa = "^0.10.2"
+pyaudio = "^0.2.14"
+miditoolkit = "^1.0.1"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
