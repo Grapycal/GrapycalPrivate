@@ -1,3 +1,5 @@
+import argparse
+from datetime import datetime
 import json
 import os
 import pathlib
@@ -190,6 +192,14 @@ def license_file_exists():
     return Path(GRAPYCAL_ROOT / "license.json").exists()
 
 
+def license_file_valid():
+    license_path = GRAPYCAL_ROOT / "license.json"
+    license = json.loads(open(license_path).read())
+    if license["license_data"]["expire_time"] < int(datetime.now().timestamp()):
+        return False
+    return True
+
+
 def acquire_license():
     import requests
 
@@ -236,7 +246,7 @@ def acquire_license():
         sys.exit(1)
 
 
-def print_welcome():
+def print_welcome(port):
     with open(GRAPYCAL_ROOT / "build_info.json") as build_info_file:
         build_info = json.load(build_info_file)
         version = build_info["version"]
@@ -257,16 +267,33 @@ def print_welcome():
 
     print(
         "\nWelcome to Grapycal. Please go to "
-        + termcolor.colored("http://localhost:7943", "green")
+        + termcolor.colored(f"http://localhost:{port}", "green")
         + " with Chrome to access the frontend.\n"
     )
     print("=" * 50)
 
 
-def run():
+def show_license_info():
+    license_path = GRAPYCAL_ROOT / "license.json"
+    license = json.loads(open(license_path).read())
+    exp = datetime.fromtimestamp(license["license_data"]["expire_time"]).strftime(
+        "%Y-%m-%d"
+    )
+    print(f"Current license is valid until {exp}.")
+
+
+def run(cmds: CmdSelector):
     """
     Run Grapycal
     """
+
+    parser = argparse.ArgumentParser(prog=cmds.prefix)
+    parser.add_argument(
+        "--port", type=int, default=7943, help="Port Grapycal will listen to"
+    )
+
+    args = parser.parse_args(cmds.args)
+
     print("Checking for updates...")
 
     # if updated, this function will not return back
@@ -276,16 +303,22 @@ def run():
         print("License not found. Acquiring license...")
         acquire_license()
 
+    if not license_file_valid():
+        print("License expired. Acquiring new license...")
+        acquire_license()
+
+    show_license_info()
+
     def open_browser():
         time.sleep(4)
-        webbrowser.open("http://localhost:7943")
+        webbrowser.open(f"http://localhost:{args.port}")
 
     threading.Thread(target=open_browser).start()
 
     while True:
-        print_welcome()
+        print_welcome(args.port)
         core_return_code = os.system(
-            f'python {HERE/"entry/launcher.py"} --frontend-path {GRAPYCAL_ROOT/"frontend"} --port 7943 --cwd {CWD}'
+            f'python {HERE/"entry/launcher.py"} --frontend-path {GRAPYCAL_ROOT/"frontend"} --port {args.port} --cwd {CWD}'
         )
 
         if core_return_code in [3, 4, 5]:
