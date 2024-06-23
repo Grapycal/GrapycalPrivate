@@ -238,7 +238,11 @@ class Workspace:
         """
         if file_exists(self.path):
             logger.info(f"Found existing workspace file {self.path}. Loading.")
-            self._load_workspace(self.path)
+            try:
+                self._load_workspace(self.path)
+            except Exception:
+                logger.error("Failed to load workspace.")
+                raise
         else:
             logger.info(
                 f"No workspace file found at {self.path}. Creating a new workspace to start with."
