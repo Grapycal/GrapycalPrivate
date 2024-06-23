@@ -268,7 +268,7 @@ class InputsTrait(SourceTrait):
             1,
             display_name="" if self.enable_add_button else name,
             control_type=TextControl,
-            activation_mode=TextControl.ActivationMode.NO_ACTIVATION,
+            activate_on_control_change=False,
         )
 
     def remove_item(self, name, position):

@@ -93,7 +93,7 @@ class DecorTrait(Trait):
         # generate input ports for function inputs
         for name, gtype in self.inputs.items():
             self.in_ports[f"{self.name}.in.{name}"] = self.add_input_or_param_port(
-                f"{self.name}.in.{name}", name, gtype
+                f"{self.name}.in.{name}", name, gtype, activate_on_control_change=False
             )
 
         # generate output ports for function outputs
@@ -105,7 +105,12 @@ class DecorTrait(Trait):
         # generate param ports for function params
         for name, gtype in self.params.items():
             self.param_ports[f"{self.name}.param.{name}"] = (
-                self.add_input_or_param_port(f"{self.name}.param.{name}", name, gtype)
+                self.add_input_or_param_port(
+                    f"{self.name}.param.{name}",
+                    name,
+                    gtype,
+                    activate_on_control_change=True,
+                )
             )
 
     def init_node(self):
@@ -136,7 +141,11 @@ class DecorTrait(Trait):
             )
 
     def add_input_or_param_port(
-        self, name: str, display_name: str, gtype: GType
+        self,
+        name: str,
+        display_name: str,
+        gtype: GType,
+        activate_on_control_change: bool,
     ) -> "InputPort":
         control_kwargs: dict[str, Any] = {}
         editor_args: dict[str, Any] = {}
@@ -172,6 +181,7 @@ class DecorTrait(Trait):
             1,
             display_name=display_name,
             control_type=control_type,
+            activate_on_control_change=activate_on_control_change,
             **control_kwargs,
         )
         if editor_type is not None:
@@ -225,12 +235,12 @@ class DecorTrait(Trait):
             for node_param in port_info.used_by_params:
                 # A param callback is called when any of its input ports are activated
                 param_callback = getattr(self.node, node_param.name)
-                params = self.collect_params(node_param)
                 self.node.run(
-                    lambda param_callback=param_callback, params=params: param_callback(
-                        **params
+                    lambda param_callback=param_callback,
+                    node_param=node_param: param_callback(
+                        **self.collect_params(node_param)
                     ),
-                    background=True,
+                    background=False,  # assume param callbacks are fast so can be run in the ui thread
                 )
 
     def collect_params(self, node_param: NodeParam):

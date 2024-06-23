@@ -588,6 +588,7 @@ class Node(SObject, metaclass=NodeMeta):
         control_name=None,
         restore_from: str | None | RESTORE_FROM = RESTORE_FROM.SAME,
         datatype: GType = AnyType,
+        activate_on_control_change=False,
         **control_kwargs,
     ) -> InputPort[T]:
         """
@@ -605,6 +606,7 @@ class Node(SObject, metaclass=NodeMeta):
             display_name=display_name,
             control_name=control_name,
             datatype=datatype,
+            activate_on_control_change=activate_on_control_change,
             **control_kwargs,
         )
         self.in_ports.insert(port)

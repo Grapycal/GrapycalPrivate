@@ -239,13 +239,11 @@ class RegexFindAllNode(Node):
             "string",
             1,
             control_type=TextControl,
-            activation_mode=TextControl.ActivationMode.NO_ACTIVATION,
         )
         self.pattern_port = self.add_in_port(
             "pattern",
             1,
             control_type=TextControl,
-            activation_mode=TextControl.ActivationMode.NO_ACTIVATION,
         )
         self.out_port = self.add_out_port("matches")
         self.label.set("Regex Find All")
