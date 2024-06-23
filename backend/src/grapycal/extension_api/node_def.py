@@ -10,8 +10,9 @@ from types import MethodType
 from typing import TYPE_CHECKING, Any
 
 from grapycal.core.typing import AnyType, GType
+from grapycal.sobjects.controls.floatControl import FloatControl
+from grapycal.sobjects.controls.intControl import IntControl
 from grapycal.sobjects.controls.nullControl import NullControl
-from grapycal.sobjects.controls.sliderControl import SliderControl
 from grapycal.sobjects.controls.textControl import TextControl
 from grapycal.sobjects.controls.toggleControl import ToggleControl
 from grapycal.sobjects.port import OutputPort
@@ -160,11 +161,10 @@ class DecorTrait(Trait):
             control_type = ToggleControl
             editor_type = "toggle"
         elif gtype >> int:
-            control_type = SliderControl
-            control_kwargs = {"int_mode": True}
+            control_type = IntControl
             editor_type = "int"
         elif gtype >> float:
-            control_type = SliderControl
+            control_type = FloatControl
             control_kwargs = {"int_mode": False}
             editor_type = "float"
 
