@@ -3,6 +3,7 @@ from datetime import datetime
 import json
 import os
 import pathlib
+import subprocess
 import threading
 import time
 from typing import Callable
@@ -203,7 +204,8 @@ def license_file_valid():
 def acquire_license():
     import requests
 
-    serial = input_colored("Please enter your serial number: ")
+    # serial = input_colored("Please enter your serial number: ")
+    serial = "2501dc76b11a43e3b2421803f4f1f660"  # demo serial number. no need to input
 
     def get_ip_addresses(family):
         for interface, snics in psutil.net_if_addrs().items():
@@ -226,15 +228,18 @@ def acquire_license():
 
     if response.status_code == 200:
         response = response.json()
-        print(
-            "License acquired successfully. Remaining uses: ",
-            response["remaining_uses"],
-        )
+
+        # Not need to print remaining uses for demo license
+        # print(
+        #     "License acquired successfully. Remaining uses: ",
+        #     response["remaining_uses"],
+        # )
+
         with open(GRAPYCAL_ROOT / "license.json", "w") as f:
             json.dump(response["license"], f)
     elif response.status_code == 403:
         print(
-            "Invalid serial number. Maybe it has been used too many times, or it's invalid."
+            "Invalid serial number. Maybe it has been used too many times, or it's invalid. If you believe this is an error, please contact us at grapycal@gmail.com"
         )
         sys.exit(1)
     else:  # error
@@ -349,10 +354,45 @@ def ext(cmds: CmdSelector):
     def install_ext():
         if not cmds.has_next():
             print("Please specify the extension name.")
+            available_exts = os.listdir(GRAPYCAL_ROOT / "extensions")
+            print("Available extensions:")
+            for ext in available_exts:
+                if ext.startswith("grapycal_"):
+                    print(f"  {ext[9:]}")
             return
         ext_name = cmds.next()
         if not ext_name.startswith("grapycal_"):
             ext_name = "grapycal_" + ext_name
+        ext_name = ext_name.replace("-", "_")
+        # check its dependency extensions are installed
+        # read the extension's pyproject.toml
+        ext_path = GRAPYCAL_ROOT / "extensions" / ext_name
+        if not ext_path.exists():
+            print(f"Extension {ext_name} not found.")
+            return
+        if (ext_path / "pyproject.toml").exists():
+            with open(ext_path / "pyproject.toml") as f:
+                lines = f.readlines()
+                for line in lines:
+                    if line.startswith("grapycal-"):
+                        dep = line.split("=")[0].strip()
+                        if (
+                            subprocess.run(
+                                f"pip show {dep}",
+                                shell=True,
+                                stdout=subprocess.PIPE,
+                                stderr=subprocess.PIPE,
+                            ).returncode
+                            != 0
+                        ):
+                            short_dep = dep[9:]
+                            print(
+                                f"Befor installing {ext_name}, please install {dep.replace('-','_')} first: `{termcolor.colored(f'grapycal ext install {short_dep}', 'green')}`"
+                            )
+                            return
+                        else:
+                            print(f"Dependency {dep} installed.")
+
         print(f"Installing extension {ext_name}...")
         pip_install_from_path(GRAPYCAL_ROOT / "extensions" / ext_name)
         print(f"Extension {ext_name} installed.")

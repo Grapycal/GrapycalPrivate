@@ -325,6 +325,20 @@ class PackGrapycal(Step):
                 pyarmor_config=self.pyarmor_config.copyWith(prefix="grapycal"),
             )
             * ToRelative("extensions/grapycal_torch")
+            + From(src / "extensions/grapycal_audio")
+            * PackPythonPackage(
+                edition=self.edition,
+                package_src_dir="grapycal_audio",
+                pyarmor_config=self.pyarmor_config.copyWith(prefix="grapycal"),
+            )
+            * ToRelative("extensions/grapycal_audio")
+            + From(src / "extensions/grapycal_audio_torch")
+            * PackPythonPackage(
+                edition=self.edition,
+                package_src_dir="grapycal_audio_torch",
+                pyarmor_config=self.pyarmor_config.copyWith(prefix="grapycal"),
+            )
+            * ToRelative("extensions/grapycal_audio_torch")
             + From(src / "frontend") * PackFrontend() * ToRelative("frontend")
             + From(src / "packaging/template")
         ) * To(dst)
