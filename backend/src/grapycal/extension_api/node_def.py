@@ -10,6 +10,7 @@ from types import MethodType
 from typing import TYPE_CHECKING, Any
 
 from grapycal.core.typing import AnyType, GType
+from grapycal.sobjects.controls.buttonControl import ButtonControl
 from grapycal.sobjects.controls.floatControl import FloatControl
 from grapycal.sobjects.controls.intControl import IntControl
 from grapycal.sobjects.controls.nullControl import NullControl
@@ -167,6 +168,9 @@ class DecorTrait(Trait):
             control_type = FloatControl
             control_kwargs = {"int_mode": False}
             editor_type = "float"
+        elif gtype >> None:
+            control_type = ButtonControl
+            editor_type = "button"
 
         else:
             logger.warning(

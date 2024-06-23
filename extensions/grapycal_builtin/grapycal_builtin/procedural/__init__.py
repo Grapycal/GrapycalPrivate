@@ -110,13 +110,18 @@ class TaskNode(Node):
         if self.is_preview.get():
             return
 
-        for node in TaskNodeManager.task_nodes.get(self.name.get()):
-            node.jump(None)
+        if self.name.get() == "":
+            self.jump(None)
+        else:
+            for node in TaskNodeManager.task_nodes.get(self.name.get()):
+                node.jump(None)
 
     def jump(self, data):
         self.run(self.out_port.push, data=data)
 
     def on_run_task(self, task):
+        if self.name.get() == "":
+            return
         if task == self.name.get():
             self.jump(None)
 

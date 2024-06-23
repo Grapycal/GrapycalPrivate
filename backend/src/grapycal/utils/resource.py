@@ -24,7 +24,9 @@ def get_resource(path: str, is_dir: bool = False) -> pathlib.Path:
         download_path.parent.mkdir(parents=True, exist_ok=True)
 
         with open(download_path, "wb") as f:
+            print(f"Downloading {remote_url} to {download_path}")
             response = requests.get(remote_url, allow_redirects=False)
+            print(response.status_code)
             if response.status_code != 200:
                 raise Exception(
                     f"Failed to download {remote_url}: {response.status_code}"
@@ -34,10 +36,13 @@ def get_resource(path: str, is_dir: bool = False) -> pathlib.Path:
         if is_dir:
             import zipfile
 
-            with zipfile.ZipFile(download_path, "r") as zip_ref:
-                zip_ref.extractall(download_path.parent)
-
-            # remove the zip file
-            download_path.unlink()
+            try:
+                with zipfile.ZipFile(download_path, "r") as zip_ref:
+                    zip_ref.extractall(download_path.parent)
+            except Exception as e:
+                download_path.unlink()
+                raise Exception(
+                    f"Failed to extract {download_path}: {e}. Maybe the file is corrupted. Please try again."
+                )
 
     return local_path
