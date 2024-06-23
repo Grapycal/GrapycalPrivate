@@ -22,6 +22,8 @@ import { WebcamStream, Workspace } from './sobjects/workspace'
 import { SoundManager } from './ui_utils/soundManager'
 import { FetchWithCache } from './utils'
 import { ControlPanel } from './ui_utils/controlPanel'
+import { FloatControl } from './sobjects/controls/floatControl'
+import { IntControl } from './sobjects/controls/intControl'
 
 export const soundManager = new SoundManager();
 const fetchWithCache = new FetchWithCache().fetch
@@ -82,6 +84,8 @@ function startObjectSync(wsUrl:string){
     objectsync.register(SliderControl)
     objectsync.register(CodeControl)
     objectsync.register(ToggleControl)
+    objectsync.register(IntControl)
+    objectsync.register(FloatControl)
 
     objectsync.register(WebcamStream)
 

@@ -68,6 +68,9 @@ class CodeControl(ValuedControl[str]):
     def value_ready(self) -> bool:
         return True
 
+    def get_value_topic(self):
+        return self.text
+
     def set_activation_callback(self, callback):
         if self.activation_mode.get() == CodeControl.ActivationMode.ON_CHANGE:
             self.text.on_set += callback
@@ -91,5 +94,5 @@ class CodeControl(ValuedControl[str]):
     #     self.set(str(value))  # TODO find more proper way to handle this
 
     def get_auto_complete_suggestions(self, text: str):
-        s = get_autocomplete_suggestions(text,main_store.vars())
+        s = get_autocomplete_suggestions(text, main_store.vars())
         return s

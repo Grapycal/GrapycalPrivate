@@ -1,11 +1,11 @@
-import { IntTopic, Topic } from "objectsync-client"
+import { FloatTopic, IntTopic, Topic } from "objectsync-client"
 import { Componentable } from "../component/componentable"
 import { as } from "../utils"
 import { Workspace } from "../sobjects/workspace"
 import { inputFinished } from "../ui_utils/interaction"
 import { Editor } from "./Editor"
 
-export class IntEditor extends Editor<IntTopic> {
+export class IntEditor extends Editor<IntTopic|FloatTopic> {
 
     get template() {
         return `
@@ -30,10 +30,12 @@ export class IntEditor extends Editor<IntTopic> {
 
     constructor(displayName: string, editorArgs: any, connectedAttributes: Topic<any>[]) {
         super()
-        this.connectedAttributes = connectedAttributes as IntTopic[]
+        this.connectedAttributes = connectedAttributes as (IntTopic|FloatTopic)[]
         this.attributeName.innerText = displayName
         for (let attr of connectedAttributes) {
-            attr = as(attr, IntTopic)
+            if (!(attr instanceof IntTopic) && !(attr instanceof FloatTopic)) {
+                throw new Error('IntEditor only accepts IntTopic and FloatTopic')
+            }
             this.linker.link(attr.onSet, this.updateValue)
         }
         this.linker.link(inputFinished(this.input),this.inputFinished)
@@ -65,7 +67,6 @@ export class IntEditor extends Editor<IntTopic> {
         this.locked = true
         Workspace.instance.record(() => {
             for (let attr of this.connectedAttributes) {
-                attr = as(attr, IntTopic)
                 attr.set(Number.parseInt(this.input.value))
             }
         })
