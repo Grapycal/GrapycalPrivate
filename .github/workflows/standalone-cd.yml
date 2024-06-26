@@ -90,6 +90,7 @@ jobs:
         with:
           name: standalone-${{ matrix.target.target }}-${{ matrix.edition }}
           path: packaging/dist/build/*.zip
+          retention-days: 1
 
   build-docker:
     # only run if the tag is not prerelease
