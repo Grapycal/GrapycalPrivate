@@ -170,7 +170,7 @@ export class FileView extends CompSObject{
 
     private itemDoubleClicked(info:any){
         if(info.type == 'workspace'){
-            this.openWorkspace(info.path)
+            this.openWorkspace(this.currentPath+'/'+info.path)
         }else if(info.type == 'dir'){
             this.changeDir(info.name)
         }
@@ -178,7 +178,6 @@ export class FileView extends CompSObject{
 
     private openWorkspace(path: string){
         // check if installed extensions are sufficent to open the selected workspace
-        path = this.currentPath+'/'+path
         const meta = this.metadataCache.get(path)
         const incompatibleExtensions = []
         if(meta.extensions && meta.extensions.length > 0)
