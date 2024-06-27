@@ -126,7 +126,7 @@ const createWindow = (port) => {
 	syncInterpreterListWithMenu()
 	app.setAboutPanelOptions({
 		applicationName: 'Grapycal', 
-		applicationVersion: '0.18.3',
+		applicationVersion: '0.18.4',
 		copyright: 'Grapycal Team',
 		iconPath: path.join(__dirname, 'frontend', 'dist', 'icon.png').replace("app.asar", "app.asar.unpacked")
 	})
