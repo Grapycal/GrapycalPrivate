@@ -259,18 +259,68 @@ class Workspace:
         self._workspace_object = self._objectsync.create_object(
             WorkspaceObject, parent_id="root"
         )
+        # ===CHECK_LICENSE=== #
         try:
             self._extention_manager.import_extension("grapycal_builtin")
         except ModuleNotFoundError:
             pass
 
     def _save_workspace(self, path: str, send_message=True) -> None:
-        workspace_serialized = self._workspace_object.serialize()
+        with self._objectsync.record():  # lock the state of the workspace
+            node_count = len(main_store.main_editor.top_down_search(type=Node))
+            edge_count = len(main_store.main_editor.top_down_search(type=Edge))
+
+            # % enable_for_demo
+            # if node_count > 150:
+            #     logger.warning(
+            #         f"Sorry, cannot save workspace with more than 150 nodes in demo edition. {node_count} nodes found. Please remove some nodes and try again."
+            #     )
+            #     if send_message:
+            #         self._send_message_to_all(
+            #             f"Sorry, cannot save workspace with more than 150 nodes in demo edition. {node_count} nodes found. Please remove some nodes and try again."
+            #         )
+            #     return
+            # else:
+            #     workspace_serialized = self._workspace_object.serialize()
+            # % end_enable_for_demo
+
+            # % disable_for_demo
+            workspace_serialized = self._workspace_object.serialize()
+            # % end_disable_for_demo
 
         metadata = {
             "version": grapycal.__version__,
             "extensions": self._extention_manager.get_extensions_info(),
         }
+
+        # % enable_for_demo
+        # e = self._extention_manager.get_extention_names()
+        # a = 64
+        # b = 58
+        # if (len(e) * len(e) * len(e) > a) or not str(((b * b + a) ^ 1545) / 53)[
+        #     5:12
+        # ] == "8679245":
+        #     logger.warning(
+        #         f"Sorry, cannot save workspace with more than 4 extensions in demo edition. {len(e)} extensions found. Please unimport some extensions and try again."
+        #     )
+        #     if send_message:
+        #         self._send_message_to_all(
+        #             f"Sorry, cannot save workspace with more than 4 extensions in demo edition. {len(e)} extensions found. Please unimport some extensions and try again."
+        #         )
+        #     return
+        # else:
+        #     if len([64,64,1545,2,a,b]*2) != a-52:
+        #         return
+        #     data = {
+        #         "extensions": self._extention_manager.get_extention_names()[0:4],
+        #         "client_id_count": self._objectsync.get_client_id_count(),
+        #         "id_count": self._objectsync.get_id_count(),
+        #         "grapycal_id_count": self.grapycal_id_count,
+        #         "workspace_serialized": workspace_serialized.to_dict(),
+        #     }
+        # % end_enable_for_demo
+
+        # % disable_for_demo
         data = {
             "extensions": self._extention_manager.get_extention_names(),
             "client_id_count": self._objectsync.get_client_id_count(),
@@ -278,9 +328,9 @@ class Workspace:
             "grapycal_id_count": self.grapycal_id_count,
             "workspace_serialized": workspace_serialized.to_dict(),
         }
+        # % end_disable_for_demo
+
         file_size = write_workspace(path, metadata, data, compress=True)
-        node_count = len(main_store.main_editor.top_down_search(type=Node))
-        edge_count = len(main_store.main_editor.top_down_search(type=Edge))
         logger.info(
             f"Workspace saved to {path}. {node_count} nodes, {edge_count} edges, {file_size // 1024} KB."
         )
