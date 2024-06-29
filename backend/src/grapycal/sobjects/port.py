@@ -90,6 +90,7 @@ class InputPort(Port, typing.Generic[T]):
         control_name=None,
         datatype: GType = AnyType,
         activate_on_control_change=False,
+        update_control_from_edge=False,
         **control_kwargs,
     ):
         super().build(name, max_edges, display_name, datatype)
@@ -104,6 +105,10 @@ class InputPort(Port, typing.Generic[T]):
         self.activate_on_control_change = self.add_attribute(
             "activate_on_control_change", GenericTopic[bool], activate_on_control_change
         )
+        self.update_control_from_edge = self.add_attribute(
+            "update_control_from_edge", GenericTopic[bool], update_control_from_edge
+        )
+
         if self.default_control.take_label(self.display_name.get()):
             self.control_takes_label.set(1)
 
@@ -119,6 +124,7 @@ class InputPort(Port, typing.Generic[T]):
                 **kwargs:  # so they can link the callback to Actions without worrying about redundant args
                 self.activated_by_control(self.default_control)
             )
+        self._ignore_control_change = False
 
     def add_edge(self, edge: "Edge"):
         super().add_edge(edge)
@@ -183,19 +189,25 @@ class InputPort(Port, typing.Generic[T]):
         return self.edges[0].peek()
 
     def activated_by_edge(self, edge: "Edge"):
-        try:
-            self.default_control.set_with_value_from_edge(edge.peek())
-        except Exception as e:
-            # The control doesn't accept the value from the edge. We respect that and abandon the data.
-            self.node.print_exception(e)
-            edge.get()  # to clear the data from the edge
-            return
+        if self.update_control_from_edge.get():
+            try:
+                self._ignore_control_change = True
+                self.default_control.set_with_value_from_edge(edge.peek())
+                self._ignore_control_change = False
+            except Exception as e:
+                # The control doesn't accept the value from the edge. We respect that and abandon the data.
+                self._ignore_control_change = False
+                self.node.print_exception(e)
+                edge.get()  # to clear the data from the edge
+                return
         self.node.edge_activated(edge, self)
         self.node.port_activated(self)
         self.node.on_port_activated.invoke(self)
         self.on_activate.invoke(self)
 
     def activated_by_control(self, control: "ValuedControl"):
+        if self._ignore_control_change:
+            return
         self.node.port_activated(self)
         self.node.on_port_activated.invoke(self)
         self.on_activate.invoke(self)
@@ -244,5 +256,8 @@ class OutputPort(Port):
         self._retained_data = None  # Release memory
 
     def can_connect_to(self, in_port: InputPort):
-        # return self.datatype >> in_port.datatype
-        return True
+        if not hasattr(in_port, "datatype") or not hasattr(
+            self, "datatype"
+        ):  # before we fix the restore issue, return true if datatype is not set
+            return True
+        return self.datatype >> in_port.datatype

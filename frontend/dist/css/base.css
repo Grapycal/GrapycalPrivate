@@ -487,13 +487,13 @@ footer{
     flex-grow: 1;
 }
 
-.port.control-takes-label:not(.has-edge) > .port-label{
+.port.control-takes-label:not(.has-edge.hide-control-if-has-edge) > .port-label{
     overflow: hidden;
     opacity: 0;
-    width: 0px;
+    width: 0px; 
 }
 
-.port.has-edge > .slot-control{
+.port.has-edge.hide-control-if-has-edge > .slot-control{
     display: none;
 
 }

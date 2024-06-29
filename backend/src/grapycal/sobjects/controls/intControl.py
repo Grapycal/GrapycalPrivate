@@ -35,3 +35,7 @@ class IntControl(ValuedControl[int]):
 
     def get(self) -> int:
         return self.value.get()
+
+    def set_with_value_from_edge(self, value):
+        assert isinstance(value, int), f"Expected int, got {type(value)}"
+        self.set(value)

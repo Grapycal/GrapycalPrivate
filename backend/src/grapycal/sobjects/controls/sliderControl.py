@@ -95,3 +95,9 @@ class SliderControl(ValuedControl[None]):
 
     def set_float_mode(self):
         self.config["int_mode"] = False
+
+    def set_with_value_from_edge(self, value):
+        assert isinstance(
+            value, (int, float)
+        ), f"Expected int or float, got {type(value)}"
+        self.set(value)

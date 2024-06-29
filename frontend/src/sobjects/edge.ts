@@ -251,6 +251,16 @@ export class Edge extends CompSObject {
         }
 
         if(candidatePorts.length == 0){
+            if(this.state == EdgeState.DraggingTail){
+                this.objectsync.record(() => {
+                    this.tail.set(null)
+                },true)
+            }
+            else if(this.state == EdgeState.DraggingHead){
+                this.objectsync.record(() => {
+                    this.head.set(null)
+                },true)
+            }
             this.updateSVG()
             return
         }

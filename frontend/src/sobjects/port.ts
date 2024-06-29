@@ -117,7 +117,17 @@ export class Port extends CompSObject implements IControlHost {
             this.isInputChanged(this.is_input.getValue())
         })
         this.link(this.max_edges.onSet,this.updateAcceptsEdgeClass)
+
+
         if(this.is_input.getValue()) {
+            this.link(this.getAttribute('update_control_from_edge').onSet,(value: boolean) => {
+                if(value) {
+                    this.htmlItem.baseElement.classList.remove('hide-control-if-has-edge')
+                }
+                else {
+                    this.htmlItem.baseElement.classList.add('hide-control-if-has-edge')
+                }
+            })
             this.link(this.getAttribute('control_takes_label').onSet,(takes_label: number) => {
                 if(takes_label) {
                     this.htmlItem.baseElement.classList.add('control-takes-label')

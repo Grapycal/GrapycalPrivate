@@ -95,7 +95,11 @@ class DecorTrait(Trait):
         # generate input ports for function inputs
         for name, gtype in self.inputs.items():
             self.in_ports[f"{self.name}.in.{name}"] = self.add_input_or_param_port(
-                f"{self.name}.in.{name}", name, gtype, activate_on_control_change=False
+                f"{self.name}.in.{name}",
+                name,
+                gtype,
+                activate_on_control_change=False,
+                update_control_from_edge=False,
             )
 
         # generate output ports for function outputs
@@ -112,6 +116,7 @@ class DecorTrait(Trait):
                     name,
                     gtype,
                     activate_on_control_change=True,
+                    update_control_from_edge=True,
                 )
             )
 
@@ -148,6 +153,7 @@ class DecorTrait(Trait):
         display_name: str,
         gtype: GType,
         activate_on_control_change: bool,
+        update_control_from_edge: bool,
     ) -> "InputPort":
         control_kwargs: dict[str, Any] = {}
         editor_args: dict[str, Any] = {}
@@ -184,8 +190,10 @@ class DecorTrait(Trait):
             name,
             1,
             display_name=display_name,
+            datatype=gtype,
             control_type=control_type,
             activate_on_control_change=activate_on_control_change,
+            update_control_from_edge=update_control_from_edge,
             **control_kwargs,
         )
         if editor_type is not None:
