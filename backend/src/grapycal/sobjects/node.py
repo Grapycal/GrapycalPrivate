@@ -195,9 +195,17 @@ class NodeMeta(ABCMeta):
             False  # True if @sigletonNode. Used internally by the ExtensionManager.
         )
         self._auto_instantiate = True  # Used internally by the ExtensionManager.
-        self._node_def_info = get_node_def_info(
-            attrs
-        )  # used to generate traits out of high level node def interface
+
+        # There may be @funcs or @params etc in the base classes. In that case, we need to merge them.
+        base_node_def_info = None
+        if len(bases) > 0:
+            base = bases[0]
+            if isinstance(base, NodeMeta):
+                base_node_def_info = base._node_def_info
+
+        # used to generate traits out of high level node def interface
+        self._node_def_info = get_node_def_info(attrs, base_node_def_info)
+
         return super().__init__(name, bases, attrs)
 
 

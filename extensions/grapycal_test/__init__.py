@@ -150,15 +150,9 @@ class NewAddNode(Node):
     def sum(self, a: int, b: int, c: int) -> int:
         return a + b + c + self.bias
 
-    @func()
-    def diff(self, a: int, b: int) -> int:
-        return a - b
 
+class BiasNode(NewAddNode):
     @param()
     def param(self, bias: int) -> None:
         self.bias = bias
         self.label.set(f"bias: {bias}")
-
-    @func()
-    def aaa(self, t: str):
-        return t

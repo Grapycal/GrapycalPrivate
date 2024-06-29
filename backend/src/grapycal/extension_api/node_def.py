@@ -33,9 +33,16 @@ class NodeDefInfo:
     params: dict[str, MethodType]
 
 
-def get_node_def_info(attrs: dict[str, Any]):
-    funcs = {}
-    params = {}
+def get_node_def_info(
+    attrs: dict[str, Any], base_info: NodeDefInfo | None = None
+) -> NodeDefInfo:
+    if base_info is None:
+        funcs = {}
+        params = {}
+    else:
+        funcs = base_info.funcs.copy()
+        params = base_info.params.copy()
+
     for name, obj in attrs.items():
         if hasattr(obj, "_is_node_func"):
             funcs[name] = obj
