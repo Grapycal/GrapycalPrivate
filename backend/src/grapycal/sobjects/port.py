@@ -115,8 +115,10 @@ class InputPort(Port, typing.Generic[T]):
     def init(self):
         super().init()
         self.on_activate = Action()
-        self.use_default = len(self.edges) == 0 and not isinstance(
-            self.default_control, NullControl
+        self.use_default = (
+            self.update_control_from_edge.get()
+            or len(self.edges) == 0
+            and not isinstance(self.default_control, NullControl)
         )
         if self.activate_on_control_change.get():
             self.default_control.set_activation_callback(
@@ -129,13 +131,19 @@ class InputPort(Port, typing.Generic[T]):
     def add_edge(self, edge: "Edge"):
         super().add_edge(edge)
         self.node.input_edge_added(edge, self)
-        self.use_default = 0
+        self.use_default = (
+            self.update_control_from_edge.get()
+            or len(self.edges) == 0
+            and not isinstance(self.default_control, NullControl)
+        )
 
     def remove_edge(self, edge: "Edge"):
         super().remove_edge(edge)
         self.node.input_edge_removed(edge, self)
-        self.use_default = len(self.edges) == 0 and not isinstance(
-            self.default_control, NullControl
+        self.use_default = (
+            self.update_control_from_edge.get()
+            or len(self.edges) == 0
+            and not isinstance(self.default_control, NullControl)
         )
 
     def is_all_ready(self):

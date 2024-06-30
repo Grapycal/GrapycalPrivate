@@ -146,6 +146,9 @@ class OldAddNode(Node):
 
 
 class NewAddNode(Node):
+    def init_node(self):
+        self.bias = 0
+
     @func()
     def sum(self, a: int, b: int, c: int) -> int:
         return a + b + c + self.bias
