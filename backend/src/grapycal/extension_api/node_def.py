@@ -7,16 +7,16 @@ from dataclasses import dataclass
 import inspect
 import logging
 from types import MethodType
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, TypeVar
 
 from grapycal.core.typing import AnyType, GType
 from grapycal.sobjects.controls.buttonControl import ButtonControl
 from grapycal.sobjects.controls.floatControl import FloatControl
 from grapycal.sobjects.controls.intControl import IntControl
-from grapycal.sobjects.controls.nullControl import NullControl
+from grapycal.sobjects.controls.objectControl import ObjectControl
 from grapycal.sobjects.controls.textControl import TextControl
 from grapycal.sobjects.controls.toggleControl import ToggleControl
-from grapycal.sobjects.port import OutputPort
+from grapycal.sobjects.port import UNSPECIFY_CONTROL_VALUE, OutputPort
 from objectsync.topic import ObjDictTopic
 from .trait import Trait
 from grapycal.sobjects.port import InputPort
@@ -45,24 +45,50 @@ def get_node_def_info(
 
     for name, obj in attrs.items():
         if hasattr(obj, "_is_node_func"):
-            funcs[name] = obj
+            if obj._sign_like is not None:
+                funcs[name] = attrs[obj._sign_like]
+            else:
+                funcs[name] = obj
         if hasattr(obj, "_is_node_param"):
             params[name] = obj
     return NodeDefInfo(funcs, params)
 
 
+NO_DEFAULT = object()
+
+
+@dataclass
+class Input:
+    name: str
+    gtype: GType
+    default: Any = NO_DEFAULT
+
+
+@dataclass
+class Output:
+    name: str
+    gtype: GType
+
+
+@dataclass
+class ParamItem:
+    name: str
+    gtype: GType
+    default: Any = NO_DEFAULT
+
+
 @dataclass
 class NodeFunc:
     name: str
-    inputs: dict[str, GType]
-    outputs: dict[str, GType]
+    inputs: dict[str, Input]
+    outputs: dict[str, Output]
     background: bool = True
 
 
 @dataclass
 class NodeParam:
     name: str
-    params: dict[str, GType]
+    params: dict[str, ParamItem]
 
 
 @dataclass
@@ -75,9 +101,9 @@ class PortInfo:
 class DecorTrait(Trait):
     def __init__(
         self,
-        inputs: dict[str, GType],
-        outputs: dict[str, GType],
-        params: dict[str, GType],
+        inputs: dict[str, Input],
+        outputs: dict[str, Output],
+        params: dict[str, ParamItem],
         node_funcs: dict[str, NodeFunc],
         node_params: dict[str, NodeParam],
     ):
@@ -100,28 +126,32 @@ class DecorTrait(Trait):
         )
 
         # generate input ports for function inputs
-        for name, gtype in self.inputs.items():
+        for name, inp in self.inputs.items():
             self.in_ports[f"{self.name}.in.{name}"] = self.add_input_or_param_port(
                 f"{self.name}.in.{name}",
                 name,
-                gtype,
+                inp.gtype,
+                inp.default if inp.default != NO_DEFAULT else UNSPECIFY_CONTROL_VALUE,
                 activate_on_control_change=False,
                 update_control_from_edge=False,
             )
 
         # generate output ports for function outputs
-        for name, gtype in self.outputs.items():
+        for name, out in self.outputs.items():
             self.out_ports[f"{self.name}.out.{name}"] = self.node.add_out_port(
-                f"{self.name}.out.{name}", display_name=name, datatype=gtype
+                f"{self.name}.out.{name}", display_name=name, datatype=out.gtype
             )
 
         # generate param ports for function params
-        for name, gtype in self.params.items():
+        for name, par in self.params.items():
             self.param_ports[f"{self.name}.param.{name}"] = (
                 self.add_input_or_param_port(
                     f"{self.name}.param.{name}",
                     name,
-                    gtype,
+                    par.gtype,
+                    par.default
+                    if par.default != NO_DEFAULT
+                    else UNSPECIFY_CONTROL_VALUE,
                     activate_on_control_change=True,
                     update_control_from_edge=True,
                 )
@@ -144,14 +174,16 @@ class DecorTrait(Trait):
                     param
                 )
             param_callback = getattr(self.node, param.name)
-            self.node.run(  # Call the param callback once to initialize the param
+
+            # Call the param callback once to initialize the param
+            self.node.run(
                 lambda param_callback=param_callback, param=param: param_callback(
                     **{
                         name: self.param_ports[f"{self.name}.param.{name}"].get()
                         for name in param.params
                     }
                 ),
-                background=True,
+                background=False,
             )
 
     def add_input_or_param_port(
@@ -159,6 +191,7 @@ class DecorTrait(Trait):
         name: str,
         display_name: str,
         gtype: GType,
+        control_value: Any,
         activate_on_control_change: bool,
         update_control_from_edge: bool,
     ) -> "InputPort":
@@ -166,7 +199,7 @@ class DecorTrait(Trait):
         editor_args: dict[str, Any] = {}
 
         if gtype == AnyType:
-            control_type = NullControl
+            control_type = ObjectControl
             editor_type = None
         elif gtype >> str:
             control_type = TextControl
@@ -179,17 +212,16 @@ class DecorTrait(Trait):
             editor_type = "int"
         elif gtype >> float:
             control_type = FloatControl
-            control_kwargs = {"int_mode": False}
             editor_type = "float"
         elif gtype >> None:
             control_type = ButtonControl
             editor_type = "button"
 
         else:
-            logger.warning(
-                f"Not support gtype {gtype} for port {name} yet. Will not add control."
-            )
-            control_type = NullControl
+            # logger.warning(
+            #     f"Not support gtype {gtype} for port {name} yet. Will not add control."
+            # )
+            control_type = ObjectControl
             editor_type = None
         # TODO: add more control types
 
@@ -199,6 +231,7 @@ class DecorTrait(Trait):
             display_name=display_name,
             datatype=gtype,
             control_type=control_type,
+            control_value=control_value,
             activate_on_control_change=activate_on_control_change,
             update_control_from_edge=update_control_from_edge,
             **control_kwargs,
@@ -279,14 +312,28 @@ class DecorTrait(Trait):
 
 
 def consistent_annotations(annotations: "list[type]") -> bool:
+    annotations = [a for a in annotations if a is not AnyType]
+
     if len(annotations) == 0:
         return True
 
     first_annotation = annotations[0]
     for annotation in annotations:
-        if annotation is None:
-            continue
         if annotation != first_annotation:
+            return False
+
+    return True
+
+
+def consistent_default_values(defaults: "list[Any]") -> bool:
+    defaults = [d for d in defaults if d is not NO_DEFAULT]
+
+    if len(defaults) == 0:
+        return True
+
+    first_default = defaults[0]
+    for default in defaults:
+        if default != first_default:
             return False
 
     return True
@@ -295,54 +342,70 @@ def consistent_annotations(annotations: "list[type]") -> bool:
 def collect_input_output_params(
     funcs: dict[str, MethodType], param_funcs: "dict[str, MethodType]"
 ) -> tuple[
-    dict[str, list[Any]],
-    dict[str, list[Any]],
-    dict[str, list[Any]],
+    dict[str, list[Input]],
+    dict[str, list[Output]],
+    dict[str, list[ParamItem]],
     dict[str, NodeFunc],
     dict[str, NodeParam],
 ]:
-    inputs = defaultdict(list)
-    outputs = defaultdict(list)
-    params = defaultdict(list)
+    inputs = defaultdict(list[Input])
+    outputs = defaultdict(list[Output])
+    params = defaultdict(list[ParamItem])
     node_funcs: dict[str, NodeFunc] = {}
     node_params: dict[str, NodeParam] = {}
-    for func in funcs.values():
-        cur_inputs: dict[str, GType] = {}
-        cur_outputs: dict[str, GType] = {}
+    for name, func in funcs.items():
+        cur_inputs: dict[str, Input] = {}
+        cur_outputs: dict[str, Output] = {}
         if "return" in func.__annotations__:
-            outputs[func.__name__].append(func.__annotations__["return"])
-            cur_outputs.update(
-                {func.__name__: AnyType}
-            )  # The actual type will be filled in later
+            # outputs[name].append(func.__annotations__["return"])
+            # cur_outputs[name] = Output(
+            #     name=name, gtype=AnyType
+            # )  # The actual type will be filled in later
+            out = Output(name, GType.from_annotation(func.__annotations__["return"]))
+            outputs[name].append(out)
+            cur_outputs[name] = out
+
         else:
-            outputs[func.__name__].append(None)
-            cur_outputs.update({func.__name__: AnyType})
+            outputs[name].append(Output(name, AnyType))
+            cur_outputs[name] = Output(name, AnyType)
 
         signature = inspect.signature(func)
-        for name, arg in signature.parameters.items():
-            if name == "self":
+        for arg_name, arg in signature.parameters.items():
+            if arg_name == "self":
                 continue
-            inputs[name].append(
-                arg.annotation if arg.annotation != inspect.Parameter.empty else None
+            inp = Input(
+                name=arg_name,
+                gtype=GType.from_annotation(arg.annotation)
+                if arg.annotation != inspect.Parameter.empty
+                else AnyType,
+                default=arg.default
+                if arg.default != inspect.Parameter.empty
+                else NO_DEFAULT,
             )
-            cur_inputs.update({name: AnyType})
+            inputs[arg_name].append(inp)
+            cur_inputs[arg_name] = inp
 
-        node_funcs[func.__name__] = NodeFunc(
-            name=func.__name__, inputs=cur_inputs, outputs=cur_outputs
-        )
+        node_funcs[name] = NodeFunc(name=name, inputs=cur_inputs, outputs=cur_outputs)
 
-    for param in param_funcs.values():
+    for name, param in param_funcs.items():
         signature = inspect.signature(param)
-        cur_params: dict[str, GType] = {}
-        for name, arg in signature.parameters.items():
-            if name == "self":
+        cur_params: dict[str, ParamItem] = {}
+        for param_item_name, arg in signature.parameters.items():
+            if param_item_name == "self":
                 continue
-            params[name].append(
-                arg.annotation if arg.annotation != inspect.Parameter.empty else None
+            par = ParamItem(
+                name=param_item_name,
+                gtype=GType.from_annotation(arg.annotation)
+                if arg.annotation != inspect.Parameter.empty
+                else AnyType,
+                default=arg.default
+                if arg.default != inspect.Parameter.empty
+                else NO_DEFAULT,
             )
-            cur_params.update({name: AnyType})
+            params[param_item_name].append(par)
+            cur_params[param_item_name] = par
 
-        node_params[param.__name__] = NodeParam(name=param.__name__, params=cur_params)
+        node_params[param_item_name] = NodeParam(name=name, params=cur_params)
 
     return inputs, outputs, params, node_funcs, node_params
 
@@ -356,6 +419,11 @@ def consistent_input_output_params(
         if not consistent_annotations(annotations):
             logger.warning(
                 f"Input {name} has inconsistent annotations between multiple functions. Plese leave only one annotation or make them consistent."
+            )
+            return False
+        if not consistent_default_values([inp.default for inp in annotations]):
+            logger.warning(
+                f"Input {name} has inconsistent default values between multiple functions. Plese leave only one default value or make them consistent."
             )
             return False
 
@@ -373,14 +441,26 @@ def consistent_input_output_params(
             )
             return False
 
+        if not consistent_default_values([par.default for par in annotations]):
+            logger.warning(
+                f"Param {name} has inconsistent default values between multiple functions. Plese leave only one default value or make them consistent."
+            )
+            return False
+
     return True
 
 
-def annotations_to_gtype(annotations: "list[Any]") -> "GType":
-    for annotation in annotations:
-        if annotation is not None:
-            return GType.from_annotation(annotation)
-    return GType.from_annotation(Any)
+T = TypeVar("T", bound="Input|Output|Param")
+
+
+def reduce(items: list[T]) -> T:
+    """
+    Pick the most strict type from a list of inputs, outputs or params.
+    """
+    for item in items:
+        if item.gtype != AnyType:
+            return item
+    return items[0]
 
 
 def generate_traits(node_def_info: NodeDefInfo) -> "list[Trait]":
@@ -395,18 +475,13 @@ def generate_traits(node_def_info: NodeDefInfo) -> "list[Trait]":
     ):
         return []
 
-    inputs = {
-        name: annotations_to_gtype(annotations)
-        for name, annotations in inputs_dict_list.items()
-    }
-    outputs = {
-        name: annotations_to_gtype(annotations)
-        for name, annotations in outputs_dict_list.items()
-    }
-    params = {
-        name: annotations_to_gtype(annotations)
-        for name, annotations in params_dict_list.items()
-    }
+    # no need of decortrait if there are no node_funcs and node_params
+    if len(node_funcs) == 0 and len(node_params) == 0:
+        return []
+
+    inputs = {name: reduce(item) for name, item in inputs_dict_list.items()}
+    outputs = {name: reduce(item) for name, item in outputs_dict_list.items()}
+    params = {name: reduce(item) for name, item in params_dict_list.items()}
 
     # fill in the actual types for node_funcs and node_params
     for node_func in node_funcs.values():

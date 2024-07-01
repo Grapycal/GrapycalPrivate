@@ -24,6 +24,7 @@ import { FetchWithCache } from './utils'
 import { ControlPanel } from './ui_utils/controlPanel'
 import { FloatControl } from './sobjects/controls/floatControl'
 import { IntControl } from './sobjects/controls/intControl'
+import { ObjectControl } from './sobjects/controls/objectControl'
 
 export const soundManager = new SoundManager();
 const fetchWithCache = new FetchWithCache().fetch
@@ -86,6 +87,7 @@ function startObjectSync(wsUrl:string){
     objectsync.register(ToggleControl)
     objectsync.register(IntControl)
     objectsync.register(FloatControl)
+    objectsync.register(ObjectControl)
 
     objectsync.register(WebcamStream)
 

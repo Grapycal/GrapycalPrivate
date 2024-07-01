@@ -80,7 +80,7 @@ class TextControl(ValuedControl[str]):
             return True
         return False
 
-    def set_with_value_from_edge(self, value):
+    def set_from_port(self, value):
         assert isinstance(value, str), f"Expected str, got {type(value)}"
         self.set(value)
         return True

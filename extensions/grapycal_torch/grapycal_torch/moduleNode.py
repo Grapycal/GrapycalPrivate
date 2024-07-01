@@ -1,11 +1,9 @@
 from abc import abstractmethod
 from typing import TYPE_CHECKING, Any, final
 
-from grapycal import EventTopic, task
-from grapycal.extension_api.trait import Parameter, ParameterTrait
-from grapycal.sobjects.edge import Edge
+from grapycal import EventTopic
+from grapycal.extension_api.trait import Parameter
 from grapycal.sobjects.node import Node
-from grapycal.sobjects.port import InputPort
 from objectsync import StringTopic
 from torch import Tensor, nn
 
@@ -63,9 +61,6 @@ class ModuleNode(Node):
     icon_path = "nn"
 
     def build_node(self):
-        # TODO: save and load
-        self.shape.set("simple")
-        self.label.set("Module")
         self.create_module_topic = self.add_attribute(
             "reset", EventTopic, editor_type="button", is_stateful=False
         )
@@ -83,7 +78,6 @@ class ModuleNode(Node):
         self.module_mover = ModuleMover()
         self.torch_store.mn.add(self)
 
-    @task
     def create_module_task(self):
         self.module = self.create_module()
         self.module_mover.set_actual_device("cpu")
@@ -109,19 +103,6 @@ class ModuleNode(Node):
         Consume the input from the input ports, run a forward pass, and output the result to the output ports
         """
         pass
-
-    def edge_activated(self, edge: Edge, port: InputPort):
-        for port_ in self.in_ports:
-            if not port_.is_all_ready():
-                return
-        self.run(self.task)
-
-    def task(self):
-        if self.module is None:
-            self.create_module_task()
-        if self.module_mover.move_if_needed(self.module):  # type: ignore
-            self.print("moved to", self.module_mover.get_target_device())
-        self.forward()
 
     def get_module(self) -> nn.Module:
         assert self.module is not None
@@ -177,79 +158,50 @@ class SimpleModuleNode(ModuleNode):
             ]
     """
 
-    def define_traits(self):
-        self.parameter_trait = ParameterTrait(self.define_hyper_parameters())
-        self.parameter_trait.on_update += self.parameter_changed
-        return [
-            self.parameter_trait,
-        ]
+    def define_funcs(self):
+        return {
+            "output": self.module_type.forward,
+        }
 
-    def detect_inputs(self) -> list[str]:
-        func = self.module_type.forward
-        if hasattr(func, "__annotations__"):
-            return list(func.__annotations__.keys() - {"return"})
-        return ["input"]
-
-    def build_node(self, *args, **kwargs):
-        super().build_node()
-        if self.inputs == []:
-            self.inputs = self.detect_inputs()
-        self._max_in_degree = self.max_in_degree[:]
-        while len(self._max_in_degree) < len(self.inputs):
-            self._max_in_degree.append(1)
-        for i in range(len(self._max_in_degree)):
-            if self._max_in_degree[i] is None:
-                self._max_in_degree[i] = 64
-
-        if self.display_port_names is None:
-            self.display_port_names = len(self.inputs) > 1 or len(self.outputs) > 1
-
-        for name, max_edges in zip(self.inputs, self._max_in_degree):  # type: ignore
-            display_name = name if self.display_port_names else ""
-            self.add_in_port(name, max_edges, display_name=display_name)
-        for name in self.outputs:
-            display_name = name if self.display_port_names else ""
-            self.add_out_port(name, display_name=display_name)
+    def define_params(self):
+        return {
+            "parameter_changed": self.module_type.__init__,
+        }
 
     def init_node(self):
         super().init_node()
         self._param_dirty = True
-        self.parameter_changed(self.parameter_trait.get_values())
 
-    def task(self):
-        if self._param_dirty:
+    def output(self, **inputs) -> Any:
+        if self.is_preview.get():
+            return
+        if self._param_dirty or self.module is None:
             self.create_module_task()
         if self.module_mover.move_if_needed(self.module):  # type: ignore
             self.print("moved to", self.module_mover.get_target_device())
 
-        inputs = {}
-        for port in self.in_ports:
-            inp = port.get()
+        for inp_name, inp in inputs.items():
             if (
                 isinstance(inp, Tensor)
                 and str(inp.device) != self.module_mover.get_target_device()
             ):
                 if inp.requires_grad:
                     self.print_exception(
-                        f"Cannot implicitly move input tensor {port.name.get()} from device {inp.device} to a different device {self.module_mover.get_target_device()} where the module is because it requires grad. Please move it manually if you intend to do so.",
+                        f"Cannot implicitly move input tensor {inp_name} from device {inp.device} to a different device {self.module_mover.get_target_device()} where the module is because it requires grad. Please move it manually if you intend to do so.",
                         clear_graph=True,
                     )
                     return
                 inp = inp.to(self.module_mover.get_target_device())
-            inputs[port.name.get()] = inp
+                inputs[inp_name] = inp
 
         result = self.forward(**inputs)
 
-        if len(self.out_ports) == 1:
-            self.out_ports[0].push(result)
-        else:
-            for port, data in zip(self.out_ports, result):
-                port.push(data)
+        return result
 
     @final
     def create_module(self) -> nn.Module:
         self._param_dirty = False
-        return self.module_type(**self.parameter_trait.get_values())
+        return self.module_type(**self._params)
 
     def forward(self, **inputs) -> Any:
         """
@@ -263,8 +215,9 @@ class SimpleModuleNode(ModuleNode):
     def define_hyper_parameters(self) -> list[Parameter]:
         return self.hyper_parameters
 
-    def parameter_changed(self, params):
+    def parameter_changed(self, **params):
         self.label.set(self.get_label(params))
+        self._params = params
         self._param_dirty = True
 
     def get_label(self, params):

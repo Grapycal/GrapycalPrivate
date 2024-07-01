@@ -32,7 +32,7 @@ from grapycal.sobjects.controls.nullControl import NullControl
 from grapycal.sobjects.controls.optionControl import OptionControl
 from grapycal.sobjects.controls.textControl import TextControl
 from grapycal.sobjects.edge import Edge
-from grapycal.sobjects.port import InputPort, OutputPort, Port
+from grapycal.sobjects.port import UNSPECIFY_CONTROL_VALUE, InputPort, OutputPort, Port
 from grapycal.stores import main_store
 from grapycal.utils.io import OutputStream
 from grapycal.utils.logging import user_logger, warn_extension
@@ -254,6 +254,14 @@ class Node(SObject, metaclass=NodeMeta):
         self.on_double_click = Action()
         self.on_destroy = Action()
 
+        from grapycal.sobjects.editor import Editor
+
+        parent = self.get_parent()
+        if isinstance(parent, Editor):
+            self.editor = parent
+        else:
+            self.editor = None
+
         trait_list: list[Trait] = []
 
         trait_list += self.define_traits_gen()
@@ -284,6 +292,8 @@ class Node(SObject, metaclass=NodeMeta):
         super().initialize(serialized, *args, **kwargs)
 
     def define_traits_gen(self) -> list[Trait]:
+        self._node_def_info.funcs.update(self.define_funcs())
+        self._node_def_info.params.update(self.define_params())
         return generate_traits(self._node_def_info)
 
     def define_traits(self) -> list[Trait | Chain] | Trait | Chain:
@@ -304,7 +314,7 @@ class Node(SObject, metaclass=NodeMeta):
         self.shape = self.add_attribute(
             "shape", StringTopic, self.shape_, restore_from=None
         )  # normal, simple, round
-        self.output = self.add_attribute(
+        self.output_topic = self.add_attribute(
             "output", ListTopic, [], is_stateful=False, restore_from=None
         )
         self.label = self.add_attribute(
@@ -385,6 +395,16 @@ class Node(SObject, metaclass=NodeMeta):
             trait_info[trait.name] = trait.get_info()
         self.traits_info.set(trait_info)
 
+    def define_funcs(self):
+        """
+        Put node functions here. This is a more dynamic way to define node functions than using the @func decorator.
+        """
+        return {}
+
+    def define_params(self):
+        """ """
+        return {}
+
     def build_node(self):
         """
         Create attributes, ports, and controls here.
@@ -395,14 +415,6 @@ class Node(SObject, metaclass=NodeMeta):
         """
 
     def init(self):
-        from grapycal.sobjects.editor import Editor
-
-        parent = self.get_parent()
-        if isinstance(parent, Editor):
-            self.editor = parent
-        else:
-            self.editor = None
-
         self.on("double_click", self.double_click, is_stateful=False)
         self.on("double_click", self.on_double_click.invoke, is_stateful=False)
         self.on("spawn", self.spawn, is_stateful=False)
@@ -594,6 +606,7 @@ class Node(SObject, metaclass=NodeMeta):
         display_name=None,
         control_type: type[T] = NullControl,
         control_name=None,
+        control_value=UNSPECIFY_CONTROL_VALUE,
         restore_from: str | None | RESTORE_FROM = RESTORE_FROM.SAME,
         datatype: GType = AnyType,
         activate_on_control_change=False,
@@ -614,6 +627,7 @@ class Node(SObject, metaclass=NodeMeta):
             max_edges=max_edges,
             display_name=display_name,
             control_name=control_name,
+            control_value=control_value,
             datatype=datatype,
             activate_on_control_change=activate_on_control_change,
             update_control_from_edge=update_control_from_edge,
@@ -1067,10 +1081,10 @@ class Node(SObject, metaclass=NodeMeta):
                 f"Output received from a destroyed node {self.get_id()}: {data}"
             )
         else:
-            if len(self.output) > 100:
-                self.output.set([])
-                self.output.insert(["error", "Too many output lines. Cleared.\n"])
-            self.output.insert(["output", data])
+            if len(self.output_topic) > 100:
+                self.output_topic.set([])
+                self.output_topic.insert(["error", "Too many output lines. Cleared.\n"])
+            self.output_topic.insert(["output", data])
 
     def get_position(self, translation: list[float]):
         """
@@ -1218,10 +1232,10 @@ class Node(SObject, metaclass=NodeMeta):
                 f"Exception occured in a destroyed node {self.get_id()}: {message}"
             )
         else:
-            if len(self.output) > 100:
-                self.output.set([])
-                self.output.insert(["error", "Too many output lines. Cleared.\n"])
-            self.output.insert(["error", message])
+            if len(self.output_topic) > 100:
+                self.output_topic.set([])
+                self.output_topic.insert(["error", "Too many output lines. Cleared.\n"])
+            self.output_topic.insert(["error", message])
 
         if clear_graph:
             main_store.clear_edges_and_tasks()
@@ -1231,11 +1245,14 @@ class Node(SObject, metaclass=NodeMeta):
         self.decr_n_running_tasks()
 
     def set_running(self, running: bool):
+        if self.is_preview.get() == 1:
+            return
         with self._server.record(
             allow_reentry=True
         ):  # aquire the lock to prevent setting the attribute while the sobject being deleted
             if self.is_destroyed():
                 return
+            print(self)
             if running:
                 self.editor.is_running_manager.set_running(self, True)
             else:

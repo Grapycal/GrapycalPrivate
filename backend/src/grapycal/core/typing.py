@@ -14,7 +14,7 @@ class GType(abc.ABC):
             return AnyType
         if isinstance(annotation, type):
             return PlainType(annotation)
-        raise NotImplementedError(f"Unsupported annotation {annotation}")
+        return AnyType
 
     # we use a >> b (__rshift__) to indicate that a is compatible with b
     # because the symbol looks like plugging a into b
@@ -52,3 +52,6 @@ class PlainType(GType):
 
     def _can_accept(self, other: GType):
         return isinstance(other, PlainType) and issubclass(other._type, self._type)
+
+    def __repr__(self):
+        return f"PlainType({self._type})"

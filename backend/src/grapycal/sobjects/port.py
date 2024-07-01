@@ -77,6 +77,8 @@ class Port(SObject):
             )
 
 
+UNSPECIFY_CONTROL_VALUE = object()
+
 T = typing.TypeVar("T", bound="ValuedControl")
 
 
@@ -88,6 +90,7 @@ class InputPort(Port, typing.Generic[T]):
         max_edges=64,
         display_name=None,
         control_name=None,
+        control_value: Any = UNSPECIFY_CONTROL_VALUE,
         datatype: GType = AnyType,
         activate_on_control_change=False,
         update_control_from_edge=False,
@@ -97,6 +100,8 @@ class InputPort(Port, typing.Generic[T]):
         self.is_input.set(1)
 
         self.default_control = self.add_child(control_type, **control_kwargs)
+        if control_value is not UNSPECIFY_CONTROL_VALUE:
+            self.default_control.set_from_port(control_value)
 
         # this topic affects css
         self.control_takes_label = self.add_attribute(
@@ -116,10 +121,8 @@ class InputPort(Port, typing.Generic[T]):
         super().init()
         self.on_activate = Action()
         self.use_default = (
-            self.update_control_from_edge.get()
-            or len(self.edges) == 0
-            and not isinstance(self.default_control, NullControl)
-        )
+            self.update_control_from_edge.get() or len(self.edges) == 0
+        ) and not isinstance(self.default_control, NullControl)
         if self.activate_on_control_change.get():
             self.default_control.set_activation_callback(
                 lambda *args,
@@ -141,10 +144,8 @@ class InputPort(Port, typing.Generic[T]):
         super().remove_edge(edge)
         self.node.input_edge_removed(edge, self)
         self.use_default = (
-            self.update_control_from_edge.get()
-            or len(self.edges) == 0
-            and not isinstance(self.default_control, NullControl)
-        )
+            self.update_control_from_edge.get() or len(self.edges) == 0
+        ) and not isinstance(self.default_control, NullControl)
 
     def is_all_ready(self):
         return (self.use_default and self.default_control.value_ready()) or (
@@ -180,6 +181,7 @@ class InputPort(Port, typing.Generic[T]):
         If using default control, return data from the default control.
         """
         if self.use_default:
+            self.clear_edges()
             return self.default_control.get()
         elif allow_no_data and not self.is_all_ready():
             return None
@@ -200,7 +202,7 @@ class InputPort(Port, typing.Generic[T]):
         if self.update_control_from_edge.get():
             try:
                 self._ignore_control_change = True
-                self.default_control.set_with_value_from_edge(edge.peek())
+                self.default_control.set_from_port(edge.peek())
                 self._ignore_control_change = False
             except Exception as e:
                 # The control doesn't accept the value from the edge. We respect that and abandon the data.
@@ -219,6 +221,10 @@ class InputPort(Port, typing.Generic[T]):
         self.node.port_activated(self)
         self.node.on_port_activated.invoke(self)
         self.on_activate.invoke(self)
+
+    def clear_edges(self):
+        for edge in self.edges:
+            edge.clear()
 
     # TODO remove control from node when port is removed
 

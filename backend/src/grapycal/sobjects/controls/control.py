@@ -51,7 +51,7 @@ class ValuedControl(abc.ABC, Control, Generic[T]):
         """
         return False
 
-    def set_with_value_from_edge(self, value):
+    def set_from_port(self, value):
         """
         Set the value of the control with the value from the edge.
         The control can implement this method if it want to update its value as some data from edge flows into the port.

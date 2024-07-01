@@ -1,4 +1,4 @@
-def func():
+def func(sign_like: str | None = None):
     """
     A decorator to register a node funcion to the Node.
 
@@ -12,6 +12,7 @@ def func():
 
     def wrapper(func):
         func._is_node_func = True
+        func._sign_like = sign_like
 
         return func
 

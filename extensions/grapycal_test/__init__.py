@@ -1,6 +1,7 @@
 import enum
 import io
 import json
+from types import FunctionType
 from typing import Any, Dict, List
 
 from grapycal.core.typing import PlainType
@@ -145,16 +146,37 @@ class OldAddNode(Node):
                 self.result.push(self.a.get() + self.b.get())
 
 
+def aaa(a: int) -> int:
+    return a + 1
+
+
+def aaaa(a: str) -> str:
+    return a * 2
+
+
 class NewAddNode(Node):
+    bbb: FunctionType
+
     def init_node(self):
         self.bias = 0
 
+    # @func()
+    # def sum(self, a: int, b: int, c: int) -> int:
+    #     return a + b + c + self.bias
+
     @func()
-    def sum(self, a: int, b: int, c: int) -> int:
-        return a + b + c + self.bias
+    def ouo(self, a=1):
+        return a + self.bias
 
 
 class BiasNode(NewAddNode):
+    @param()
+    def param(self, bias: int = 5) -> None:
+        self.bias = bias
+        self.label.set(f"bias: {bias}")
+
+
+class Bias2Node(NewAddNode):
     @param()
     def param(self, bias: int) -> None:
         self.bias = bias
