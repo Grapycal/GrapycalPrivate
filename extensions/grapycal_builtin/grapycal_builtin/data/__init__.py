@@ -14,6 +14,7 @@ from grapycal.sobjects.node import Node, deprecated
 from grapycal.sobjects.port import InputPort
 from grapycal.sobjects.sourceNode import SourceNode
 from topicsync.topic import FloatTopic, IntTopic
+from grapycal.extension_api.decor import func
 
 
 class VariableNode(SourceNode):
@@ -441,3 +442,22 @@ class MeanNode(Node):
             if self.reset_when_output.get() == "Yes":
                 self.sum = 0
                 self.num = 0
+
+
+class AttributeNode(Node):
+    """
+    AttributeNode is used to get an attribute of an object.
+
+    :inputs:
+        - object: the object
+        - attribute_name: the attribute name
+
+    :outputs:
+        - attribute: the attribute of the object that has the given name
+    """
+
+    category = "data"
+
+    @func()
+    def attribute(self, obj:object, attribute_name:str) -> object:
+        return getattr(obj, attribute_name)
