@@ -7,10 +7,22 @@ from grapycal.sobjects.port import InputPort
 from objectsync.sobject import SObjectSerialized
 import inspect
 from typing import Union
-
 from topicsync.topic import GenericTopic
 
 class DiscordBotNode(Node):
+    '''
+    Equivalent to discord.py's `commands.Bot`. It creates a bot instance and sends it out.
+
+    To make it run, send your discord bot token to the `token` input port.
+
+    To make it send out the bot instance, double click on the node.
+
+    :inputs:'
+        - token: the discord bot token
+    
+    :outputs:
+        - bot: the discord bot instance
+    '''
     category = "discordpy"
 
     def define_traits(self):
@@ -44,6 +56,24 @@ class DiscordBotNode(Node):
 
 
 class DiscordCommandNode(Node):
+    '''
+    Equivalent to discord.py's `commands.Command`. It creates a command and sends out the interaction and parameters.
+
+    To make it add the command to bot.tree (local command tree), send in the bot instance, command name to `cmd_name` and command description to `cmd_description`.
+
+    To make it sync to discord, double click on the node.
+
+    It runs when the command is invoked by the user in discord.
+
+    :inputs:
+        - bot: the discord bot instance
+        - cmd_name: the command name
+        - cmd_description: the command description
+        - cmd_params: the parameters of the command (optional)
+    :outputs:
+        - interaction: discord.Interaction
+        - params: the parameters passed to the command, data looks like {param1: value1, param2: value2, ...}
+    '''
     category = "discordpy"
 
     def init_node(self):
@@ -148,6 +178,18 @@ class DiscordCommandNode(Node):
         self.output_control.set(f"Command {cmd_name} added")
 
 class DiscordSendMessageNode(Node):
+    '''
+    Equivalent to discord.py's `Interaction.send_message if command hasn't deferred, else Interaction.followup.send`. It sends a message to the interaction.
+
+    To make it send the message, send in the interaction and content to `content`.
+
+    :inputs:
+        - interaction: discord.Interaction
+        - content: the message content
+    
+    :outputs:
+        - None
+    '''
     category = "discordpy"
 
     def define_traits(self):
