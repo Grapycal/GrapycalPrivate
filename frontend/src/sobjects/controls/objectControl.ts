@@ -35,7 +35,7 @@ export class ObjectControl extends Control {
         this.textBox.value = this.text.getValue()
         this.textBox.onResize.add(()=>{this.node.moved.invoke()})
 
-        new BindInputBoxAndTopic(this,this.textBox, this.text,this.objectsync,true)
+        new BindInputBoxAndTopic(this,this.textBox, this.text,this.objectsync,false)
 
         let labelEl = this.htmlItem.getEl("label", HTMLDivElement)
         this.link(this.label.onSet, (label) => {
@@ -49,7 +49,7 @@ export class ObjectControl extends Control {
             labelEl.innerHTML = label
         })
 
-        this.textBox.disabled = true
+        // this.textBox.disabled = true
     }
 
 }

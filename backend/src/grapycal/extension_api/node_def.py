@@ -6,6 +6,7 @@ from collections import defaultdict
 from dataclasses import dataclass
 import inspect
 import logging
+import traceback
 from types import MethodType
 from typing import TYPE_CHECKING, Any, TypeVar
 
@@ -176,15 +177,19 @@ class DecorTrait(Trait):
             param_callback = getattr(self.node, param.name)
 
             # Call the param callback once to initialize the param
-            self.node.run(
-                lambda param_callback=param_callback, param=param: param_callback(
+
+            try:
+                param_callback(
                     **{
                         name: self.param_ports[f"{self.name}.param.{name}"].get()
                         for name in param.params
                     }
-                ),
-                background=False,
-            )
+                )
+            except Exception:
+                logger.warning(
+                    f"Error when initializing param {param.name} of node {self.node}:"
+                    + traceback.format_exc()
+                )
 
     def add_input_or_param_port(
         self,

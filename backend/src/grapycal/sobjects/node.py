@@ -1252,7 +1252,6 @@ class Node(SObject, metaclass=NodeMeta):
         ):  # aquire the lock to prevent setting the attribute while the sobject being deleted
             if self.is_destroyed():
                 return
-            print(self)
             if running:
                 self.editor.is_running_manager.set_running(self, True)
             else:
