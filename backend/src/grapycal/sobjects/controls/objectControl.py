@@ -1,6 +1,6 @@
 from typing import Any, Callable
 from grapycal.stores import main_store
-from objectsync import Topic, StringTopic, IntTopic
+from objectsync import Topic, StringTopic
 
 from grapycal.sobjects.controls.control import ValuedControl
 
@@ -21,14 +21,19 @@ class ObjectControl(ValuedControl[Any]):
 
     def build(self, value: Any = None, label: str = ""):
         self.value = value
+        self.state = ObjectControlState.NOT_USING_USER_TEXT
         self.label = self.add_attribute("label", StringTopic, label)
         self.text = self.add_attribute("text", StringTopic, self.get_text_from_value())
-        self.state = self.add_attribute(
-            "state",
-            IntTopic,
-            ObjectControlState.NOT_USING_USER_TEXT,
-            is_stateful=False,
-        )
+
+    def get_state_dict(self):
+        return {
+            "value": self.value,
+            "state": self.state,
+        }
+
+    def set_state_dict(self, state):
+        self.value = state["value"]
+        self.state = state["state"]
 
     def init(self):
         self.activation_callback = None
@@ -59,7 +64,7 @@ class ObjectControl(ValuedControl[Any]):
         self.activation_callback = callback
 
     def get(self):
-        if self.state.get() in [
+        if self.state in [
             ObjectControlState.NOT_USING_USER_TEXT,
             ObjectControlState.USER_TEXT_EVALED,
         ]:
@@ -68,13 +73,13 @@ class ObjectControl(ValuedControl[Any]):
             # evaluate the user text
             try:
                 self.value = eval(self.text.get(), main_store.vars())
-                self.state.set(ObjectControlState.USER_TEXT_EVALED)
+                self.state = ObjectControlState.USER_TEXT_EVALED
                 return self.value
             except Exception as e:
                 raise ValueError(f"Invalid expression {self.text.get()}: {e}")
 
     def set_from_port(self, value):
-        self.state.set(ObjectControlState.NOT_USING_USER_TEXT)
+        self.state = ObjectControlState.NOT_USING_USER_TEXT
         self.set(value)
 
     def get_text_from_value(self):
@@ -85,7 +90,7 @@ class ObjectControl(ValuedControl[Any]):
             return
         if text == "":
             return
-        self.state.set(ObjectControlState.USER_TEXT_DIRTY)
+        self.state = ObjectControlState.USER_TEXT_DIRTY
         self.value = None  # release memory
         if self.activation_callback:
             self.activation_callback()

@@ -121,7 +121,7 @@ class ModuleNode(Node):
             self.module.eval()
             self.module.requires_grad_(False)
 
-    def get_state_dict(self):
+    def get_torch_state_dict(self):
         if self.module is None:
             self.create_module_task()
         return self.module.state_dict()
