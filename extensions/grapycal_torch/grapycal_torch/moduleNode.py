@@ -2,7 +2,7 @@ from abc import abstractmethod
 from typing import TYPE_CHECKING, Any, final
 
 from grapycal import EventTopic
-from grapycal.extension_api.trait import Parameter
+from grapycal.extension_api.node_def import NodeFuncSpec, NodeParamSpec
 from grapycal.sobjects.node import Node
 from objectsync import StringTopic
 from torch import Tensor, nn
@@ -138,11 +138,12 @@ class ModuleNode(Node):
 
 class SimpleModuleNode(ModuleNode):
     module_type: type[nn.Module] = nn.Module
+    annotation_override: dict[str, Any] = {}
+    default_override: dict[str, Any] = {}
     inputs: list[str] = []
     max_in_degree = [1]
     outputs = ["output"]
     display_port_names: bool | None = None
-    hyper_parameters = []
     """
     define the hyper parameters of the module. They will be passed in the constructor of the module.
 
@@ -159,14 +160,24 @@ class SimpleModuleNode(ModuleNode):
     """
 
     def define_funcs(self):
-        return {
-            "output": self.module_type.forward,
-        }
+        return [
+            NodeFuncSpec(
+                self.output,
+                self.module_type.forward,
+                annotation_override=self.annotation_override,
+                default_override=self.default_override,
+            )
+        ]
 
     def define_params(self):
-        return {
-            "parameter_changed": self.module_type.__init__,
-        }
+        return [
+            NodeParamSpec(
+                self.parameter_changed,
+                self.module_type.__init__,
+                annotation_override=self.annotation_override,
+                default_override=self.default_override,
+            )
+        ]
 
     def init_node(self):
         super().init_node()
@@ -211,9 +222,6 @@ class SimpleModuleNode(ModuleNode):
         if len(inputs) == 1:
             return self.module(list(inputs.values())[0])
         return self.module(**inputs)
-
-    def define_hyper_parameters(self) -> list[Parameter]:
-        return self.hyper_parameters
 
     def parameter_changed(self, **params):
         self.label.set(self.get_label(params))

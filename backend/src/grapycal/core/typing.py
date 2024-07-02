@@ -1,16 +1,21 @@
 import abc
+import inspect
 from typing import Any, Type
 
 
 class GType(abc.ABC):
     @staticmethod
-    def from_annotation(annotation: "Type|GType|Any") -> "GType":
+    def from_annotation(
+        annotation: "Type|GType|Any|inspect.Parameter.empty",
+    ) -> "GType":
         """
         The annotation can be a type expr. Currently type expr in string is not supported.
         """
         if isinstance(annotation, GType):
             return annotation
         if annotation is None or annotation == Any:
+            return AnyType
+        if annotation == inspect.Parameter.empty:
             return AnyType
         if isinstance(annotation, type):
             return PlainType(annotation)

@@ -1,4 +1,13 @@
-def func(sign_like: str | None = None):
+from typing import Any, Callable
+
+from grapycal.extension_api.node_def import NodeFuncSpec, NodeParamSpec
+
+
+def func(
+    sign_source: Callable | None = None,
+    annotation_override: dict[str, Any] | None = None,
+    default_override: dict[str, Any] | None = None,
+):
     """
     A decorator to register a node funcion to the Node.
 
@@ -11,15 +20,25 @@ def func(sign_like: str | None = None):
     """
 
     def wrapper(func):
-        func._is_node_func = True
-        func._sign_like = sign_like
+        node_func_spec = NodeFuncSpec(
+            func,
+            sign_source=sign_source,
+            annotation_override=annotation_override,
+            default_override=default_override,
+        )
+
+        func._node_func_spec = node_func_spec
 
         return func
 
     return wrapper
 
 
-def param():
+def param(
+    sign_source: Callable | None = None,
+    annotation_override: dict[str, Any] | None = None,
+    default_override: dict[str, Any] | None = None,
+):
     """
     A decorator to register a set of node parameter to the Node.
 
@@ -39,8 +58,13 @@ def param():
     """
 
     def wrapper(func):
-        func._is_node_param = True
-
+        node_param_spec = NodeParamSpec(
+            func,
+            sign_source=sign_source,
+            annotation_override=annotation_override,
+            default_override=default_override,
+        )
+        func._node_param_spec = node_param_spec
         return func
 
     return wrapper

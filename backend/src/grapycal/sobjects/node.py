@@ -4,7 +4,12 @@ from pprint import pprint
 from grapycal.core.background_runner import RunnerInterrupt
 from grapycal.core.client_msg_types import ClientMsgTypes
 from grapycal.core.typing import GType, AnyType
-from grapycal.extension_api.node_def import generate_traits, get_node_def_info
+from grapycal.extension_api.node_def import (
+    NodeFuncSpec,
+    NodeParamSpec,
+    generate_traits,
+    get_node_def_info,
+)
 from grapycal.extension_api.trait import Chain, Trait
 from grapycal.sobjects.controls.keyboardControl import KeyboardControl
 from grapycal.sobjects.controls.sliderControl import SliderControl
@@ -292,8 +297,12 @@ class Node(SObject, metaclass=NodeMeta):
         super().initialize(serialized, *args, **kwargs)
 
     def define_traits_gen(self) -> list[Trait]:
-        self._node_def_info.funcs.update(self.define_funcs())
-        self._node_def_info.params.update(self.define_params())
+        # self._node_def_info.funcs.update(self.define_funcs())
+        # self._node_def_info.params.update(self.define_params())
+        for func in self.define_funcs():
+            self._node_def_info.funcs[func.name] = func
+        for param in self.define_params():
+            self._node_def_info.params[param.name] = param
         return generate_traits(self._node_def_info)
 
     def define_traits(self) -> list[Trait | Chain] | Trait | Chain:
@@ -395,15 +404,17 @@ class Node(SObject, metaclass=NodeMeta):
             trait_info[trait.name] = trait.get_info()
         self.traits_info.set(trait_info)
 
-    def define_funcs(self):
+    def define_funcs(self) -> list[NodeFuncSpec]:
         """
         Put node functions here. This is a more dynamic way to define node functions than using the @func decorator.
         """
-        return {}
+        return []
 
-    def define_params(self):
-        """ """
-        return {}
+    def define_params(self) -> list[NodeParamSpec]:
+        """
+        Put node parameters here. This is a more dynamic way to define node parameters than using the @param decorator.
+        """
+        return []
 
     def build_node(self):
         """

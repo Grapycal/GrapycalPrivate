@@ -7,8 +7,7 @@ from dataclasses import dataclass
 import inspect
 import logging
 import traceback
-from types import MethodType
-from typing import TYPE_CHECKING, Any, TypeVar
+from typing import TYPE_CHECKING, Any, Callable, TypeVar
 
 from grapycal.core.typing import AnyType, GType
 from grapycal.sobjects.controls.buttonControl import ButtonControl
@@ -28,10 +27,38 @@ if TYPE_CHECKING:
     pass
 
 
+class NodeFuncSpec:
+    def __init__(
+        self,
+        function: Callable,
+        sign_source: Callable | None = None,
+        annotation_override: dict[str, Any] | None = None,
+        default_override: dict[str, Any] | None = None,
+    ):
+        self.name = function.__name__
+        self.sign_source = sign_source or function
+        self.annotation_override = annotation_override or {}
+        self.default_override = default_override or {}
+
+
+class NodeParamSpec:
+    def __init__(
+        self,
+        function: Callable,
+        sign_source: Callable | None = None,
+        annotation_override: dict[str, Any] | None = None,
+        default_override: dict[str, Any] | None = None,
+    ):
+        self.name = function.__name__
+        self.sign_source = sign_source or function
+        self.annotation_override = annotation_override or {}
+        self.default_override = default_override or {}
+
+
 @dataclass
 class NodeDefInfo:
-    funcs: dict[str, MethodType]
-    params: dict[str, MethodType]
+    funcs: dict[str, NodeFuncSpec]
+    params: dict[str, NodeParamSpec]
 
 
 def get_node_def_info(
@@ -45,13 +72,10 @@ def get_node_def_info(
         params = base_info.params.copy()
 
     for name, obj in attrs.items():
-        if hasattr(obj, "_is_node_func"):
-            if obj._sign_like is not None:
-                funcs[name] = attrs[obj._sign_like]
-            else:
-                funcs[name] = obj
-        if hasattr(obj, "_is_node_param"):
-            params[name] = obj
+        if hasattr(obj, "_node_func_spec"):
+            funcs[name] = obj._node_func_spec
+        if hasattr(obj, "_node_param_spec"):
+            params[name] = obj._node_param_spec
     return NodeDefInfo(funcs, params)
 
 
@@ -61,20 +85,20 @@ NO_DEFAULT = object()
 @dataclass
 class Input:
     name: str
-    gtype: GType
+    datatype: GType
     default: Any = NO_DEFAULT
 
 
 @dataclass
 class Output:
     name: str
-    gtype: GType
+    datatype: GType
 
 
 @dataclass
 class ParamItem:
     name: str
-    gtype: GType
+    datatype: GType
     default: Any = NO_DEFAULT
 
 
@@ -131,7 +155,7 @@ class DecorTrait(Trait):
             self.in_ports[f"{self.name}.in.{name}"] = self.add_input_or_param_port(
                 f"{self.name}.in.{name}",
                 name,
-                inp.gtype,
+                inp.datatype,
                 inp.default if inp.default != NO_DEFAULT else UNSPECIFY_CONTROL_VALUE,
                 activate_on_control_change=False,
                 update_control_from_edge=False,
@@ -140,7 +164,7 @@ class DecorTrait(Trait):
         # generate output ports for function outputs
         for name, out in self.outputs.items():
             self.out_ports[f"{self.name}.out.{name}"] = self.node.add_out_port(
-                f"{self.name}.out.{name}", display_name=name, datatype=out.gtype
+                f"{self.name}.out.{name}", display_name=name, datatype=out.datatype
             )
 
         # generate param ports for function params
@@ -149,7 +173,7 @@ class DecorTrait(Trait):
                 self.add_input_or_param_port(
                     f"{self.name}.param.{name}",
                     name,
-                    par.gtype,
+                    par.datatype,
                     par.default
                     if par.default != NO_DEFAULT
                     else UNSPECIFY_CONTROL_VALUE,
@@ -345,7 +369,7 @@ def consistent_default_values(defaults: "list[Any]") -> bool:
 
 
 def collect_input_output_params(
-    funcs: dict[str, MethodType], param_funcs: "dict[str, MethodType]"
+    funcs: dict[str, NodeFuncSpec], param_funcs: "dict[str, NodeParamSpec]"
 ) -> tuple[
     dict[str, list[Input]],
     dict[str, list[Output]],
@@ -358,59 +382,87 @@ def collect_input_output_params(
     params = defaultdict(list[ParamItem])
     node_funcs: dict[str, NodeFunc] = {}
     node_params: dict[str, NodeParam] = {}
-    for name, func in funcs.items():
+    for func in funcs.values():
         cur_inputs: dict[str, Input] = {}
         cur_outputs: dict[str, Output] = {}
-        if "return" in func.__annotations__:
-            # outputs[name].append(func.__annotations__["return"])
-            # cur_outputs[name] = Output(
-            #     name=name, gtype=AnyType
-            # )  # The actual type will be filled in later
-            out = Output(name, GType.from_annotation(func.__annotations__["return"]))
-            outputs[name].append(out)
-            cur_outputs[name] = out
-
+        if "return" in func.sign_source.__annotations__:
+            if "return" in func.annotation_override:
+                datatype = GType.from_annotation(func.annotation_override["return"])
+            else:
+                datatype = GType.from_annotation(
+                    func.sign_source.__annotations__["return"]
+                )
         else:
-            outputs[name].append(Output(name, AnyType))
-            cur_outputs[name] = Output(name, AnyType)
+            datatype = AnyType
 
-        signature = inspect.signature(func)
+        out = Output(func.name, datatype)
+        outputs[func.name].append(out)
+        cur_outputs[func.name] = out
+
+        signature = inspect.signature(func.sign_source)
         for arg_name, arg in signature.parameters.items():
             if arg_name == "self":
                 continue
+
+            if arg_name in func.annotation_override:
+                datatype = GType.from_annotation(func.annotation_override[arg_name])
+            else:
+                datatype = GType.from_annotation(arg.annotation)
+
+            if arg_name in func.default_override:
+                default = func.default_override[arg_name]
+            else:
+                default = (
+                    arg.default
+                    if arg.default != inspect.Parameter.empty
+                    else NO_DEFAULT
+                )
+
             inp = Input(
                 name=arg_name,
-                gtype=GType.from_annotation(arg.annotation)
-                if arg.annotation != inspect.Parameter.empty
-                else AnyType,
-                default=arg.default
-                if arg.default != inspect.Parameter.empty
-                else NO_DEFAULT,
+                datatype=datatype,
+                default=default,
             )
             inputs[arg_name].append(inp)
             cur_inputs[arg_name] = inp
 
-        node_funcs[name] = NodeFunc(name=name, inputs=cur_inputs, outputs=cur_outputs)
+        node_funcs[func.name] = NodeFunc(
+            name=func.name, inputs=cur_inputs, outputs=cur_outputs
+        )
 
-    for name, param in param_funcs.items():
-        signature = inspect.signature(param)
+    for param in param_funcs.values():
+        signature = inspect.signature(param.sign_source)
         cur_params: dict[str, ParamItem] = {}
         for param_item_name, arg in signature.parameters.items():
             if param_item_name == "self":
                 continue
+
+            if param_item_name in param.annotation_override:
+                datatype = GType.from_annotation(
+                    param.annotation_override[param_item_name]
+                )
+            else:
+                datatype = GType.from_annotation(arg.annotation)
+
+            if param_item_name in param.default_override:
+                default = param.default_override[param_item_name]
+            else:
+                default = (
+                    arg.default
+                    if arg.default != inspect.Parameter.empty
+                    else NO_DEFAULT
+                )
+
             par = ParamItem(
                 name=param_item_name,
-                gtype=GType.from_annotation(arg.annotation)
-                if arg.annotation != inspect.Parameter.empty
-                else AnyType,
-                default=arg.default
-                if arg.default != inspect.Parameter.empty
-                else NO_DEFAULT,
+                datatype=datatype,
+                default=default,
             )
+
             params[param_item_name].append(par)
             cur_params[param_item_name] = par
 
-        node_params[param_item_name] = NodeParam(name=name, params=cur_params)
+        node_params[param_item_name] = NodeParam(name=param.name, params=cur_params)
 
     return inputs, outputs, params, node_funcs, node_params
 
@@ -455,7 +507,7 @@ def consistent_input_output_params(
     return True
 
 
-T = TypeVar("T", bound="Input|Output|Param")
+T = TypeVar("T", bound=Input | Output | ParamItem)
 
 
 def reduce(items: list[T]) -> T:
@@ -463,7 +515,7 @@ def reduce(items: list[T]) -> T:
     Pick the most strict type from a list of inputs, outputs or params.
     """
     for item in items:
-        if item.gtype != AnyType:
+        if item.datatype != AnyType:
             return item
     return items[0]
 
