@@ -27,6 +27,7 @@ class Port(SObject):
         )
         self.max_edges = self.add_attribute("max_edges", IntTopic, max_edges)
         self.is_input = self.add_attribute("is_input", IntTopic, 0)
+        self.hidden = self.add_attribute("hidden", GenericTopic[bool], False)
         self.register_service(
             "get_type_unconnectable_ports", self.get_type_unconnectable_ports
         )
@@ -225,6 +226,13 @@ class InputPort(Port, typing.Generic[T]):
     def clear_edges(self):
         for edge in self.edges:
             edge.clear()
+
+    def set_hidden(self, value: bool):
+        if value and (len(self.edges) > 0):
+            raise Exception(
+                f'Cant hide port "{self.get_name()}" with {len(self.edges)} edges connected'
+            )
+        self.hidden.set(value)
 
     # TODO remove control from node when port is removed
 

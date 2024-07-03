@@ -1,4 +1,4 @@
-import {ObjectSyncClient, StringTopic, IntTopic} from 'objectsync-client'
+import {ObjectSyncClient, StringTopic, IntTopic, GenericTopic} from 'objectsync-client'
 import { HtmlItem } from '../component/htmlItem'
 import { Transform } from '../component/transform'
 import { CompSObject } from './compSObject'
@@ -15,6 +15,7 @@ export class Port extends CompSObject implements IControlHost {
     display_name: StringTopic = this.getAttribute('display_name', StringTopic)
     is_input: IntTopic = this.getAttribute('is_input', IntTopic)
     max_edges: IntTopic = this.getAttribute('max_edges', IntTopic)
+    hidden_topic: GenericTopic<boolean> = this.getAttribute('hidden', GenericTopic<boolean>)
     default_control_display: string
     orientation: number=0;
 
@@ -44,6 +45,19 @@ export class Port extends CompSObject implements IControlHost {
             this.labelDiv.style.display = 'block'
         } else {
             this.labelDiv.style.display = 'none'
+        }
+    }
+
+    private _hidden: boolean = false
+    get hidden(): boolean {
+        return this._hidden
+    }
+    set hidden(value: boolean) {
+        this._hidden = value
+        if(value){
+            this.htmlItem.baseElement.classList.add('hidden')
+        }else{
+            this.htmlItem.baseElement.classList.remove('hidden')
         }
     }
 
@@ -118,6 +132,9 @@ export class Port extends CompSObject implements IControlHost {
         })
         this.link(this.max_edges.onSet,this.updateAcceptsEdgeClass)
 
+        this.link(this.hidden_topic.onSet,(hidden: boolean) => {
+            this.hidden = hidden
+        })
 
         if(this.is_input.getValue()) {
             this.link(this.getAttribute('update_control_from_edge').onSet,(value: boolean) => {

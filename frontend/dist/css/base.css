@@ -335,6 +335,11 @@ footer{
     align-items: center;
 }
 
+.port.hidden{
+    display: none;
+
+}
+
 :is(.normal-node) .port {
     width: 100%;
     height: fit-content;

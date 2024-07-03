@@ -584,7 +584,8 @@ class DotAnimation{
             this.dot.setAttribute('opacity',opacity.toString())
         }
 
-        this.progress += dt/1000*100/this.pathResult.length
+        //this.progress += dt/1000*100/this.pathResult.length
+        this.progress += dt/400
         if(this.progress > 1) this.progress = 0
         let [tail,mp1,mp2,head] = this.pathResult.points // A bezier curve of 4 points
 

@@ -232,6 +232,36 @@ class DecorTrait(Trait):
                     + traceback.format_exc()
                 )
 
+        # hide all ports that are not shown
+        for name, port in self.in_ports.get().items():
+            if name.split(".in.")[-1] not in self.show_inputs.get():
+                port.set_hidden(True)
+
+        for name, port in self.param_ports.get().items():
+            if name.split(".param.")[-1] not in self.show_params.get():
+                port.set_hidden(True)
+
+        self.show_inputs.on_set2.add_auto(self.show_inputs_changed)
+        self.show_params.on_set2.add_auto(self.show_params_changed)
+
+    def show_inputs_changed(self, old, new):
+        old = set(old)
+        new = set(new)
+        for name in old - new:
+            self.in_ports[f"{self.name}.in.{name}"].set_hidden(True)
+
+        for name in new - old:
+            self.in_ports[f"{self.name}.in.{name}"].set_hidden(False)
+
+    def show_params_changed(self, old, new):
+        old = set(old)
+        new = set(new)
+        for name in old - new:
+            self.param_ports[f"{self.name}.param.{name}"].set_hidden(True)
+
+        for name in new - old:
+            self.param_ports[f"{self.name}.param.{name}"].set_hidden(False)
+
     def add_input_or_param_port(
         self,
         name: str,

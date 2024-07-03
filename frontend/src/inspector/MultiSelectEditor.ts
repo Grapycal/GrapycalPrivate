@@ -54,6 +54,7 @@ export class MultiSelectEditor extends Editor<ListTopic<string>> {
     readonly attributeName: HTMLDivElement
     readonly optionsContainer: HTMLDivElement
     private readonly options: Map<string, MultiSelectEditorItem>
+    private locked = false
 
     constructor(displayName: string, editorArgs: any, connectedAttributes: ListTopic<string>[]) {
         super()
@@ -75,6 +76,7 @@ export class MultiSelectEditor extends Editor<ListTopic<string>> {
     }
 
     private updateValue() {
+        
         for(let option of this.options.values()){
 
             let hasFalse = false
@@ -86,6 +88,7 @@ export class MultiSelectEditor extends Editor<ListTopic<string>> {
                     hasFalse = true
                 }
             }
+            this.locked = true
             if(hasTrue && hasFalse){
                 option.input.indeterminate = true
                 option.input.checked = false
@@ -93,12 +96,16 @@ export class MultiSelectEditor extends Editor<ListTopic<string>> {
                 option.input.indeterminate = false
                 option.input.checked = hasTrue
             }
+            this.locked = false
         }
 
 
     }
 
     private inputChanged() {
+        if(this.locked){
+            return
+        }
         let checked: string[] = []
         let unchecked: string[] = []
 
