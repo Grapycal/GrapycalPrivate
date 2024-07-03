@@ -9,17 +9,17 @@ export class MultiSelectEditorItem extends Componentable {
 
     get template() {
         return `
-        <div class="attribute-editor flex-horiz stretch">
-            <div ref="name" ></div>
-            <input ref="input" id="input" type="checkbox" class="text-editor">
+        <div class="attribute-editor flex-horiz stretch grow">
+            <div ref="name" class="name"></div>
+            <input ref="input" id="input" type="checkbox" class="input">
         </div>
         `
     }
 
     get style(): string {
         return super.style + `
-        .text-editor{
-            width: 100px;
+        .name{
+            min-width: 100px;
         }
     `
     }
@@ -57,13 +57,13 @@ export class MultiSelectEditor extends Editor<ListTopic<string>> {
 
     constructor(displayName: string, editorArgs: any, connectedAttributes: ListTopic<string>[]) {
         super()
+        this.connectedAttributes = connectedAttributes
         this.attributeName.innerText = displayName
+        this.options = new Map()
         for (let attr of connectedAttributes) {
             this.linker.link(attr.onSet, this.updateValue)
         }
-        this.updateValue()
 
-        this.options = new Map()
         for(let optionName of editorArgs.options){
             const item = new MultiSelectEditorItem().mount(this.optionsContainer)
             item.name.innerText = optionName
@@ -73,9 +73,10 @@ export class MultiSelectEditor extends Editor<ListTopic<string>> {
     }
 
     private updateValue() {
-        let hasFalse = false
-        let hasTrue = false
         for(let option of this.options.values()){
+
+            let hasFalse = false
+            let hasTrue = false
             for(let attr of this.connectedAttributes){
                 if(attr.getValue().includes(option.name.innerText)){
                     hasTrue = true
@@ -96,7 +97,7 @@ export class MultiSelectEditor extends Editor<ListTopic<string>> {
     }
 
     private inputChanged() {
-        let value = []
+        let value: string[] = []
         for(let option of this.options.values()){
             if(option.input.checked){
                 value.push(option.name.innerText)

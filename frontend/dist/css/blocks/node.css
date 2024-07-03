@@ -28,7 +28,7 @@ Define styles for different node categories
     border-color: var(--cate-color);
     border-width: 10px;
 
-    filter: saturate(1.5) brightness(0.6);
+    filter: saturate(1.5) brightness(0.4);
 }
 
 

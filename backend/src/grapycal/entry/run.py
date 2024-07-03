@@ -7,6 +7,7 @@ from contextlib import asynccontextmanager
 import traceback
 from typing import Awaitable, Callable
 
+from grapycal.core.background_runner import RunnerInterrupt
 import uvicorn
 from grapycal.entry.args import parse_args
 from fastapi import FastAPI, WebSocket
@@ -158,6 +159,9 @@ def main():
     try:
         workspace.run(ui_event_loop)
     except KeyboardInterrupt:
+        print("Exiting")
+        sys.exit(1)
+    except RunnerInterrupt:
         print("Exiting")
         sys.exit(1)
     except Exception:

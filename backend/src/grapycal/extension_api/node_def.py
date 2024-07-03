@@ -17,7 +17,7 @@ from grapycal.sobjects.controls.objectControl import ObjectControl
 from grapycal.sobjects.controls.textControl import TextControl
 from grapycal.sobjects.controls.toggleControl import ToggleControl
 from grapycal.sobjects.port import UNSPECIFY_CONTROL_VALUE, OutputPort
-from objectsync.topic import ObjDictTopic
+from objectsync.topic import ObjDictTopic, ListTopic
 from .trait import Trait
 from grapycal.sobjects.port import InputPort
 
@@ -148,6 +148,23 @@ class DecorTrait(Trait):
         )
         self.param_ports = self.node.add_attribute(
             f"{self.name}.param_ports", ObjDictTopic[InputPort], restore_from=None
+        )
+        self.show_inputs = self.node.add_attribute(
+            f"{self.name}.show_inputs",
+            ListTopic,
+            display_name="Apparance/input",
+            restore_from=None,
+            editor_type="multiselect",
+            options=list(self.inputs.keys()),
+            init_value=list(self.inputs.keys()),
+        )
+        self.show_params = self.node.add_attribute(
+            f"{self.name}.show_params",
+            ListTopic,
+            display_name="Apparance/param",
+            restore_from=None,
+            editor_type="multiselect",
+            options=list(self.params.keys()),
         )
 
         # generate input ports for function inputs

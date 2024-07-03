@@ -823,6 +823,7 @@ input:enabled, textarea:enabled{
 .hierarchy-name{
     padding-left: 15px;
     font-size: 15px;
+    cursor: pointer;
 }
 
 .hierarchy-indent{
