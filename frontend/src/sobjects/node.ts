@@ -155,9 +155,6 @@ export class Node extends CompSObject implements IControlHost {
             label_el.style.marginTop = offset + 'em'
         })
 
-        for(let className of Node.getCssClassesFromCategory(this.category.getValue())){
-            this.htmlItem.baseElement.classList.add(className)
-        }
 
         this.link(this.category.onSet2, (oldCategory: string, newCategory: string) => {
             if(this.parent instanceof NodeLibrary){
@@ -456,6 +453,10 @@ export class Node extends CompSObject implements IControlHost {
             (this.htmlItem.baseElement as HTMLElement).style.minWidth = 'unset'
         }else{
             (this.htmlItem.baseElement as HTMLElement).style.minWidth = this.minWidth + 'px'
+        }
+
+        for(let className of Node.getCssClassesFromCategory(this.category.getValue())){
+            this.htmlItem.baseElement.classList.add(className)
         }
 
         for(let className of Node.getCssClassesFromCategory(this.category.getValue())){

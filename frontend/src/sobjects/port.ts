@@ -59,6 +59,8 @@ export class Port extends CompSObject implements IControlHost {
         }else{
             this.htmlItem.baseElement.classList.remove('hidden')
         }
+        if(this.node!=null)
+            this.node.moved.invoke()
     }
 
     // Called by Edge class

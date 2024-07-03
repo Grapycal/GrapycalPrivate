@@ -368,6 +368,13 @@ class Node(SObject, metaclass=NodeMeta):
             restore_from=None,
         )
 
+        self.expose_attribute(
+            self.shape,
+            display_name="Apparance/shape",
+            editor_type="options",
+            options=["normal", "simple", "round"],
+        )
+
         # for inspector
         self.type_topic = self.add_attribute(
             "type", StringTopic, self.get_type_name(), restore_from=None

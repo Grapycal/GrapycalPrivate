@@ -52,7 +52,7 @@ class ObjectControl(ValuedControl[Any]):
         return True
 
     def get_value_topic(self) -> Topic:
-        raise NotImplementedError("ObjectControl does not have a value topic")
+        return self.text
 
     def take_label(self, label):
         if self.label.get() == "":

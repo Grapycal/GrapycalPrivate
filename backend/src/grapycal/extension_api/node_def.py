@@ -172,6 +172,7 @@ class DecorTrait(Trait):
             self.in_ports[f"{self.name}.in.{name}"] = self.add_input_or_param_port(
                 f"{self.name}.in.{name}",
                 name,
+                f"Default input/{name}",
                 inp.datatype,
                 inp.default if inp.default != NO_DEFAULT else UNSPECIFY_CONTROL_VALUE,
                 activate_on_control_change=False,
@@ -190,6 +191,7 @@ class DecorTrait(Trait):
                 self.add_input_or_param_port(
                     f"{self.name}.param.{name}",
                     name,
+                    f"Parameter/{name}",
                     par.datatype,
                     par.default
                     if par.default != NO_DEFAULT
@@ -266,6 +268,7 @@ class DecorTrait(Trait):
         self,
         name: str,
         display_name: str,
+        editor_display_name: str,
         gtype: GType,
         control_value: Any,
         activate_on_control_change: bool,
@@ -298,7 +301,7 @@ class DecorTrait(Trait):
             #     f"Not support gtype {gtype} for port {name} yet. Will not add control."
             # )
             control_type = ObjectControl
-            editor_type = None
+            editor_type = "text"
         # TODO: add more control types
 
         port = self.node.add_in_port(
@@ -316,7 +319,7 @@ class DecorTrait(Trait):
             self.node.expose_attribute(
                 port.default_control.get_value_topic(),
                 editor_type,
-                display_name=display_name,
+                display_name=editor_display_name,
                 **editor_args,
             )
         return port

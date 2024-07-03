@@ -492,15 +492,18 @@ footer{
     flex-grow: 1;
 }
 
-.port.control-takes-label:not(.has-edge.hide-control-if-has-edge) > .port-label{
+.normal-node .port.control-takes-label:not(.has-edge.hide-control-if-has-edge) > .port-label{
     overflow: hidden;
     opacity: 0;
     width: 0px; 
 }
 
+.node:not(.normal-node) .port>.slot-control{
+    display: none;
+}
+
 .port.has-edge.hide-control-if-has-edge > .slot-control{
     display: none;
-
 }
 
 /* Control */
