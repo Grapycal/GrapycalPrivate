@@ -10,7 +10,7 @@ export class MultiSelectEditorItem extends Componentable {
     get template() {
         return `
         <div class="attribute-editor flex-horiz stretch grow">
-            <div ref="name" class="name"></div>
+            <div ref="nameEl" class="name"></div>
             <input ref="input" id="input" type="checkbox" class="input">
         </div>
         `
@@ -25,8 +25,8 @@ export class MultiSelectEditorItem extends Componentable {
     }
 
     readonly input: HTMLInputElement
-    readonly name: HTMLDivElement
-    
+    readonly nameEl: HTMLDivElement
+    name: string
 }
 
 export class MultiSelectEditor extends Editor<ListTopic<string>> {
@@ -60,15 +60,17 @@ export class MultiSelectEditor extends Editor<ListTopic<string>> {
         this.connectedAttributes = connectedAttributes
         this.attributeName.innerText = displayName
         this.options = new Map()
-        for (let attr of connectedAttributes) {
-            this.linker.link(attr.onSet, this.updateValue)
-        }
 
         for(let optionName of editorArgs.options){
             const item = new MultiSelectEditorItem().mount(this.optionsContainer)
-            item.name.innerText = optionName
+            item.nameEl.innerText = optionName
+            item.name = optionName
             this.options.set(optionName, item)
             this.linker.link2(item.input, 'change', this.inputChanged)
+        }
+
+        for (let attr of connectedAttributes) {
+            this.linker.link(attr.onSet, this.updateValue)
         }
     }
 
@@ -78,7 +80,7 @@ export class MultiSelectEditor extends Editor<ListTopic<string>> {
             let hasFalse = false
             let hasTrue = false
             for(let attr of this.connectedAttributes){
-                if(attr.getValue().includes(option.name.innerText)){
+                if(attr.getValue().includes(option.name)){
                     hasTrue = true
                 }else{
                     hasFalse = true
@@ -97,14 +99,28 @@ export class MultiSelectEditor extends Editor<ListTopic<string>> {
     }
 
     private inputChanged() {
-        let value: string[] = []
+        let checked: string[] = []
+        let unchecked: string[] = []
+
         for(let option of this.options.values()){
             if(option.input.checked){
-                value.push(option.name.innerText)
+                checked.push(option.name)
+            }
+            else if(!option.input.indeterminate){
+                unchecked.push(option.name)
             }
         }
         Workspace.instance.record(() => {
             for (let attr of this.connectedAttributes) {
+                let value = attr.getValue().slice()
+                for(let option of checked){
+                    if(!value.includes(option)){
+                        value.push(option)
+                    }
+                }
+                for(let option of unchecked){
+                    value = value.filter(v => v !== option)
+                }
                 attr.set(value)
             }
         })
