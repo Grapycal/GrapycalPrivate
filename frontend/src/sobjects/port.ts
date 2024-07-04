@@ -14,6 +14,7 @@ export class Port extends CompSObject implements IControlHost {
 
     display_name: StringTopic = this.getAttribute('display_name', StringTopic)
     is_input: IntTopic = this.getAttribute('is_input', IntTopic)
+    is_param: GenericTopic<boolean> = this.getAttribute('is_param', GenericTopic<boolean>)
     max_edges: IntTopic = this.getAttribute('max_edges', IntTopic)
     hidden_topic: GenericTopic<boolean> = this.getAttribute('hidden', GenericTopic<boolean>)
     default_control_display: string
@@ -59,8 +60,10 @@ export class Port extends CompSObject implements IControlHost {
         }else{
             this.htmlItem.baseElement.classList.remove('hidden')
         }
-        if(this.node!=null)
+        if(this.node!=null){
             this.node.moved.invoke()
+            this.node.portVisibilityChanged()
+        }
     }
 
     // Called by Edge class
@@ -204,7 +207,7 @@ export class Port extends CompSObject implements IControlHost {
 
     private isInputChanged(is_input: number): void {
         if(is_input) {
-            this.htmlItem.setParent(this.getComponentInAncestors(HtmlItem)!, 'input_port')
+            this.htmlItem.setParent(this.getComponentInAncestors(HtmlItem)!, this.is_param.getValue() ? 'param_input_port' : 'input_port')
             this.knob.classList.remove('out-port')
             this.knob.classList.add('in-port')
         } else {

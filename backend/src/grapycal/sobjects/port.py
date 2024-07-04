@@ -18,7 +18,12 @@ class Port(SObject):
     frontend_type = "Port"
 
     def build(
-        self, name="port", max_edges=64, display_name=None, datatype: GType = AnyType
+        self,
+        name="port",
+        max_edges=64,
+        display_name=None,
+        datatype: GType = AnyType,
+        is_param=False,
     ):
         self.node: Node = self.get_parent()  # type: ignore
         self.name = self.add_attribute("name", StringTopic, name)
@@ -27,6 +32,7 @@ class Port(SObject):
         )
         self.max_edges = self.add_attribute("max_edges", IntTopic, max_edges)
         self.is_input = self.add_attribute("is_input", IntTopic, 0)
+        self.is_param = self.add_attribute("is_param", GenericTopic[bool], is_param)
         self.hidden = self.add_attribute("hidden", GenericTopic[bool], False)
         self.register_service(
             "get_type_unconnectable_ports", self.get_type_unconnectable_ports
@@ -105,9 +111,10 @@ class InputPort(Port, typing.Generic[T]):
         datatype: GType = AnyType,
         activate_on_control_change=False,
         update_control_from_edge=False,
+        is_param=False,
         **control_kwargs,
     ):
-        super().build(name, max_edges, display_name, datatype)
+        super().build(name, max_edges, display_name, datatype, is_param)
         self.is_input.set(1)
 
         self.default_control = self.add_child(control_type, **control_kwargs)

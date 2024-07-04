@@ -177,6 +177,7 @@ class DecorTrait(Trait):
                 inp.default if inp.default != NO_DEFAULT else UNSPECIFY_CONTROL_VALUE,
                 activate_on_control_change=False,
                 update_control_from_edge=False,
+                is_param=False,
             )
 
         # generate output ports for function outputs
@@ -198,6 +199,7 @@ class DecorTrait(Trait):
                     else UNSPECIFY_CONTROL_VALUE,
                     activate_on_control_change=True,
                     update_control_from_edge=True,
+                    is_param=True,
                 )
             )
 
@@ -273,6 +275,7 @@ class DecorTrait(Trait):
         control_value: Any,
         activate_on_control_change: bool,
         update_control_from_edge: bool,
+        is_param: bool,
     ) -> "InputPort":
         control_kwargs: dict[str, Any] = {}
         editor_args: dict[str, Any] = {}
@@ -313,6 +316,7 @@ class DecorTrait(Trait):
             control_value=control_value,
             activate_on_control_change=activate_on_control_change,
             update_control_from_edge=update_control_from_edge,
+            is_param=is_param,
             **control_kwargs,
         )
         if editor_type is not None:

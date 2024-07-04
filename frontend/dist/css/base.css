@@ -432,6 +432,16 @@ footer{
     display: none;
 }
 
+.node:not(.has-visible-param) .slot-param-input-port{
+    display: none;
+}
+
+.slot-param-input-port{
+    padding-top: 8.5px;
+    margin-top: 8.5px;
+    border-top: #7a7a7a solid 1px;
+}
+
 .slot-output-port{
     position: relative;
     gap:2px;
@@ -442,7 +452,8 @@ footer{
 }
 
 .normal-node .slot-input-port {
-    padding: 0px 10px;
+    padding-left: 10px;
+    padding-right: 10px;
     width: 100%;
 }
 

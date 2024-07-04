@@ -77,6 +77,7 @@ export class Node extends CompSObject implements IControlHost {
                 <div slot="input_port" class=" flex-vert space-evenly slot-input-port"></div>
                 <div slot="output_port" class=" flex-vert space-evenly slot-output-port"></div>
                 <div slot="control" class="slot-control flex-vert space-between"></div>
+                <div slot="param_input_port" class=" flex-vert space-evenly slot-input-port  slot-param-input-port"></div>
             </div>
         </div>`,
     simple:
@@ -88,7 +89,10 @@ export class Node extends CompSObject implements IControlHost {
             <div class="node-selection"></div>
             
             <div class="flex-horiz stretch-align space-between">
-                <div slot="input_port" class=" flex-vert justify-start slot-input-port"></div>
+                <div class="flex-vert justify-start">
+                    <div slot="input_port" class=" flex-vert justify-start slot-input-port"></div>
+                    <div slot="param_input_port" class=" flex-vert justify-start slot-input-port slot-param-input-port"></div>
+                </div>
 
                 <div class="full-width flex-vert space-evenly">
                     <div class="node-label full-width flex-horiz">
@@ -110,6 +114,7 @@ export class Node extends CompSObject implements IControlHost {
             <div class="node-selection"></div>
             <div class="flex-horiz node-content">
                 <div slot="input_port" class=" flex-vert space-evenly slot-input-port"></div>
+                <div slot="param_input_port" class=" flex-vert space-evenly slot-input-port slot-param-input-port"></div>
                 <div class="full-width flex-vert space-evenly node-label"> 
                     <div class="node-label-underlay"></div>
                     <div ref="labelDiv" class="center-align"></div>
@@ -368,6 +373,7 @@ export class Node extends CompSObject implements IControlHost {
             if(input) input.focus();
             (window as any).i = input
         }
+        this.portVisibilityChanged()
     }
 
     setIcon(path: string){
@@ -462,6 +468,8 @@ export class Node extends CompSObject implements IControlHost {
         for(let className of Node.getCssClassesFromCategory(this.category.getValue())){
             this.htmlItem.baseElement.classList.add(className)
         }
+
+        this.portVisibilityChanged()
     }
 
     private minWidth: number = 0;
@@ -479,5 +487,48 @@ export class Node extends CompSObject implements IControlHost {
             this.parent.removeItem(this.htmlItem, this.category.getValue())
         }
         this.errorPopup.destroy()
+    }
+
+    public portVisibilityChanged(): void {
+        let hasVisibleInput = false
+        let hasVisibleParam = false
+        let hasVisibleOutput = false
+
+        for(let port of this.in_ports.getValue()){
+            if(!port.hidden){
+                if(port.is_param.getValue()){
+                    hasVisibleParam = true
+                }
+                else{
+                    hasVisibleInput = true
+                }
+            }
+        }
+        for(let port of this.out_ports.getValue()){
+            if(!port.hidden){
+                hasVisibleOutput = true
+            }
+        }
+
+        if(hasVisibleInput){
+            this.htmlItem.baseElement.classList.add('has-visible-input')
+        }
+        else{
+            this.htmlItem.baseElement.classList.remove('has-visible-input')
+        }
+
+        if(hasVisibleOutput){
+            this.htmlItem.baseElement.classList.add('has-visible-output')
+        }
+        else{
+            this.htmlItem.baseElement.classList.remove('has-visible-output')
+        }
+
+        if(hasVisibleParam){
+            this.htmlItem.baseElement.classList.add('has-visible-param')
+        }
+        else{
+            this.htmlItem.baseElement.classList.remove('has-visible-param')
+        }
     }
 }
