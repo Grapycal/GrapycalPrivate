@@ -117,7 +117,9 @@ class InputPort(Port, typing.Generic[T]):
         super().build(name, max_edges, display_name, datatype, is_param)
         self.is_input.set(1)
 
-        self.default_control = self.add_child(control_type, **control_kwargs)
+        self.default_control: ValuedControl = self.add_child(
+            control_type, **control_kwargs
+        )
         if control_value is not UNSPECIFY_CONTROL_VALUE:
             self.default_control.set_from_port(control_value)
 
@@ -250,6 +252,9 @@ class InputPort(Port, typing.Generic[T]):
             for edge in self.edges.copy():
                 edge.remove()
         self.hidden.set(value)
+
+    def set_control_value(self, value: Any):
+        self.default_control.set_from_port(value)
 
     # TODO remove control from node when port is removed
 

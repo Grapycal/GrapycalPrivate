@@ -102,8 +102,6 @@ export class Port extends CompSObject implements IControlHost {
         this.transform.targetElement = this.knob
         this.transform.pivot = new Vector2(0,0)
 
-        this.eventDispatcher.setEventElement(this.hitbox)
-        this.link(this.eventDispatcher.onDragStart,this.generateEdge)
 
         this.mouseOverDetector.eventElement = this.hitbox
 
@@ -112,17 +110,6 @@ export class Port extends CompSObject implements IControlHost {
         // Initializing classes like this prevents UI from glitching (hopefully)
         this.htmlItem.baseElement.classList.add('control-takes-label')
         this.htmlItem.baseElement.classList.add('has-edge')
-
-        this.link(this.eventDispatcher.onClick,() => {
-            let shift = Vector2.fromPolar(17*3,this.orientation)
-            shift = shift.add(new Vector2(0,-17))
-            if(this.is_input.getValue()){
-                shift = shift.add(new Vector2(-17*8,0))
-            }
-            this.node.editor.slashCommandMenu.openMenu({
-                attached_port:this.id, 
-                translation:(this.node.editor.transform.othersToLocal(this.transform).add(shift)).toList()})
-        })
 
         this.link(this.display_name.onSet,(label: string) => {
             this.labelDiv.innerText = label
@@ -171,6 +158,25 @@ export class Port extends CompSObject implements IControlHost {
         this.eventDispatcher.isDraggable = (e:MouseEvent)=>!(this.node.isPreview ||
                     !this.acceptsEdge() ||
                     e.buttons !== 1)
+    }
+
+    protected postStart(): void {
+        
+        if(!this.node.isPreview){
+            this.eventDispatcher.setEventElement(this.hitbox)
+            this.link(this.eventDispatcher.onDragStart,this.generateEdge)
+            this.link(this.eventDispatcher.onClick,() => {
+                let shift = Vector2.fromPolar(17*3,this.orientation)
+                shift = shift.add(new Vector2(0,-17))
+                if(this.is_input.getValue()){
+                    shift = shift.add(new Vector2(-17*8,0))
+                }
+                this.node.editor.slashCommandMenu.openMenu({
+                    attached_port:this.id, 
+                    translation:(this.node.editor.transform.othersToLocal(this.transform).add(shift)).toList()})
+            })
+        }
+
     }
 
 

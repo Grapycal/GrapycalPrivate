@@ -5,6 +5,7 @@ from grapycal.core.background_runner import RunnerInterrupt
 from grapycal.core.client_msg_types import ClientMsgTypes
 from grapycal.core.typing import GType, AnyType
 from grapycal.extension_api.node_def import (
+    DecorTrait,
     NodeFuncSpec,
     NodeParamSpec,
     generate_traits,
@@ -14,7 +15,7 @@ from grapycal.extension_api.trait import Chain, Trait
 from grapycal.sobjects.controls.keyboardControl import KeyboardControl
 from grapycal.sobjects.controls.sliderControl import SliderControl
 from grapycal.sobjects.controls.toggleControl import ToggleControl
-from grapycal.utils.misc import Action
+from grapycal.utils.misc import Action, as_type
 
 logger = logging.getLogger(__name__)
 import asyncio
@@ -314,14 +315,20 @@ class Node(SObject, metaclass=NodeMeta):
         translation="0,0",
         is_new=True,
         old_node_info: NodeInfo | None = None,
+        input_values=None,
+        param_values=None,
         **build_node_args,
     ):
         self.is_new = is_new
         self.old_node_info = old_node_info
         self.is_building = True
 
+        # DecorTrait reads input_values and param_values
+        self.input_values = input_values or {}
+        self.param_values = param_values or {}
+
         self.shape = self.add_attribute(
-            "shape", StringTopic, self.shape_, restore_from=None
+            "shape", StringTopic, self.shape_
         )  # normal, simple, round
         self.output_topic = self.add_attribute(
             "output", ListTopic, [], is_stateful=False, restore_from=None
@@ -398,9 +405,9 @@ class Node(SObject, metaclass=NodeMeta):
             is_stateful=False,
         )
 
-        self.build_node_args = (
-            build_node_args  # some traits may need to access the build_node_args
-        )
+        # some traits may need to access the build_node_args
+        self.build_node_args = build_node_args
+
         self.on_build_node.invoke()  # not passing build_node_args because traits should be independent of the node type
         self.build_node(**build_node_args)
         self.is_building = False
@@ -422,6 +429,15 @@ class Node(SObject, metaclass=NodeMeta):
         Put node parameters here. This is a more dynamic way to define node parameters than using the @param decorator.
         """
         return []
+
+    def get_decor_trait(self) -> DecorTrait:
+        return as_type(self.traits["_decor"], DecorTrait)
+
+    def set_input(self, name, value):
+        self.get_decor_trait().set_input(name, value)
+
+    def set_param(self, name, value):
+        self.get_decor_trait().set_param(name, value)
 
     def build_node(self):
         """

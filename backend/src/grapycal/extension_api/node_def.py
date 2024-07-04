@@ -169,12 +169,20 @@ class DecorTrait(Trait):
 
         # generate input ports for function inputs
         for name, inp in self.inputs.items():
+            if name in self.node.input_values:
+                control_value = self.node.input_values[name]
+            else:
+                control_value = (
+                    inp.default
+                    if inp.default != NO_DEFAULT
+                    else UNSPECIFY_CONTROL_VALUE
+                )
             self.in_ports[f"{self.name}.in.{name}"] = self.add_input_or_param_port(
                 f"{self.name}.in.{name}",
                 name,
                 f"Default input/{name}",
                 inp.datatype,
-                inp.default if inp.default != NO_DEFAULT else UNSPECIFY_CONTROL_VALUE,
+                control_value,
                 activate_on_control_change=False,
                 update_control_from_edge=False,
                 is_param=False,
@@ -188,15 +196,21 @@ class DecorTrait(Trait):
 
         # generate param ports for function params
         for name, par in self.params.items():
+            if name in self.node.param_values:
+                control_value = self.node.param_values[name]
+            else:
+                control_value = (
+                    par.default
+                    if par.default != NO_DEFAULT
+                    else UNSPECIFY_CONTROL_VALUE
+                )
             self.param_ports[f"{self.name}.param.{name}"] = (
                 self.add_input_or_param_port(
                     f"{self.name}.param.{name}",
                     name,
                     f"Parameter/{name}",
                     par.datatype,
-                    par.default
-                    if par.default != NO_DEFAULT
-                    else UNSPECIFY_CONTROL_VALUE,
+                    control_value,
                     activate_on_control_change=True,
                     update_control_from_edge=True,
                     is_param=True,
@@ -392,6 +406,12 @@ class DecorTrait(Trait):
             for name, output in outputs.items():
                 assert name in node_func.outputs
                 self.out_ports[f"{self.name}.out.{name}"].push(output)
+
+    def set_input(self, name, value):
+        self.in_ports[f"{self.name}.in.{name}"].set_control_value(value)
+
+    def set_param(self, name, value):
+        self.param_ports[f"{self.name}.param.{name}"].set_control_value(value)
 
 
 def consistent_annotations(annotations: "list[type]") -> bool:

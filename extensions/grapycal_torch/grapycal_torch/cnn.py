@@ -8,7 +8,7 @@ class Conv2dNode(SimpleModuleNode):
     icon_path = "cnn"
 
     def get_label(self, params):
-        return f"Conv2d {params['in_channels']} → {params['out_channels']} {params['kernel_size']}"
+        return f"Conv2d {params['in_channels']} → {params['out_channels']}, ks={params['kernel_size']}"
 
 
 class ConvTranspose2dNode(SimpleModuleNode):
@@ -17,4 +17,4 @@ class ConvTranspose2dNode(SimpleModuleNode):
     icon_path = "cnn"
 
     def get_label(self, params):
-        return f"ConvTr2d {params['in_channels']} → {params['out_channels']} {params['kernel_size']}"
+        return f"ConvTr2d {params['in_channels']} → {params['out_channels']}, ks={params['kernel_size']}"

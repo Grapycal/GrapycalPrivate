@@ -193,7 +193,7 @@ class GrapycalTorch(Extension):
             else:
                 nt = item
                 kwargs = {}
-            new_node = self.create_node(nt, [x, y], **kwargs)
+            new_node = self.create_node(nt, [x, y], param_values=kwargs)
             nodes.append(new_node)
             y += GRID * gap
 
@@ -238,12 +238,12 @@ class GrapycalTorch(Extension):
         i = 0
         for node in nodes:
             if isinstance(node, LinearNode):
-                node.in_features.set(num_features[i])
-                node.out_features.set(num_features[i + 1])
+                node.set_param("in_features", num_features[i])
+                node.set_param("out_features", num_features[i + 1])
                 i += 1
             if isinstance(node, Conv2dNode):
-                node.in_channels.set(num_features[i])
-                node.out_channels.set(num_features[i + 1])
+                node.set_param("in_channels", num_features[i])
+                node.set_param("out_channels", num_features[i + 1])
                 i += 1
 
     def create_mlp(

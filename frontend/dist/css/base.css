@@ -436,7 +436,7 @@ footer{
     display: none;
 }
 
-.slot-param-input-port{
+.normal-node .slot-param-input-port{
     padding-top: 8.5px;
     margin-top: 8.5px;
     border-top: #7a7a7a solid 1px;
@@ -474,6 +474,10 @@ footer{
 .simple-node .slot-input-port{
     padding-top:7.5px;
     padding-bottom: 7.5px;
+}
+
+.simple-node .slot-param-input-port{
+    padding-top: 11.5px;
 }
 
 .simple-node .slot-output-port{

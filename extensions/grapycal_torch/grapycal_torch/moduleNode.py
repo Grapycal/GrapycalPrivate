@@ -143,7 +143,9 @@ class SimpleModuleNode(ModuleNode):
     inputs: list[str] = []
     max_in_degree = [1]
     outputs = ["output"]
+    shape_ = "simple"
     display_port_names: bool | None = None
+
     """
     define the hyper parameters of the module. They will be passed in the constructor of the module.
 
