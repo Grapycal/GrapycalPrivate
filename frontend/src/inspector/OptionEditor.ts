@@ -79,9 +79,11 @@ export class OptionsEditor extends Editor<StringTopic> {
 
     private onSelectChange() {
         this.locked = true
-        for (let attr of this.connectedAttributes) {
-            attr.set(this.selectInput.value)
-        }
+        Workspace.instance.record(() => {
+            for (let attr of this.connectedAttributes) {
+                attr.set(this.selectInput.value)
+            }
+        })
         this.locked = false
     }
 

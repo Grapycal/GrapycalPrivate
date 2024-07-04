@@ -279,7 +279,7 @@ class DecorTrait(Trait):
 
         if gtype == AnyType:
             control_type = ObjectControl
-            editor_type = None
+            editor_type = "text"
         elif gtype >> str:
             control_type = TextControl
             editor_type = "text"

@@ -33,6 +33,14 @@ class Port(SObject):
         )
         self.datatype = datatype
 
+    def get_state_dict(self):
+        return {
+            "datatype": self.datatype,
+        }
+
+    def set_state_dict(self, state_dict):
+        self.datatype = state_dict["datatype"]
+
     def init(self):
         self.edges: List[Edge] = []
         self.node: Node = self.get_parent()  # type: ignore
@@ -63,7 +71,8 @@ class Port(SObject):
                     self.node.editor.top_down_search(
                         type=OutputPort,
                         accept=lambda out_port: not out_port.can_connect_to(self),
-                    ),
+                    )
+                    + self.node.editor.top_down_search(type=InputPort),
                 )
             )
         else:  # is OutputPort
@@ -73,7 +82,8 @@ class Port(SObject):
                     self.node.editor.top_down_search(
                         type=InputPort,
                         accept=lambda in_port: not self.can_connect_to(in_port),
-                    ),
+                    )
+                    + self.node.editor.top_down_search(type=OutputPort),
                 )
             )
 
@@ -229,9 +239,9 @@ class InputPort(Port, typing.Generic[T]):
 
     def set_hidden(self, value: bool):
         if value and (len(self.edges) > 0):
-            raise Exception(
-                f'Cant hide port "{self.get_name()}" with {len(self.edges)} edges connected'
-            )
+            # unconnect all edges
+            for edge in self.edges.copy():
+                edge.remove()
         self.hidden.set(value)
 
     # TODO remove control from node when port is removed
