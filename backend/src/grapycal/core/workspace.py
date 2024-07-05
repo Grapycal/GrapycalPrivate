@@ -121,6 +121,19 @@ class Workspace:
         ui_thread_event_loop.create_task(self.auto_save())
         ui_thread_event_loop.create_task(self._objectsync.serve())
 
+        def ui_thread_exception_handler(loop, context):
+            # if is system exit, exit
+            if context.get("exception") is not None and isinstance(
+                context.get("exception"), SystemExit
+            ):
+                logger.error(
+                    "Exception in UI thread", exc_info=context.get("exception")
+                )
+                self.exit()
+            logger.error("Exception in UI thread", exc_info=context.get("exception"))
+
+        ui_thread_event_loop.set_exception_handler(ui_thread_exception_handler)
+
         main_store.clock.add_listener(self._update_os_stat, 2)
 
         # The extension manager starts searching for all extensions available.
@@ -133,7 +146,7 @@ class Workspace:
 
         # Setup is done. Hand the thread over to the background runner.
         if run_runner:
-            signal.signal(signal.SIGTERM, lambda sig, frame: self._exit())
+            signal.signal(signal.SIGTERM, lambda sig, frame: self.exit())
             self.is_running = True
             main_store.runner.run()  # this is a blocking call
 
@@ -185,7 +198,7 @@ class Workspace:
             "os_stat", objectsync.DictTopic, self._os_stat.get_os_stat()
         )
 
-        self._objectsync.register_service("exit", self._exit)
+        self._objectsync.register_service("exit", self.exit)
         self._objectsync.register_service("interrupt", self._interrupt)
         self._objectsync.register_service(
             "slash_command",
@@ -411,7 +424,7 @@ class Workspace:
 
         self._open_another_workspace_strategy.open(path)
 
-        self._exit()
+        self.exit()
 
     """
     Utility functions
@@ -455,7 +468,7 @@ class Workspace:
     Callbacks
     """
 
-    def _exit(self):
+    def exit(self):
         main_store.runner.exit()
 
     def _interrupt(self):

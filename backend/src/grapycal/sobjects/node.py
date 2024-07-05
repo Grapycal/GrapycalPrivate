@@ -308,7 +308,12 @@ class Node(SObject, metaclass=NodeMeta):
             self._node_def_info.funcs[func.name] = func
         for param in self.define_params():
             self._node_def_info.params[param.name] = param
-        return generate_traits(self._node_def_info)
+        try:
+            return generate_traits(self._node_def_info)
+        except Exception as e:
+            raise RuntimeError(
+                f"Failed to define node type {self.get_type_name()}: {e}"
+            )
 
     def define_traits(self) -> list[Trait | Chain] | Trait | Chain:
         return []

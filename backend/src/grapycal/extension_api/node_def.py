@@ -459,6 +459,10 @@ def collect_input_output_params(
     for func in funcs.values():
         cur_inputs: dict[str, Input] = {}
         cur_outputs: dict[str, Output] = {}
+        if not hasattr(func.sign_source, "__annotations__"):
+            raise ValueError(
+                f"Cannot get __annotations__ from function `{func.sign_source.__name__}`. Please provide a function with annotations."
+            )
         if "return" in func.sign_source.__annotations__:
             if "return" in func.annotation_override:
                 datatype = GType.from_annotation(func.annotation_override["return"])
