@@ -344,7 +344,7 @@ class ExtensionManager:
                 {
                     "name": node_type_name,
                     "category": node_type.category,
-                    "description": node_type.__doc__,
+                    "description": node_type.get_doc_string(),
                 },
             )
         return extension

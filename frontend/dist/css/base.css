@@ -1155,3 +1155,8 @@ code {
     top: -100%;
     right: -600px;
 } */
+
+/* order inspector */
+.cate-apparance{
+    order:10;
+}

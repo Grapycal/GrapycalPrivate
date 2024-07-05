@@ -329,10 +329,6 @@ export class Node extends CompSObject implements IControlHost {
             this.link(this.transform.onChange,this.moved.invoke)
             this.transform.updateUI() // This line is necessary to make edges spawning in this frame to be connected to the node
         }
-        //set background image
-        if(this.icon_path.getValue() != ''){
-            this.setIcon(this.icon_path.getValue())
-        }
     }
 
     protected postStart(): void {
@@ -467,6 +463,10 @@ export class Node extends CompSObject implements IControlHost {
 
         for(let className of Node.getCssClassesFromCategory(this.category.getValue())){
             this.htmlItem.baseElement.classList.add(className)
+        }
+
+        if(this.icon_path.getValue() != ''){
+            this.setIcon(this.icon_path.getValue())
         }
 
         this.portVisibilityChanged()

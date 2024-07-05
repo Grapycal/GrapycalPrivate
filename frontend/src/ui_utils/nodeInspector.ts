@@ -20,7 +20,7 @@ export class NodeInspector extends Componentable{
             <div id="node_info">
                 <div ref="nodeTypeDiv"></div>
                 <div ref="extensionNameDiv"></div>
-                <div ref="nodeDescriptionDiv"></div>
+                <div ref="nodeDescriptionDiv" class="node-description"></div>
             </div>
             <hr>
             <div slot="Inspector"></div>
@@ -34,6 +34,10 @@ export class NodeInspector extends Componentable{
     protected get style(): string {return `
         #extension_name{
             color: var(--text-low);
+        }
+        .node-description{
+            max-height: 300px;
+            overflow-y: auto;
         }
         
     `}

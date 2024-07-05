@@ -161,6 +161,10 @@ class SimpleModuleNode(ModuleNode):
             ]
     """
 
+    @classmethod
+    def get_doc_string(cls):
+        return cls.module_type.__doc__
+
     def define_funcs(self):
         return [
             NodeFuncSpec(

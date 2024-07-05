@@ -231,6 +231,10 @@ class Node(SObject, metaclass=NodeMeta):
     search = []
 
     @classmethod
+    def get_doc_string(cls):
+        return cls.__doc__
+
+    @classmethod
     def get_default_label(cls):
         name = cls.__name__
         name = name[:-4] if name.endswith("Node") else name
