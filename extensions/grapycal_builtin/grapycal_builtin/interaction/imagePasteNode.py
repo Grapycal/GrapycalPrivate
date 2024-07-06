@@ -79,8 +79,8 @@ class ImagePasteNode(SourceNode):
 
     def build_node(self, image: str | None = ""):
         super().build_node()
-        self.shape.set("simple")
-        self.label.set("Paste Image")
+        self.shape_topic.set("simple")
+        self.label_topic.set("Paste Image")
         self.img = self.add_image_control(name="img")
         self.format = self.add_attribute(
             "format",
@@ -176,8 +176,8 @@ class ImageDisplayNode(Node):
         return self.size_param
 
     def build_node(self):
-        self.label.set("Display Image")
-        self.shape.set("simple")
+        self.label_topic.set("Display Image")
+        self.shape_topic.set("simple")
         self.img = self.add_image_control(name="img")
         self.cmap = self.add_attribute(
             "cmap",
@@ -406,8 +406,8 @@ class BarPlotNode(Node):
     category = "interaction"
 
     def build_node(self):
-        self.label.set("Bar Plot")
-        self.shape.set("simple")
+        self.label_topic.set("Bar Plot")
+        self.shape_topic.set("simple")
         self.img = self.add_image_control(name="img")
         self.in_port = self.add_in_port("data", 64, "")
 
@@ -432,8 +432,8 @@ class ScatterPlotNode(Node):
     category = "interaction"
 
     def build_node(self):
-        self.label.set("Scatter Plot")
-        self.shape.set("simple")
+        self.label_topic.set("Scatter Plot")
+        self.shape_topic.set("simple")
         self.img = self.add_image_control(name="img")
         self.slice = self.add_text_control(label="slice: ", name="slice", text=":")
         self.in_port = self.add_in_port("data", 64, "")
@@ -520,8 +520,8 @@ class LinePlotNode(Node):
 
     def build_node(self):
         super().build_node()
-        self.label.set("Line Plot")
-        self.shape.set("simple")
+        self.label_topic.set("Line Plot")
+        self.shape_topic.set("simple")
         self.line_plot = self.add_lineplot_control(name="lineplot")
         self.expose_attribute(self.line_plot.lines, "list")
         self.css_classes.append("fit-content")

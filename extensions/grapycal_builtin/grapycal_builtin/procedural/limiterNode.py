@@ -14,8 +14,8 @@ class LimiterNode(Node):
 
     def build_node(self):
         super().build_node()
-        self.label.set("Limiter")
-        self.shape.set("simple")
+        self.label_topic.set("Limiter")
+        self.shape_topic.set("simple")
         self.in_port = self.add_in_port("in", display_name="")
         self.out_port = self.add_out_port("out", display_name="")
         self.reduce_factor = self.add_attribute(

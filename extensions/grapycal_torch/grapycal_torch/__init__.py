@@ -811,7 +811,7 @@ class CatDogDatasetNode(SourceNode):
 
     def build_node(self):
         super().build_node()
-        self.label.set("Cat Dog Dataset")
+        self.label_topic.set("Cat Dog Dataset")
         self.cat_size = self.add_text_control("500", "cat_size", name="cat_size")
         self.dog_size = self.add_text_control("500", "dog_size", name="dog_size")
         self.out = self.add_out_port("Image Dataset")

@@ -15,7 +15,7 @@ class CustomModuleNode(SimpleModuleNode):
 
     def build_node(self):
         super().build_node()
-        self.label.set("Custom Module")
+        self.label_topic.set("Custom Module")
         self.module_text = self.add_text_control("", "", name="module_text")
         self.css_classes.append("fit-content")
 

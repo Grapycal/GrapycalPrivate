@@ -36,7 +36,7 @@ class OUONode(Node):
     category = "test"
 
     def build_node(self):
-        self.label.set("testing")
+        self.label_topic.set("testing")
         self.add_control(ToggleControl, name="toggle_conutrol", label="toggle")
 
         self.add_control(ToggleControl, name="toggle_conetrol", label="toeuytggle")
@@ -49,7 +49,7 @@ class TestNode(FunctionNode):
     default_ports = []
 
     def build_node(self):
-        self.label.set("testing")
+        self.label_topic.set("testing")
         self.send_port = self.add_in_port("send")
         self.recv_port = self.add_out_port("recv")
         self.subs_info = self.add_attribute(
@@ -105,8 +105,8 @@ class DefaultTestNode(DVfunctionNode):
 
     def build_node(self):
         super().build_node()
-        self.label.set("default testing")
-        self.shape.set("normal")
+        self.label_topic.set("default testing")
+        self.shape_topic.set("normal")
         self.send_port = self.add_in_port("test")
         self.recv_port = self.add_out_port("b")
         self.inputs_attribute.add("ccccc", "<requests.get>")
@@ -173,11 +173,11 @@ class BiasNode(NewAddNode):
     @param()
     def param(self, bias: int = 5) -> None:
         self.bias = bias
-        self.label.set(f"bias: {bias}")
+        self.label_topic.set(f"bias: {bias}")
 
 
 class Bias2Node(NewAddNode):
     @param()
     def param(self, bias: int) -> None:
         self.bias = bias
-        self.label.set(f"bias: {bias}")
+        self.label_topic.set(f"bias: {bias}")

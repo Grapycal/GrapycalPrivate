@@ -16,7 +16,7 @@ class MnistDatasetNode(SourceNode):
 
     def build_node(self):
         super().build_node()
-        self.label.set("MNIST Dataset")
+        self.label_topic.set("MNIST Dataset")
         self.out = self.add_out_port("MNIST Dataset")
         self.include_labels = self.add_option_control(
             name="include_labels",

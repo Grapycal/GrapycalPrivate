@@ -13,6 +13,7 @@ from grapycal.core.typing import AnyType, GType
 from grapycal.sobjects.controls.buttonControl import ButtonControl
 from grapycal.sobjects.controls.floatControl import FloatControl
 from grapycal.sobjects.controls.intControl import IntControl
+from grapycal.sobjects.controls.nullControl import NullControl
 from grapycal.sobjects.controls.objectControl import ObjectControl
 from grapycal.sobjects.controls.textControl import TextControl
 from grapycal.sobjects.controls.toggleControl import ToggleControl
@@ -183,7 +184,9 @@ class DecorTrait(Trait):
                     64,
                     display_name="trigger",
                     datatype=AnyType,
-                    control_type=TriggerControl,
+                    control_type=NullControl
+                    if self.node.is_preview.get()
+                    else TriggerControl,
                     control_value=UNSPECIFY_CONTROL_VALUE,
                     activate_on_control_change=True,
                     update_control_from_edge=False,
@@ -424,10 +427,14 @@ class DecorTrait(Trait):
     def run_node_func(self, node_func: NodeFunc):
         peeked_ports: set[InputPort] = set()
         func = getattr(self.node, node_func.name)
-        inputs = {
-            input_name: self.in_ports[f"{self.name}.in.{input_name}"].peek()
-            for input_name in node_func.inputs
-        }
+        try:
+            inputs = {
+                input_name: self.in_ports[f"{self.name}.in.{input_name}"].peek()
+                for input_name in node_func.inputs
+            }
+        except Exception as e:
+            self.node.print_exception(e)
+
         for name in node_func.inputs:
             peeked_ports.add(self.in_ports[f"{self.name}.in.{name}"])
         if node_func.background:

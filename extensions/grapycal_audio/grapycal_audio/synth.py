@@ -146,7 +146,7 @@ class ADSRNode(SynthNode):
 
     def build_node(self):
         super().build_node()
-        self.label.set("ADSR")
+        self.label_topic.set("ADSR")
         self.on_port = self.add_in_port("on", 1)
         self.off_port = self.add_in_port("off", 1)
         self.attack = self.add_control(
@@ -248,7 +248,7 @@ class InstrumentNode(SynthNode):
 
     def build_node(self):
         super().build_node()
-        self.label.set("Instrument")
+        self.label_topic.set("Instrument")
         self.note_on_port = self.add_in_port("note_on")
         self.note_off_port = self.add_in_port("note_off")
 

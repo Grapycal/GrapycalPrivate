@@ -1,4 +1,13 @@
 from grapycal.sobjects.functionNode import FunctionNode
+from grapycal import func, Node
+
+
+class AddNode(Node):
+    category = "function/math"
+    label_ =
+    @func()
+    def output(self, a=0, b=0):
+        return a + b
 
 
 class AdditionNode(FunctionNode):
@@ -25,7 +34,7 @@ class AdditionNode(FunctionNode):
     def build_node(self):
         super().build_node()
         self.label_offset.set(-0.09)
-        self.shape.set("round")
+        self.shape_topic.set("round")
 
     def calculate(self, items):
         if len(items) == 0:
@@ -57,9 +66,9 @@ class SubtractionNode(FunctionNode):
 
     def build_node(self):
         super().build_node()
-        self.label.set("-")
+        self.label_topic.set("-")
         self.label_offset.set(-0.09)
-        self.shape.set("round")
+        self.shape_topic.set("round")
 
     def calculate(self, a, b):
         return sum(a) - sum(b)
@@ -85,9 +94,9 @@ class MultiplicationNode(FunctionNode):
 
     def build_node(self):
         super().build_node()
-        self.label.set("*")
+        self.label_topic.set("*")
         self.label_offset.set(-0.09)
-        self.shape.set("round")
+        self.shape_topic.set("round")
 
     def calculate(self, items):
         if len(items) == 0:
@@ -119,8 +128,8 @@ class DivisionNode(FunctionNode):
 
     def build_node(self):
         super().build_node()
-        self.label.set("/")
-        self.shape.set("round")
+        self.label_topic.set("/")
+        self.shape_topic.set("round")
 
     def calculate(self, a, b):
         if len(a) == 0:
@@ -159,8 +168,8 @@ class GreaterThanNode(FunctionNode):
 
     def build_node(self):
         super().build_node()
-        self.label.set(">")
-        self.shape.set("round")
+        self.label_topic.set(">")
+        self.shape_topic.set("round")
 
     def calculate(self, a, b):
         return a > b

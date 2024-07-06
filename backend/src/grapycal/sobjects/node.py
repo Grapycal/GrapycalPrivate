@@ -222,8 +222,8 @@ class RESTORE_FROM(enum.Enum):
 class Node(SObject, metaclass=NodeMeta):
     frontend_type = "Node"
     category = "hidden"
-    label_: str | None = None
-    shape_ = "normal"
+    label: str | None = None
+    shape = "normal"
     instance: Self  # The singleton instance. Used by singleton nodes.
     _deprecated = False  # TODO: If set to True, the node will be marked as deprecated in the inspector.
     ext: "Extension"
@@ -336,16 +336,16 @@ class Node(SObject, metaclass=NodeMeta):
         self.input_values = input_values or {}
         self.param_values = param_values or {}
 
-        self.shape = self.add_attribute(
-            "shape", StringTopic, self.shape_
+        self.shape_topic = self.add_attribute(
+            "shape", StringTopic, self.shape
         )  # normal, simple, round
         self.output_topic = self.add_attribute(
             "output", ListTopic, [], is_stateful=False, restore_from=None
         )
-        self.label = self.add_attribute(
+        self.label_topic = self.add_attribute(
             "label",
             StringTopic,
-            self.label_ if self.label_ is not None else self.get_default_label(),
+            self.label if self.label is not None else self.get_default_label(),
             is_stateful=False,
             restore_from=None,
         )
@@ -385,7 +385,7 @@ class Node(SObject, metaclass=NodeMeta):
         )
 
         self.expose_attribute(
-            self.shape,
+            self.shape_topic,
             display_name="Apparance/shape",
             editor_type="options",
             options=["normal", "simple", "round"],

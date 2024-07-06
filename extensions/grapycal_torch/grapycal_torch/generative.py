@@ -87,8 +87,8 @@ class PerlinNoiseNode(SourceNode):
 
     def build_node(self):
         super().build_node()
-        self.label.set("Perlin Noise")
-        self.shape.set("normal")
+        self.label_topic.set("Perlin Noise")
+        self.shape_topic.set("normal")
         self.out_port = self.add_out_port("noise")
 
     def task(self):
@@ -129,8 +129,8 @@ class ConvolutionKernelNode(SourceNode):
 
     def build_node(self):
         super().build_node()
-        self.label.set("Convolution Kernel")
-        self.shape.set("simple")
+        self.label_topic.set("Convolution Kernel")
+        self.shape_topic.set("simple")
         self.out_port = self.add_out_port("kernel")
         self.kernel = self.add_attribute(
             "kernel",
@@ -180,8 +180,8 @@ class Arange2Node(FunctionNode):
 
     def build_node(self):
         super().build_node()
-        self.label.set("Arange")
-        self.shape.set("normal")
+        self.label_topic.set("Arange")
+        self.shape_topic.set("normal")
 
     def restore_from_version(self, version: str, old: NodeInfo):
         super().restore_from_version(version, old)

@@ -108,8 +108,8 @@ def function2node(spec: F2NSpec) -> type[FunctionNode] | None:
 
         def build_node(self):
             super().build_node()
-            self.label.set(name)
-            self.shape.set(shape)
+            self.label_topic.set(name)
+            self.shape_topic.set(shape)
             self.css_classes.append("fit-content")
 
         def calculate(self, **kwargs):

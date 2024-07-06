@@ -36,7 +36,7 @@ class RosbridgeNode(Node):
     category = "ros"
 
     def build_node(self):
-        self.label.set("Rosbridge")
+        self.label_topic.set("Rosbridge")
         self.url = self.add_text_control("localhost:9090", "ws://", name="url")
         self.connect_btn = self.add_button_control("Connect", name="connect")
         self.send_port = self.add_in_port("send")

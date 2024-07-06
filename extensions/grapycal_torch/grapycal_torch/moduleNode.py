@@ -230,7 +230,7 @@ class SimpleModuleNode(ModuleNode):
         return self.module(**inputs)
 
     def parameter_changed(self, **params):
-        self.label.set(self.get_label(params))
+        self.label_topic.set(self.get_label(params))
         self._params = params
         self._param_dirty = True
 

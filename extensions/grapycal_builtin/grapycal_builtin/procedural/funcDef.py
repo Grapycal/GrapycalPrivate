@@ -24,8 +24,8 @@ class FuncCallNode(Node):
     category = "function"
 
     def build_node(self, name: str = "Function"):
-        self.label.set("")
-        self.shape.set("normal")
+        self.label_topic.set("")
+        self.shape_topic.set("normal")
         self.func_name = self.add_attribute(
             "func_name", StringTopic, editor_type="text", init_value=name
         )
@@ -33,7 +33,7 @@ class FuncCallNode(Node):
             lambda x, _: x != ""
         )  # empty name may confuse users
         self.expose_attribute(
-            self.shape, editor_type="options", options=["normal", "simple"]
+            self.shape_topic, editor_type="options", options=["normal", "simple"]
         )
 
         # manually restore in_ports and out_ports
@@ -50,10 +50,10 @@ class FuncCallNode(Node):
         self.func_name.on_set2.add_manual(self.on_func_name_changed)
         self.func_name.on_set.add_auto(self.on_func_name_changed_auto)
         self.ext.func_def_manager.calls.append(self.func_name.get(), self)
-        self.label.set(f" {self.func_name.get()}")
+        self.label_topic.set(f" {self.func_name.get()}")
 
     def on_func_name_changed(self, old, new):
-        self.label.set(f" {new}")
+        self.label_topic.set(f" {new}")
         self.ext.func_def_manager.calls.remove(old, self)
         self.ext.func_def_manager.calls.append(new, self)
 
@@ -143,7 +143,7 @@ class FuncInNode(Node):
     category = "function"
 
     def build_node(self, name: str = "Function"):
-        self.shape.set("normal")
+        self.shape_topic.set("normal")
 
         # setup attributes
         self.outs = self.add_attribute(
@@ -206,7 +206,7 @@ class FuncInNode(Node):
                 call.update_ports()
 
     def update_label(self):
-        self.label.set(f"{self.func_name.get()}")
+        self.label_topic.set(f"{self.func_name.get()}")
 
     def on_output_added(self, name, position):
         self.add_out_port(name, display_name=name)
@@ -239,7 +239,7 @@ class FuncOutNode(Node):
     category = "function"
 
     def build_node(self, name: str = "Function"):
-        self.shape.set("normal")
+        self.shape_topic.set("normal")
 
         # setup attributes
         self.ins = self.add_attribute(
@@ -303,7 +303,7 @@ class FuncOutNode(Node):
                 call.update_ports()
 
     def update_label(self):
-        self.label.set(f"{self.func_name.get()}")
+        self.label_topic.set(f"{self.func_name.get()}")
 
     def on_input_added(
         self, arg_name, position

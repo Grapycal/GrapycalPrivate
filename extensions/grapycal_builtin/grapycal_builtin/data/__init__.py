@@ -37,8 +37,8 @@ class VariableNode(SourceNode):
         self.in_port = self.add_in_port("set", 1)
         self.out_port = self.add_out_port("get")
         self.variable_name = self.add_control(TextControl, name="variable_name")
-        self.label.set("Variable")
-        self.shape.set("simple")
+        self.label_topic.set("Variable")
+        self.shape_topic.set("simple")
         self.css_classes.append("fit-content")
 
     def init_node(self):
@@ -84,8 +84,8 @@ class SplitNode(Node):
 
     def build_node(self):
         self.in_port = self.add_in_port("list/dict", 1)
-        self.label.set("Split")
-        self.shape.set("normal")
+        self.label_topic.set("Split")
+        self.shape_topic.set("normal")
         self.keys = self.add_attribute("keys", ListTopic, editor_type="list")
         self.key_mode = self.add_attribute(
             "key mode",
@@ -129,8 +129,8 @@ class SplitListNode(Node):
 
     def build_node(self):
         self.in_port = self.add_in_port("list", 1)
-        self.label.set("Split List")
-        self.shape.set("normal")
+        self.label_topic.set("Split List")
+        self.shape_topic.set("normal")
         self.keys = self.add_attribute("keys", ListTopic, editor_type="list")
 
         if not self.is_new:
@@ -246,8 +246,8 @@ class RegexFindAllNode(Node):
             control_type=TextControl,
         )
         self.out_port = self.add_out_port("matches")
-        self.label.set("Regex Find All")
-        self.shape.set("normal")
+        self.label_topic.set("Regex Find All")
+        self.shape_topic.set("normal")
         self.css_classes.append("fit-content")
 
     def edge_activated(self, edge: Edge, port: InputPort):
@@ -283,8 +283,8 @@ class ZipNode(Node):
 
     def build_node(self):
         self.out_port = self.add_out_port("output")
-        self.label.set("Zip")
-        self.shape.set("normal")
+        self.label_topic.set("Zip")
+        self.shape_topic.set("normal")
         self.items = self.add_attribute("items", ListTopic, editor_type="list")
         self.add_button = self.add_control(ButtonControl, name="add", label="Add")
         self.required_length = self.add_control(
@@ -359,7 +359,7 @@ class EmaNode(Node):
 
     def build_node(self):
         super().build_node()
-        self.label.set("EMA")
+        self.label_topic.set("EMA")
         self.reset_port = self.add_in_port("reset")
         self.in_port = self.add_in_port("input")
         self.out_port = self.add_out_port("output")
@@ -402,7 +402,7 @@ class MeanNode(Node):
 
     def build_node(self):
         super().build_node()
-        self.label.set("Average")
+        self.label_topic.set("Average")
         self.reset_port = self.add_in_port("reset")
         self.in_port = self.add_in_port("input")
         self.out_port = self.add_out_port("output")

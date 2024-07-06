@@ -14,7 +14,7 @@ class PianoRollPlayerNode(Node):
 
     def build_node(self):
         super().build_node()
-        self.label.set("Piano Roll Player")
+        self.label_topic.set("Piano Roll Player")
         self.pianoroll_port = self.add_in_port("pianoroll")
         self.note_on = self.add_out_port("note on")
         self.note_off = self.add_out_port("note off")

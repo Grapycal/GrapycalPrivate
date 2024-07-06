@@ -29,7 +29,7 @@ class AudioOuputNode(Node):
         self.delay_control = self.add_text_control(
             name="delay", label="Delay", text="", readonly=True
         )
-        self.label.set("Audio Output")
+        self.label_topic.set("Audio Output")
 
     def init_node(self):
         self.playing = False
