@@ -145,9 +145,6 @@ export class Node extends CompSObject implements IControlHost {
 
         // Bind attributes to UI
         
-        this.link(this.eventDispatcher.onDoubleClick, () => {
-            this.emit('double_click')
-        })
 
         this.link(this.shape.onSet,this.reshape)
 
@@ -176,6 +173,14 @@ export class Node extends CompSObject implements IControlHost {
         })
 
         if (!this.isPreview){
+
+            this.link(this.eventDispatcher.onDoubleClick, () => {
+                if(this.shape.getValue() == 'normal'){
+                    this.shape.set('simple')
+                }else{
+                    this.shape.set('normal')
+                }
+            })
             this.link(this.editor.runningChanged.slice(this), (running: boolean) => {
                 if(running == true)
                     this.htmlItem.baseElement.classList.add('running')
@@ -387,6 +392,8 @@ export class Node extends CompSObject implements IControlHost {
         // the reason not using img tag is because its tint color cannot be changed by css
         fetchWithCache(path)
         .then(svg => {
+            // skip if node-icon already exists. Not sure why this is necessary
+            if(base.querySelector('.node-icon') != null) return
             let t = document.createElement('template')
             t.innerHTML = svg
             let svgEl = null;

@@ -296,8 +296,9 @@ class DecorTrait(Trait):
         changed_port_name = changed_port_name.split(".")[-1]
         for func in self.node_funcs.values():
             if changed_port_name in func.inputs:
-                trigger_port = self.tr_ports[f"{self.name}.tr.{func.name}"]
-                trigger_port.set_hidden(not self.needs_trigger_port(func))
+                if f"{self.name}.tr.{func.name}" in self.tr_ports:
+                    trigger_port = self.tr_ports[f"{self.name}.tr.{func.name}"]
+                    trigger_port.set_hidden(not self.needs_trigger_port(func))
 
     def needs_trigger_port(self, func: NodeFunc):
         for input_name in func.inputs:

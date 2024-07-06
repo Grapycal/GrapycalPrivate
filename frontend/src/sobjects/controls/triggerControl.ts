@@ -5,13 +5,14 @@ import { fetchWithCache } from "../../app"
 export class TriggerControl extends Control {
     
     button: HTMLInputElement
+    line: SVGElement
 
     protected get template (){return `
     <div class="control flex-horiz control-always-show">
         
-        <button class="btn" id="button"></button>
+        <button class="btn" ref="button"></button>
         <!-- a dotted line connecting the button to the control -->
-        <svg class="line" width="50" height="10">
+        <svg ref="line" class="line" width="50" height="10">
             <line stroke-dasharray="4" x1="3" y1="5.5" x2="42" y2="5.5" />
         </svg>
         <div ref="label" class="label only-show-in-normal-node"></div>
@@ -40,7 +41,11 @@ export class TriggerControl extends Control {
 
     protected onStart(): void {
         super.onStart()
-        this.button = this.htmlItem.getEl("button")
+        if(this.node.isPreview){
+            //hide the button in preview mode
+            this.button.style.display = "none"
+            this.line.style.display = "none"
+        }
         this.link(this.getAttribute('label').onSet, (label) => {
             this.label.innerText = label
         })
