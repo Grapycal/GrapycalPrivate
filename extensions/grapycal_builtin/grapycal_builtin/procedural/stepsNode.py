@@ -9,8 +9,8 @@ class StepsNode(Node):
 
     def build_node(self):
         self.in_port = self.add_in_port("", 1)
-        self.label.set("Steps")
-        self.shape.set("normal")
+        self.label_topic.set("Steps")
+        self.shape_topic.set("normal")
         self.steps = self.add_attribute("steps", ListTopic, editor_type="list")
         self.add_btn = self.add_control(ButtonControl)
         self.add_btn.label.set("+")

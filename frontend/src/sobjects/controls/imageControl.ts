@@ -55,7 +55,7 @@ export class ImageControl extends Control {
         }
 
         // eat drag events
-        this.eventDispatcher.onDrag.add(() => {})
+        this.eventDispatcher.onDrag.add(this.node.moved.invoke)
 
         this.link(this.eventDispatcher.onDragEnd, (e) => {
             this.objectsync.record(() => {

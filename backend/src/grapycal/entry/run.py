@@ -7,6 +7,7 @@ from contextlib import asynccontextmanager
 import traceback
 from typing import Awaitable, Callable
 
+from grapycal.core.background_runner import RunnerInterrupt
 import uvicorn
 from grapycal.entry.args import parse_args
 from fastapi import FastAPI, WebSocket
@@ -68,7 +69,9 @@ class ThreadingEventWithReturn:
 
 
 def make_app(
-    workspace, frontend_path: str | None, event_loop_event: ThreadingEventWithReturn
+    workspace: Workspace,
+    frontend_path: str | None,
+    event_loop_event: ThreadingEventWithReturn,
 ):
     if os.getenv("BEHIND_PROXY"):
         ROOT_PATH = os.getenv("ROOT_PATH", "/minilab")
@@ -91,7 +94,10 @@ def make_app(
     async def websocket_endpoint(websocket: WebSocket):
         await websocket.accept()
         client = Client(websocket.receive_text, websocket.send_text)
-        await workspace._objectsync._topicsync.handle_client(client)
+        try:
+            await workspace._objectsync._topicsync.handle_client(client)
+        except SystemExit:
+            workspace.exit()
 
     if frontend_path is not None:
 
@@ -158,6 +164,9 @@ def main():
     try:
         workspace.run(ui_event_loop)
     except KeyboardInterrupt:
+        print("Exiting")
+        sys.exit(1)
+    except RunnerInterrupt:
         print("Exiting")
         sys.exit(1)
     except Exception:

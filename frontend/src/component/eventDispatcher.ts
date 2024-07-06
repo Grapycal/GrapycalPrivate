@@ -183,12 +183,12 @@ export class EventDispatcher extends Component{
         this._onMouseDown(event);
     }
 
+    private draggableValue: boolean = true;
     private _onMouseDown(event: MouseEvent){
         this.fowardCalled = false;
         this.onMouseDown.invoke(event);
-        if(this._isDraggable(event)){
-            document.addEventListener('mousemove', this._onMouseMove);
-        }
+        this.draggableValue = this._isDraggable(event)
+        document.addEventListener('mousemove', this._onMouseMove);
         document.addEventListener('mouseup', this._onMouseUp);
         this.prevMousePos = new Vector2(this.mousePos.x, this.mousePos.y);
         if (!this.fowardCalled && (this.onDragStart.numCallbacks > 0 || this.onDrag.numCallbacks > 0 || this.onDragEnd.numCallbacks > 0)){
@@ -202,9 +202,11 @@ export class EventDispatcher extends Component{
         const mousePos = new Vector2(event.clientX, event.clientY);
         if(!this._isDragging){
             this._isDragging = true;
-            this.onDragStart.invoke(event, mousePos);
+            if(this.draggableValue)
+                this.onDragStart.invoke(event, mousePos);
         }
-        this.onDrag.invoke(event, mousePos, this.prevMousePos);
+        if(this.draggableValue)
+            this.onDrag.invoke(event, mousePos, this.prevMousePos);
         this.prevMousePos = mousePos;
         if (!this.fowardCalled){
             event.stopPropagation();

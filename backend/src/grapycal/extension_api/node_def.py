@@ -6,18 +6,20 @@ from collections import defaultdict
 from dataclasses import dataclass
 import inspect
 import logging
-from types import MethodType
-from typing import TYPE_CHECKING, Any
+import traceback
+from typing import TYPE_CHECKING, Any, Callable, TypeVar
 
 from grapycal.core.typing import AnyType, GType
 from grapycal.sobjects.controls.buttonControl import ButtonControl
 from grapycal.sobjects.controls.floatControl import FloatControl
 from grapycal.sobjects.controls.intControl import IntControl
 from grapycal.sobjects.controls.nullControl import NullControl
+from grapycal.sobjects.controls.objectControl import ObjectControl
 from grapycal.sobjects.controls.textControl import TextControl
 from grapycal.sobjects.controls.toggleControl import ToggleControl
-from grapycal.sobjects.port import OutputPort
-from objectsync.topic import ObjDictTopic
+from grapycal.sobjects.controls.triggerControl import TriggerControl
+from grapycal.sobjects.port import UNSPECIFY_CONTROL_VALUE, OutputPort
+from objectsync.topic import ObjDictTopic, ListTopic
 from .trait import Trait
 from grapycal.sobjects.port import InputPort
 
@@ -27,35 +29,93 @@ if TYPE_CHECKING:
     pass
 
 
+class NodeFuncSpec:
+    def __init__(
+        self,
+        function: Callable,
+        sign_source: Callable | None = None,
+        annotation_override: dict[str, Any] | None = None,
+        default_override: dict[str, Any] | None = None,
+    ):
+        self.name = function.__name__
+        self.sign_source = sign_source or function
+        self.annotation_override = annotation_override or {}
+        self.default_override = default_override or {}
+
+
+class NodeParamSpec:
+    def __init__(
+        self,
+        function: Callable,
+        sign_source: Callable | None = None,
+        annotation_override: dict[str, Any] | None = None,
+        default_override: dict[str, Any] | None = None,
+    ):
+        self.name = function.__name__
+        self.sign_source = sign_source or function
+        self.annotation_override = annotation_override or {}
+        self.default_override = default_override or {}
+
+
 @dataclass
 class NodeDefInfo:
-    funcs: dict[str, MethodType]
-    params: dict[str, MethodType]
+    funcs: dict[str, NodeFuncSpec]
+    params: dict[str, NodeParamSpec]
 
 
-def get_node_def_info(attrs: dict[str, Any]):
-    funcs = {}
-    params = {}
+def get_node_def_info(
+    attrs: dict[str, Any], base_info: NodeDefInfo | None = None
+) -> NodeDefInfo:
+    if base_info is None:
+        funcs = {}
+        params = {}
+    else:
+        funcs = base_info.funcs.copy()
+        params = base_info.params.copy()
+
     for name, obj in attrs.items():
-        if hasattr(obj, "_is_node_func"):
-            funcs[name] = obj
-        if hasattr(obj, "_is_node_param"):
-            params[name] = obj
+        if hasattr(obj, "_node_func_spec"):
+            funcs[name] = obj._node_func_spec
+        if hasattr(obj, "_node_param_spec"):
+            params[name] = obj._node_param_spec
     return NodeDefInfo(funcs, params)
+
+
+NO_DEFAULT = object()
+
+
+@dataclass
+class Input:
+    name: str
+    datatype: GType
+    default: Any = NO_DEFAULT
+
+
+@dataclass
+class Output:
+    name: str
+    datatype: GType
+
+
+@dataclass
+class ParamItem:
+    name: str
+    datatype: GType
+    default: Any = NO_DEFAULT
 
 
 @dataclass
 class NodeFunc:
     name: str
-    inputs: dict[str, GType]
-    outputs: dict[str, GType]
+    inputs: dict[str, Input]
+    outputs: dict[str, Output]
     background: bool = True
 
 
 @dataclass
 class NodeParam:
     name: str
-    params: dict[str, GType]
+    params: dict[str, ParamItem]
 
 
 @dataclass
@@ -68,9 +128,9 @@ class PortInfo:
 class DecorTrait(Trait):
     def __init__(
         self,
-        inputs: dict[str, GType],
-        outputs: dict[str, GType],
-        params: dict[str, GType],
+        inputs: dict[str, Input],
+        outputs: dict[str, Output],
+        params: dict[str, ParamItem],
         node_funcs: dict[str, NodeFunc],
         node_params: dict[str, NodeParam],
     ):
@@ -91,27 +151,95 @@ class DecorTrait(Trait):
         self.param_ports = self.node.add_attribute(
             f"{self.name}.param_ports", ObjDictTopic[InputPort], restore_from=None
         )
+        self.tr_ports = self.node.add_attribute(
+            f"{self.name}.tr_ports", ObjDictTopic[InputPort], restore_from=None
+        )
+        self.show_inputs = self.node.add_attribute(
+            f"{self.name}.show_inputs",
+            ListTopic,
+            display_name="Apparance/input",
+            restore_from=None,
+            editor_type="multiselect",
+            options=list(self.inputs.keys()),
+            init_value=list(self.inputs.keys()),
+        )
+        self.show_params = self.node.add_attribute(
+            f"{self.name}.show_params",
+            ListTopic,
+            display_name="Apparance/param",
+            restore_from=None,
+            editor_type="multiselect",
+            options=list(self.params.keys()),
+        )
+
+        # generate a trigger input port for each function
+        for name, node_func in self.node_funcs.items():
+            # Only add trigger port if all inputs have default values. For functions with an input without a default value,
+            # it's likely to go wrong if user triggers it without setting the input.
+            if all(
+                map(lambda inp: inp.default != NO_DEFAULT, node_func.inputs.values())
+            ):
+                self.tr_ports[f"{self.name}.tr.{name}"] = self.node.add_in_port(
+                    f"{self.name}.tr.{name}",
+                    64,
+                    display_name="trigger",
+                    datatype=AnyType,
+                    control_type=NullControl
+                    if self.node.is_preview.get()
+                    else TriggerControl,
+                    control_value=UNSPECIFY_CONTROL_VALUE,
+                    activate_on_control_change=True,
+                    update_control_from_edge=False,
+                )
+                self.show_inputs.insert(f"{self.name}.tr.{name}")
 
         # generate input ports for function inputs
-        for name, gtype in self.inputs.items():
+        for name, inp in self.inputs.items():
+            if name in self.node.input_values:
+                control_value = self.node.input_values[name]
+            else:
+                control_value = (
+                    inp.default
+                    if inp.default != NO_DEFAULT
+                    else UNSPECIFY_CONTROL_VALUE
+                )
             self.in_ports[f"{self.name}.in.{name}"] = self.add_input_or_param_port(
-                f"{self.name}.in.{name}", name, gtype, activate_on_control_change=False
+                f"{self.name}.in.{name}",
+                name,
+                f"Default input/{name}",
+                inp.datatype,
+                control_value,
+                activate_on_control_change=False,
+                update_control_from_edge=False,
+                is_param=False,
             )
 
         # generate output ports for function outputs
-        for name, gtype in self.outputs.items():
+        for name, out in self.outputs.items():
             self.out_ports[f"{self.name}.out.{name}"] = self.node.add_out_port(
-                f"{self.name}.out.{name}", display_name=name, datatype=gtype
+                f"{self.name}.out.{name}", display_name=name, datatype=out.datatype
             )
 
         # generate param ports for function params
-        for name, gtype in self.params.items():
+        for name, par in self.params.items():
+            if name in self.node.param_values:
+                control_value = self.node.param_values[name]
+            else:
+                control_value = (
+                    par.default
+                    if par.default != NO_DEFAULT
+                    else UNSPECIFY_CONTROL_VALUE
+                )
             self.param_ports[f"{self.name}.param.{name}"] = (
                 self.add_input_or_param_port(
                     f"{self.name}.param.{name}",
                     name,
-                    gtype,
+                    f"Parameter/{name}",
+                    par.datatype,
+                    control_value,
                     activate_on_control_change=True,
+                    update_control_from_edge=True,
+                    is_param=True,
                 )
             )
 
@@ -132,29 +260,87 @@ class DecorTrait(Trait):
                     param
                 )
             param_callback = getattr(self.node, param.name)
-            self.node.run(  # Call the param callback once to initialize the param
-                lambda param_callback=param_callback, param=param: param_callback(
+
+            # Call the param callback once to initialize the param
+
+            try:
+                param_callback(
                     **{
                         name: self.param_ports[f"{self.name}.param.{name}"].get()
                         for name in param.params
                     }
-                ),
-                background=True,
-            )
+                )
+            except Exception:
+                logger.warning(
+                    f"Error when initializing param {param.name} of node {self.node}:"
+                    + traceback.format_exc()
+                )
+
+        # hide all ports that are not shown
+        for name, port in self.in_ports.get().items():
+            if name.split(".in.")[-1] not in self.show_inputs.get():
+                port.set_hidden(True)
+
+        for name, port in self.param_ports.get().items():
+            if name.split(".param.")[-1] not in self.show_params.get():
+                port.set_hidden(True)
+
+        for name, port in self.in_ports.get().items():
+            port.on_edge_connected += lambda name=name: self._edge_changed(name)
+            port.on_edge_disconnected += lambda name=name: self._edge_changed(name)
+
+        self.show_inputs.on_set2.add_auto(self.show_inputs_changed)
+        self.show_params.on_set2.add_auto(self.show_params_changed)
+
+    def _edge_changed(self, changed_port_name: str):
+        changed_port_name = changed_port_name.split(".")[-1]
+        for func in self.node_funcs.values():
+            if changed_port_name in func.inputs:
+                if f"{self.name}.tr.{func.name}" in self.tr_ports:
+                    trigger_port = self.tr_ports[f"{self.name}.tr.{func.name}"]
+                    trigger_port.set_hidden(not self.needs_trigger_port(func))
+
+    def needs_trigger_port(self, func: NodeFunc):
+        for input_name in func.inputs:
+            if len(self.in_ports[f"{self.name}.in.{input_name}"].edges) > 0:
+                return False
+        return True
+
+    def show_inputs_changed(self, old, new):
+        old = set(old)
+        new = set(new)
+        for name in old - new:
+            self.in_ports[f"{self.name}.in.{name}"].set_hidden(True)
+
+        for name in new - old:
+            self.in_ports[f"{self.name}.in.{name}"].set_hidden(False)
+
+    def show_params_changed(self, old, new):
+        old = set(old)
+        new = set(new)
+        for name in old - new:
+            self.param_ports[f"{self.name}.param.{name}"].set_hidden(True)
+
+        for name in new - old:
+            self.param_ports[f"{self.name}.param.{name}"].set_hidden(False)
 
     def add_input_or_param_port(
         self,
         name: str,
         display_name: str,
+        editor_display_name: str,
         gtype: GType,
+        control_value: Any,
         activate_on_control_change: bool,
+        update_control_from_edge: bool,
+        is_param: bool,
     ) -> "InputPort":
         control_kwargs: dict[str, Any] = {}
         editor_args: dict[str, Any] = {}
 
         if gtype == AnyType:
-            control_type = NullControl
-            editor_type = None
+            control_type = ObjectControl
+            editor_type = "text"
         elif gtype >> str:
             control_type = TextControl
             editor_type = "text"
@@ -166,76 +352,68 @@ class DecorTrait(Trait):
             editor_type = "int"
         elif gtype >> float:
             control_type = FloatControl
-            control_kwargs = {"int_mode": False}
             editor_type = "float"
         elif gtype >> None:
             control_type = ButtonControl
             editor_type = "button"
 
         else:
-            logger.warning(
-                f"Not support gtype {gtype} for port {name} yet. Will not add control."
-            )
-            control_type = NullControl
-            editor_type = None
+            # logger.warning(
+            #     f"Not support gtype {gtype} for port {name} yet. Will not add control."
+            # )
+            control_type = ObjectControl
+            editor_type = "text"
         # TODO: add more control types
 
         port = self.node.add_in_port(
             name,
             1,
             display_name=display_name,
+            datatype=gtype,
             control_type=control_type,
+            control_value=control_value,
             activate_on_control_change=activate_on_control_change,
+            update_control_from_edge=update_control_from_edge,
+            is_param=is_param,
             **control_kwargs,
         )
         if editor_type is not None:
             self.node.expose_attribute(
                 port.default_control.get_value_topic(),
                 editor_type,
-                display_name=display_name,
+                display_name=editor_display_name,
                 **editor_args,
             )
         return port
 
     def port_activated(self, port: InputPort):
         port_info = self.port_info_dict[port.get_name()]
-        peeked_ports: set[InputPort] = set()
-        for node_func in port_info.used_by_funcs:
-            # A func requires all its inputs to be ready before it can be executed
-            if all(
-                self.in_ports[f"{self.name}.in.{name}"].is_all_ready()
-                for name in node_func.inputs
-            ):
-                func = getattr(self.node, node_func.name)
-                inputs = {
-                    name: self.in_ports[f"{self.name}.in.{name}"].peek()
+
+        # If the port is a trigger port, run the corresponding node_func
+        if port.get_name().startswith(f"{self.name}.tr."):
+            func_name = port.get_name().split(".")[-1]
+            node_func = self.node_funcs[func_name]
+            if not self.needs_trigger_port(node_func):
+                return
+            peeked_ports = self.run_node_func(node_func)
+            for peeked_port in peeked_ports:
+                peeked_port.clear_edges()
+
+        # If the port is a input port, check if all inputs are ready to run the corresponding node_func
+        elif port_info.is_func:
+            peeked_ports: set[InputPort] = set()
+            for node_func in port_info.used_by_funcs:
+                # A func requires all its inputs to be ready before it can be executed
+                if all(
+                    self.in_ports[f"{self.name}.in.{name}"].is_all_ready()
                     for name in node_func.inputs
-                }
-                for name in node_func.inputs:
-                    peeked_ports.add(self.in_ports[f"{self.name}.in.{name}"])
-                if node_func.background:
-                    self.node.run(
-                        lambda func=func,
-                        inputs=inputs,
-                        node_func=node_func: self.func_finished(  # The node_func=node_func trick is to avoid the late binding problem
-                            func(**inputs), node_func
-                        ),
-                        background=True,
-                    )
-                else:
-                    self.node.run(
-                        lambda func=func,
-                        inputs=inputs,
-                        node_func=node_func: self.func_finished(
-                            func(**inputs), node_func
-                        ),
-                        background=False,
-                    )
+                ):
+                    peeked_ports |= self.run_node_func(node_func)
 
-        for peeked_port in peeked_ports:
-            peeked_port.get()
+            for peeked_port in peeked_ports:
+                peeked_port.clear_edges()
 
-        if not port_info.is_func:  # If the port is a param port
+        elif not port_info.is_func:  # If the port is a param port
             for node_param in port_info.used_by_params:
                 # A param callback is called when any of its input ports are activated
                 param_callback = getattr(self.node, node_param.name)
@@ -246,6 +424,37 @@ class DecorTrait(Trait):
                     ),
                     background=False,  # assume param callbacks are fast so can be run in the ui thread
                 )
+
+    def run_node_func(self, node_func: NodeFunc):
+        peeked_ports: set[InputPort] = set()
+        func = getattr(self.node, node_func.name)
+        try:
+            inputs = {
+                input_name: self.in_ports[f"{self.name}.in.{input_name}"].peek()
+                for input_name in node_func.inputs
+            }
+        except Exception as e:
+            self.node.print_exception(e)
+
+        for name in node_func.inputs:
+            peeked_ports.add(self.in_ports[f"{self.name}.in.{name}"])
+        if node_func.background:
+            self.node.run(
+                lambda func=func,
+                inputs=inputs,
+                node_func=node_func: self.func_finished(  # The node_func=node_func trick is to avoid the late binding problem
+                    func(**inputs), node_func
+                ),
+                background=True,
+            )
+        else:
+            self.node.run(
+                lambda func=func,
+                inputs=inputs,
+                node_func=node_func: self.func_finished(func(**inputs), node_func),
+                background=False,
+            )
+        return peeked_ports
 
     def collect_params(self, node_param: NodeParam):
         params = {}
@@ -262,72 +471,140 @@ class DecorTrait(Trait):
                 assert name in node_func.outputs
                 self.out_ports[f"{self.name}.out.{name}"].push(output)
 
+    def set_input(self, name, value):
+        self.in_ports[f"{self.name}.in.{name}"].set_control_value(value)
+
+    def set_param(self, name, value):
+        self.param_ports[f"{self.name}.param.{name}"].set_control_value(value)
+
 
 def consistent_annotations(annotations: "list[type]") -> bool:
+    annotations = [a for a in annotations if a is not AnyType]
+
     if len(annotations) == 0:
         return True
 
     first_annotation = annotations[0]
     for annotation in annotations:
-        if annotation is None:
-            continue
         if annotation != first_annotation:
             return False
 
     return True
 
 
+def consistent_default_values(defaults: "list[Any]") -> bool:
+    defaults = [d for d in defaults if d is not NO_DEFAULT]
+
+    if len(defaults) == 0:
+        return True
+
+    first_default = defaults[0]
+    for default in defaults:
+        if default != first_default:
+            return False
+
+    return True
+
+
 def collect_input_output_params(
-    funcs: dict[str, MethodType], param_funcs: "dict[str, MethodType]"
+    funcs: dict[str, NodeFuncSpec], param_funcs: "dict[str, NodeParamSpec]"
 ) -> tuple[
-    dict[str, list[Any]],
-    dict[str, list[Any]],
-    dict[str, list[Any]],
+    dict[str, list[Input]],
+    dict[str, list[Output]],
+    dict[str, list[ParamItem]],
     dict[str, NodeFunc],
     dict[str, NodeParam],
 ]:
-    inputs = defaultdict(list)
-    outputs = defaultdict(list)
-    params = defaultdict(list)
+    inputs = defaultdict(list[Input])
+    outputs = defaultdict(list[Output])
+    params = defaultdict(list[ParamItem])
     node_funcs: dict[str, NodeFunc] = {}
     node_params: dict[str, NodeParam] = {}
     for func in funcs.values():
-        cur_inputs: dict[str, GType] = {}
-        cur_outputs: dict[str, GType] = {}
-        if "return" in func.__annotations__:
-            outputs[func.__name__].append(func.__annotations__["return"])
-            cur_outputs.update(
-                {func.__name__: AnyType}
-            )  # The actual type will be filled in later
-        else:
-            outputs[func.__name__].append(None)
-            cur_outputs.update({func.__name__: AnyType})
-
-        signature = inspect.signature(func)
-        for name, arg in signature.parameters.items():
-            if name == "self":
-                continue
-            inputs[name].append(
-                arg.annotation if arg.annotation != inspect.Parameter.empty else None
+        cur_inputs: dict[str, Input] = {}
+        cur_outputs: dict[str, Output] = {}
+        if not hasattr(func.sign_source, "__annotations__"):
+            raise ValueError(
+                f"Cannot get __annotations__ from function `{func.sign_source.__name__}`. Please provide a function with annotations for sign_source."
             )
-            cur_inputs.update({name: AnyType})
+        if "return" in func.sign_source.__annotations__:
+            if "return" in func.annotation_override:
+                datatype = GType.from_annotation(func.annotation_override["return"])
+            else:
+                datatype = GType.from_annotation(
+                    func.sign_source.__annotations__["return"]
+                )
+        else:
+            datatype = AnyType
 
-        node_funcs[func.__name__] = NodeFunc(
-            name=func.__name__, inputs=cur_inputs, outputs=cur_outputs
+        out = Output(func.name, datatype)
+        outputs[func.name].append(out)
+        cur_outputs[func.name] = out
+
+        signature = inspect.signature(func.sign_source)
+        for arg_name, arg in signature.parameters.items():
+            if arg_name == "self":
+                continue
+
+            if arg_name in func.annotation_override:
+                datatype = GType.from_annotation(func.annotation_override[arg_name])
+            else:
+                datatype = GType.from_annotation(arg.annotation)
+
+            if arg_name in func.default_override:
+                default = func.default_override[arg_name]
+            else:
+                default = (
+                    arg.default
+                    if arg.default != inspect.Parameter.empty
+                    else NO_DEFAULT
+                )
+
+            inp = Input(
+                name=arg_name,
+                datatype=datatype,
+                default=default,
+            )
+            inputs[arg_name].append(inp)
+            cur_inputs[arg_name] = inp
+
+        node_funcs[func.name] = NodeFunc(
+            name=func.name, inputs=cur_inputs, outputs=cur_outputs
         )
 
     for param in param_funcs.values():
-        signature = inspect.signature(param)
-        cur_params: dict[str, GType] = {}
-        for name, arg in signature.parameters.items():
-            if name == "self":
+        signature = inspect.signature(param.sign_source)
+        cur_params: dict[str, ParamItem] = {}
+        for param_item_name, arg in signature.parameters.items():
+            if param_item_name == "self":
                 continue
-            params[name].append(
-                arg.annotation if arg.annotation != inspect.Parameter.empty else None
-            )
-            cur_params.update({name: AnyType})
 
-        node_params[param.__name__] = NodeParam(name=param.__name__, params=cur_params)
+            if param_item_name in param.annotation_override:
+                datatype = GType.from_annotation(
+                    param.annotation_override[param_item_name]
+                )
+            else:
+                datatype = GType.from_annotation(arg.annotation)
+
+            if param_item_name in param.default_override:
+                default = param.default_override[param_item_name]
+            else:
+                default = (
+                    arg.default
+                    if arg.default != inspect.Parameter.empty
+                    else NO_DEFAULT
+                )
+
+            par = ParamItem(
+                name=param_item_name,
+                datatype=datatype,
+                default=default,
+            )
+
+            params[param_item_name].append(par)
+            cur_params[param_item_name] = par
+
+        node_params[param_item_name] = NodeParam(name=param.name, params=cur_params)
 
     return inputs, outputs, params, node_funcs, node_params
 
@@ -341,6 +618,11 @@ def consistent_input_output_params(
         if not consistent_annotations(annotations):
             logger.warning(
                 f"Input {name} has inconsistent annotations between multiple functions. Plese leave only one annotation or make them consistent."
+            )
+            return False
+        if not consistent_default_values([inp.default for inp in annotations]):
+            logger.warning(
+                f"Input {name} has inconsistent default values between multiple functions. Plese leave only one default value or make them consistent."
             )
             return False
 
@@ -358,14 +640,26 @@ def consistent_input_output_params(
             )
             return False
 
+        if not consistent_default_values([par.default for par in annotations]):
+            logger.warning(
+                f"Param {name} has inconsistent default values between multiple functions. Plese leave only one default value or make them consistent."
+            )
+            return False
+
     return True
 
 
-def annotations_to_gtype(annotations: "list[Any]") -> "GType":
-    for annotation in annotations:
-        if annotation is not None:
-            return GType.from_annotation(annotation)
-    return GType.from_annotation(Any)
+T = TypeVar("T", bound=Input | Output | ParamItem)
+
+
+def reduce(items: list[T]) -> T:
+    """
+    Pick the most strict type from a list of inputs, outputs or params.
+    """
+    for item in items:
+        if item.datatype != AnyType:
+            return item
+    return items[0]
 
 
 def generate_traits(node_def_info: NodeDefInfo) -> "list[Trait]":
@@ -380,18 +674,13 @@ def generate_traits(node_def_info: NodeDefInfo) -> "list[Trait]":
     ):
         return []
 
-    inputs = {
-        name: annotations_to_gtype(annotations)
-        for name, annotations in inputs_dict_list.items()
-    }
-    outputs = {
-        name: annotations_to_gtype(annotations)
-        for name, annotations in outputs_dict_list.items()
-    }
-    params = {
-        name: annotations_to_gtype(annotations)
-        for name, annotations in params_dict_list.items()
-    }
+    # no need of decortrait if there are no node_funcs and node_params
+    if len(node_funcs) == 0 and len(node_params) == 0:
+        return []
+
+    inputs = {name: reduce(item) for name, item in inputs_dict_list.items()}
+    outputs = {name: reduce(item) for name, item in outputs_dict_list.items()}
+    params = {name: reduce(item) for name, item in params_dict_list.items()}
 
     # fill in the actual types for node_funcs and node_params
     for node_func in node_funcs.values():

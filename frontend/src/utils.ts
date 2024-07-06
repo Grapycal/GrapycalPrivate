@@ -202,7 +202,7 @@ export function eatEvents(el:HTMLTextAreaElement|HTMLInputElement){
 }
 
 export function textToHtml(text:string){
-    return text.replace(/\n/g,"<br>").replace(/ /g,"&nbsp;")
+    return text.replace(/>/g,"&gt;").replace(/</g,"&lt;").replace(/\n/g,"<br>").replace(/ /g,"&nbsp;").replace(/\t/g,"&nbsp;&nbsp;&nbsp;&nbsp;")
 }
 
 export class TextBox{

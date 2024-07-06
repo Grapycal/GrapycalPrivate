@@ -53,7 +53,7 @@ export class HierarchyNode extends Componentable{
     <div class="hierarchy-node full-width">
         <span id="name" class="hierarchy-name"></span>
         <div id="indent" class="hierarchy-indent">
-            <div slot="childnode" class="hierarchy-child-node-slot">
+            <div slot="childnode" class="hierarchy-child-node-slot flex-vert">
                 
             </div>
             <div slot="leaf" class="hierarchy-leaf-slot">

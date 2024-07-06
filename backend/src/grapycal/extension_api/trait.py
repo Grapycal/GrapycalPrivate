@@ -7,7 +7,7 @@ from grapycal.stores import main_store
 from grapycal.utils.misc import Action
 from objectsync import Topic, SObject, ListTopic
 from grapycal.sobjects.port import InputPort
-from grapycal import IntTopic, FloatTopic, StringTopic
+from objectsync import IntTopic, FloatTopic, StringTopic
 from objectsync.topic import WrappedTopic
 from topicsync.topic import GenericTopic
 

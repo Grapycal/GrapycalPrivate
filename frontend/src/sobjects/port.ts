@@ -1,4 +1,4 @@
-import {ObjectSyncClient, StringTopic, IntTopic} from 'objectsync-client'
+import {ObjectSyncClient, StringTopic, IntTopic, GenericTopic} from 'objectsync-client'
 import { HtmlItem } from '../component/htmlItem'
 import { Transform } from '../component/transform'
 import { CompSObject } from './compSObject'
@@ -14,7 +14,9 @@ export class Port extends CompSObject implements IControlHost {
 
     display_name: StringTopic = this.getAttribute('display_name', StringTopic)
     is_input: IntTopic = this.getAttribute('is_input', IntTopic)
+    is_param: GenericTopic<boolean> = this.getAttribute('is_param', GenericTopic<boolean>)
     max_edges: IntTopic = this.getAttribute('max_edges', IntTopic)
+    hidden_topic: GenericTopic<boolean> = this.getAttribute('hidden', GenericTopic<boolean>)
     default_control_display: string
     orientation: number=0;
 
@@ -44,6 +46,23 @@ export class Port extends CompSObject implements IControlHost {
             this.labelDiv.style.display = 'block'
         } else {
             this.labelDiv.style.display = 'none'
+        }
+    }
+
+    private _hidden: boolean = false
+    get hidden(): boolean {
+        return this._hidden
+    }
+    set hidden(value: boolean) {
+        this._hidden = value
+        if(value){
+            this.htmlItem.baseElement.classList.add('hidden')
+        }else{
+            this.htmlItem.baseElement.classList.remove('hidden')
+        }
+        if(this.node!=null){
+            this.node.moved.invoke()
+            this.node.portVisibilityChanged()
         }
     }
 
@@ -83,8 +102,6 @@ export class Port extends CompSObject implements IControlHost {
         this.transform.targetElement = this.knob
         this.transform.pivot = new Vector2(0,0)
 
-        this.eventDispatcher.setEventElement(this.hitbox)
-        this.link(this.eventDispatcher.onDragStart,this.generateEdge)
 
         this.mouseOverDetector.eventElement = this.hitbox
 
@@ -93,17 +110,6 @@ export class Port extends CompSObject implements IControlHost {
         // Initializing classes like this prevents UI from glitching (hopefully)
         this.htmlItem.baseElement.classList.add('control-takes-label')
         this.htmlItem.baseElement.classList.add('has-edge')
-
-        this.link(this.eventDispatcher.onClick,() => {
-            let shift = Vector2.fromPolar(17*3,this.orientation)
-            shift = shift.add(new Vector2(0,-17))
-            if(this.is_input.getValue()){
-                shift = shift.add(new Vector2(-17*8,0))
-            }
-            this.node.editor.slashCommandMenu.openMenu({
-                attached_port:this.id, 
-                translation:(this.node.editor.transform.othersToLocal(this.transform).add(shift)).toList()})
-        })
 
         this.link(this.display_name.onSet,(label: string) => {
             this.labelDiv.innerText = label
@@ -117,7 +123,20 @@ export class Port extends CompSObject implements IControlHost {
             this.isInputChanged(this.is_input.getValue())
         })
         this.link(this.max_edges.onSet,this.updateAcceptsEdgeClass)
+
+        this.link(this.hidden_topic.onSet,(hidden: boolean) => {
+            this.hidden = hidden
+        })
+
         if(this.is_input.getValue()) {
+            this.link(this.getAttribute('update_control_from_edge').onSet,(value: boolean) => {
+                if(value) {
+                    this.htmlItem.baseElement.classList.remove('hide-control-if-has-edge')
+                }
+                else {
+                    this.htmlItem.baseElement.classList.add('hide-control-if-has-edge')
+                }
+            })
             this.link(this.getAttribute('control_takes_label').onSet,(takes_label: number) => {
                 if(takes_label) {
                     this.htmlItem.baseElement.classList.add('control-takes-label')
@@ -139,6 +158,25 @@ export class Port extends CompSObject implements IControlHost {
         this.eventDispatcher.isDraggable = (e:MouseEvent)=>!(this.node.isPreview ||
                     !this.acceptsEdge() ||
                     e.buttons !== 1)
+    }
+
+    protected postStart(): void {
+        
+        if(!this.node.isPreview){
+            this.eventDispatcher.setEventElement(this.hitbox)
+            this.link(this.eventDispatcher.onDragStart,this.generateEdge)
+            this.link(this.eventDispatcher.onClick,() => {
+                let shift = Vector2.fromPolar(17*3,this.orientation)
+                shift = shift.add(new Vector2(0,-17))
+                if(this.is_input.getValue()){
+                    shift = shift.add(new Vector2(-17*8,0))
+                }
+                this.node.editor.slashCommandMenu.openMenu({
+                    attached_port:this.id, 
+                    translation:(this.node.editor.transform.othersToLocal(this.transform).add(shift)).toList()})
+            })
+        }
+
     }
 
 
@@ -175,7 +213,7 @@ export class Port extends CompSObject implements IControlHost {
 
     private isInputChanged(is_input: number): void {
         if(is_input) {
-            this.htmlItem.setParent(this.getComponentInAncestors(HtmlItem)!, 'input_port')
+            this.htmlItem.setParent(this.getComponentInAncestors(HtmlItem)!, this.is_param.getValue() ? 'param_input_port' : 'input_port')
             this.knob.classList.remove('out-port')
             this.knob.classList.add('in-port')
         } else {

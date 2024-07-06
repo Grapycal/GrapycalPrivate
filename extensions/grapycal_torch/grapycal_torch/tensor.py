@@ -12,8 +12,8 @@ class ZeroesNode(SourceNode):
 
     def build_node(self):
         super().build_node()
-        self.shape.set("simple")
-        self.label.set("Zeroes")
+        self.shape_topic.set("simple")
+        self.label_topic.set("Zeroes")
         self.out = self.add_out_port("tensor")
         self.shape_text = self.add_control(TextControl, "shape_text", text="2,2")
         self.shape_text.label.set("Shape")
@@ -40,8 +40,8 @@ class OnesNode(SourceNode):
 
     def build_node(self):
         super().build_node()
-        self.shape.set("simple")
-        self.label.set("Ones")
+        self.shape_topic.set("simple")
+        self.label_topic.set("Ones")
         self.out = self.add_out_port("tensor")
         self.shape_text = self.add_control(TextControl, "shape_text", text="2,2")
         self.shape_text.label.set("Shape")
@@ -68,7 +68,7 @@ class RandNode(SourceNode):
 
     def build_node(self):
         super().build_node()
-        self.label.set("Rand")
+        self.label_topic.set("Rand")
         self.out = self.add_out_port("tensor")
         self.shape_text = self.add_in_port(
             "shape", control_type=TextControl, text="2,2", label="shape"
@@ -95,7 +95,7 @@ class RandnNode(SourceNode):
 
     def build_node(self):
         super().build_node()
-        self.label.set("Randn")
+        self.label_topic.set("Randn")
         self.out = self.add_out_port("tensor")
         self.shape_text = self.add_in_port(
             "shape",
@@ -120,8 +120,8 @@ class GridNode(SourceNode):
 
     def build_node(self):
         super().build_node()
-        self.shape.set("simple")
-        self.label.set("Grid 2D")
+        self.shape_topic.set("simple")
+        self.label_topic.set("Grid 2D")
 
         self.x_start = self.add_attribute("x start", FloatTopic, 0, editor_type="float")
         self.x_end = self.add_attribute("x end", FloatTopic, 1, editor_type="float")
@@ -199,8 +199,8 @@ class RandnLikeNode(FunctionNode):
 
     def build_node(self):
         super().build_node()
-        self.label.set("Randn Like")
-        self.shape.set("simple")
+        self.label_topic.set("Randn Like")
+        self.shape_topic.set("simple")
         self.device = self.add_attribute(
             "device", StringTopic, "cpu", editor_type="text"
         )

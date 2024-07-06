@@ -5,17 +5,20 @@ import cv2
 from grapycal import Node
 from objectsync.sobject import SObjectSerialized
 
+
 class ImageLoader(Node):
-    '''
+    """
     To load image from your local storage
-    Input : number of images 
+    Input : number of images
     Output : list of images
-    '''
+    """
+
     category = "opencv"
+
     def create(self):
         super().build_node()
-        self.shape.set("simple")
-        self.label.set("Image Loader")
+        self.shape_topic.set("simple")
+        self.label_topic.set("Image Loader")
         self.output_port = self.add_out_port("Images Outputs")
         self.text = self.add_text_control("0")
         self.button = self.add_button_control("Load")

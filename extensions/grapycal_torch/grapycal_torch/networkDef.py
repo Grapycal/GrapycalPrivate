@@ -28,8 +28,8 @@ class NetworkCallNode(Node):
     category = "torch/neural network"
 
     def build_node(self, name: str = "Network"):
-        self.label.set("")
-        self.shape.set("normal")
+        self.label_topic.set("")
+        self.shape_topic.set("normal")
         self.icon_path_topic.set("nn")
         self.network_name = self.add_attribute(
             "network name", StringTopic, editor_type="text", init_value=name
@@ -54,10 +54,10 @@ class NetworkCallNode(Node):
         self.network_name.on_set2.add_manual(self.on_network_name_changed)
         self.network_name.on_set.add_auto(self.on_network_name_changed_auto)
         self.ext.net.calls.append(self.network_name.get(), self)
-        self.label.set(f" {self.network_name.get()}")
+        self.label_topic.set(f" {self.network_name.get()}")
 
     def on_network_name_changed(self, old, new):
-        self.label.set(f"{new}")
+        self.label_topic.set(f"{new}")
         self.ext.net.calls.remove(old, self)
         self.ext.net.calls.append(new, self)
 
@@ -156,7 +156,7 @@ class NetworkInNode(Node):
         if inputs is None:
             inputs = ["x"]
 
-        self.shape.set("normal")
+        self.shape_topic.set("normal")
         self.icon_path_topic.set("nn")
 
         # setup attributes
@@ -256,7 +256,7 @@ class NetworkInNode(Node):
                 call.update_ports()
 
     def update_label(self):
-        self.label.set(f"{self.network_name.get()}")
+        self.label_topic.set(f"{self.network_name.get()}")
 
     def on_output_added(self, name, position):
         self.add_out_port(name, display_name=name)
@@ -299,7 +299,7 @@ class NetworkOutNode(Node):
     def build_node(self, name: str = "Network", outputs: List[str] | None = None):
         if outputs is None:
             outputs = ["y"]
-        self.shape.set("normal")
+        self.shape_topic.set("normal")
         self.icon_path_topic.set("nn")
 
         # setup attributes
@@ -364,7 +364,7 @@ class NetworkOutNode(Node):
                 call.update_ports()
 
     def update_label(self):
-        self.label.set(f"{self.network_name.get()}")
+        self.label_topic.set(f"{self.network_name.get()}")
 
     def on_input_added(self, name, position):
         self.add_in_port(name, 1, display_name=name)

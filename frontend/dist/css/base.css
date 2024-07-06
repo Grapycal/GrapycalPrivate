@@ -335,6 +335,11 @@ footer{
     align-items: center;
 }
 
+.port.hidden{
+    display: none;
+
+}
+
 :is(.normal-node) .port {
     width: 100%;
     height: fit-content;
@@ -427,6 +432,16 @@ footer{
     display: none;
 }
 
+.node:not(.has-visible-param) .slot-param-input-port{
+    display: none;
+}
+
+.normal-node .slot-param-input-port{
+    padding-top: 8.5px;
+    margin-top: 8.5px;
+    border-top: #7a7a7a solid 1px;
+}
+
 .slot-output-port{
     position: relative;
     gap:2px;
@@ -437,7 +452,8 @@ footer{
 }
 
 .normal-node .slot-input-port {
-    padding: 0px 10px;
+    padding-left: 10px;
+    padding-right: 10px;
     width: 100%;
 }
 
@@ -458,6 +474,10 @@ footer{
 .simple-node .slot-input-port{
     padding-top:7.5px;
     padding-bottom: 7.5px;
+}
+
+.simple-node .slot-param-input-port{
+    padding-top: 11.5px;
 }
 
 .simple-node .slot-output-port{
@@ -487,15 +507,22 @@ footer{
     flex-grow: 1;
 }
 
-.port.control-takes-label:not(.has-edge) > .port-label{
+.normal-node .port.control-takes-label:not(.has-edge.hide-control-if-has-edge) > .port-label{
     overflow: hidden;
     opacity: 0;
-    width: 0px;
+    width: 0px; 
 }
 
-.port.has-edge > .slot-control{
+.node:not(.normal-node) .port>.slot-control .control:not(.control-always-show){
     display: none;
+}
 
+.node:not(.normal-node) .only-show-in-normal-node{
+    display: none;
+}
+
+.port.has-edge.hide-control-if-has-edge > .slot-control{
+    display: none;
 }
 
 /* Control */
@@ -823,6 +850,7 @@ input:enabled, textarea:enabled{
 .hierarchy-name{
     padding-left: 15px;
     font-size: 15px;
+    cursor: pointer;
 }
 
 .hierarchy-indent{
@@ -1131,3 +1159,8 @@ code {
     top: -100%;
     right: -600px;
 } */
+
+/* order inspector */
+.cate-apparance{
+    order:10;
+}

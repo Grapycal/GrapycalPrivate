@@ -17,21 +17,22 @@ def get_pprint_str(data):
 
 
 class PrintNode(Node):
-    '''
+    """
     Display the data received from the input edge.
 
     :inputs:
         - data: data to be displayed
 
-    '''
-    category = 'interaction'
+    """
+
+    category = "interaction"
 
     def build_node(self):
-        self.add_in_port('',max_edges=1)
-        self.text_control = self.add_control(TextControl, name='text', readonly=True)
-        self.label.set('Print')
-        self.shape.set('simple')
-        self.css_classes.append('fit-content')
+        self.add_in_port("", max_edges=1)
+        self.text_control = self.add_control(TextControl, name="text", readonly=True)
+        self.label_topic.set("Print")
+        self.shape_topic.set("simple")
+        self.css_classes.append("fit-content")
 
     def edge_activated(self, edge, port):
         self.flash_running_indicator()
@@ -45,4 +46,4 @@ class PrintNode(Node):
             self.text_control.text.set(get_pprint_str(data))
 
     def input_edge_removed(self, edge: Edge, port: InputPort):
-        self.text_control.text.set('')
+        self.text_control.text.set("")

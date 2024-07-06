@@ -27,7 +27,7 @@ class TrainerNode(Node):
     category = "torch/training"
 
     def build_node(self):
-        self.label.set("Trainer")
+        self.label_topic.set("Trainer")
         self.css_classes.append("fit-content")
         self.lr = self.add_attribute("lr", FloatTopic, 0.001, editor_type="float")
         self.device = self.add_in_port("device", control_type=TextControl)
@@ -125,7 +125,7 @@ class TrainNode(Node):
     category = "torch/training"
 
     def build_node(self):
-        self.label.set("Train")
+        self.label_topic.set("Train")
         self.network_port = self.add_in_port("network", control_type=OptionControl)
         self.loss_port = self.add_in_port("loss", 1)
         self.accumulate_losses = self.add_attribute(
@@ -149,7 +149,7 @@ class TrainNode(Node):
             self.run(self.train_step, loss=edge.get())
             return
         elif port == self.network_port:
-            self.label.set("Train " + self.network_name.get())
+            self.label_topic.set("Train " + self.network_name.get())
 
     def get_module_nodes(self) -> List[ModuleNode]:
         names = self.network_name.get()
@@ -206,7 +206,7 @@ class SaveNode(Node):
     category = "torch/training"
 
     def build_node(self):
-        self.label.set("Save Network")
+        self.label_topic.set("Save Network")
         self.network_port = self.add_in_port(
             "network", control_type=OptionControl, options=["net a", "net b"]
         )
@@ -244,7 +244,7 @@ class LoadNode(Node):
     category = "torch/training"
 
     def build_node(self):
-        self.label.set("Load Network")
+        self.label_topic.set("Load Network")
         self.network_port = self.add_in_port(
             "network", control_type=OptionControl, options=["net a", "net b"]
         )

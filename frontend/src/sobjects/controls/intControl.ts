@@ -29,15 +29,20 @@ export class IntControl extends Control{
             this.input.valueAsNumber = newValue
         })
         this.input.onblur = () => {
-            this.value.set(parseInt(this.input.value))
+            this.valueChanged()
         }
         this.input.onkeydown = (e) => {
             if (e.key == 'Enter') {
-                this.value.set(parseInt(this.input.value))
+                this.valueChanged()
             }
         }
         this.link(this.label.onSet, (newValue) => {
             this.labelEl.innerText = newValue
         })
+    }
+
+    private valueChanged(){
+        if (this.value.getValue() == parseInt(this.input.value)) return
+        this.value.set(parseInt(this.input.value))
     }
 }
