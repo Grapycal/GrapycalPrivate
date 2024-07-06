@@ -173,17 +173,22 @@ class DecorTrait(Trait):
 
         # generate a trigger input port for each function
         for name, node_func in self.node_funcs.items():
-            self.tr_ports[f"{self.name}.tr.{name}"] = self.node.add_in_port(
-                f"{self.name}.tr.{name}",
-                64,
-                display_name="trigger",
-                datatype=AnyType,
-                control_type=TriggerControl,
-                control_value=UNSPECIFY_CONTROL_VALUE,
-                activate_on_control_change=True,
-                update_control_from_edge=False,
-            )
-            self.show_inputs.insert(f"{self.name}.tr.{name}")
+            # Only add trigger port if all inputs have default values. For functions with an input without a default value,
+            # it's likely to go wrong if user triggers it without setting the input.
+            if all(
+                map(lambda inp: inp.default != NO_DEFAULT, node_func.inputs.values())
+            ):
+                self.tr_ports[f"{self.name}.tr.{name}"] = self.node.add_in_port(
+                    f"{self.name}.tr.{name}",
+                    64,
+                    display_name="trigger",
+                    datatype=AnyType,
+                    control_type=TriggerControl,
+                    control_value=UNSPECIFY_CONTROL_VALUE,
+                    activate_on_control_change=True,
+                    update_control_from_edge=False,
+                )
+                self.show_inputs.insert(f"{self.name}.tr.{name}")
 
         # generate input ports for function inputs
         for name, inp in self.inputs.items():
@@ -379,43 +384,32 @@ class DecorTrait(Trait):
 
     def port_activated(self, port: InputPort):
         port_info = self.port_info_dict[port.get_name()]
-        peeked_ports: set[InputPort] = set()
-        for node_func in port_info.used_by_funcs:
-            # A func requires all its inputs to be ready before it can be executed
-            if all(
-                self.in_ports[f"{self.name}.in.{name}"].is_all_ready()
-                for name in node_func.inputs
-            ):
-                func = getattr(self.node, node_func.name)
-                inputs = {
-                    name: self.in_ports[f"{self.name}.in.{name}"].peek()
+
+        # If the port is a trigger port, run the corresponding node_func
+        if port.get_name().startswith(f"{self.name}.tr."):
+            func_name = port.get_name().split(".")[-1]
+            node_func = self.node_funcs[func_name]
+            if not self.needs_trigger_port(node_func):
+                return
+            peeked_ports = self.run_node_func(node_func)
+            for peeked_port in peeked_ports:
+                peeked_port.clear_edges()
+
+        # If the port is a input port, check if all inputs are ready to run the corresponding node_func
+        elif port_info.is_func:
+            peeked_ports: set[InputPort] = set()
+            for node_func in port_info.used_by_funcs:
+                # A func requires all its inputs to be ready before it can be executed
+                if all(
+                    self.in_ports[f"{self.name}.in.{name}"].is_all_ready()
                     for name in node_func.inputs
-                }
-                for name in node_func.inputs:
-                    peeked_ports.add(self.in_ports[f"{self.name}.in.{name}"])
-                if node_func.background:
-                    self.node.run(
-                        lambda func=func,
-                        inputs=inputs,
-                        node_func=node_func: self.func_finished(  # The node_func=node_func trick is to avoid the late binding problem
-                            func(**inputs), node_func
-                        ),
-                        background=True,
-                    )
-                else:
-                    self.node.run(
-                        lambda func=func,
-                        inputs=inputs,
-                        node_func=node_func: self.func_finished(
-                            func(**inputs), node_func
-                        ),
-                        background=False,
-                    )
+                ):
+                    peeked_ports |= self.run_node_func(node_func)
 
-        for peeked_port in peeked_ports:
-            peeked_port.get()
+            for peeked_port in peeked_ports:
+                peeked_port.clear_edges()
 
-        if not port_info.is_func:  # If the port is a param port
+        elif not port_info.is_func:  # If the port is a param port
             for node_param in port_info.used_by_params:
                 # A param callback is called when any of its input ports are activated
                 param_callback = getattr(self.node, node_param.name)
@@ -426,6 +420,33 @@ class DecorTrait(Trait):
                     ),
                     background=False,  # assume param callbacks are fast so can be run in the ui thread
                 )
+
+    def run_node_func(self, node_func: NodeFunc):
+        peeked_ports: set[InputPort] = set()
+        func = getattr(self.node, node_func.name)
+        inputs = {
+            input_name: self.in_ports[f"{self.name}.in.{input_name}"].peek()
+            for input_name in node_func.inputs
+        }
+        for name in node_func.inputs:
+            peeked_ports.add(self.in_ports[f"{self.name}.in.{name}"])
+        if node_func.background:
+            self.node.run(
+                lambda func=func,
+                inputs=inputs,
+                node_func=node_func: self.func_finished(  # The node_func=node_func trick is to avoid the late binding problem
+                    func(**inputs), node_func
+                ),
+                background=True,
+            )
+        else:
+            self.node.run(
+                lambda func=func,
+                inputs=inputs,
+                node_func=node_func: self.func_finished(func(**inputs), node_func),
+                background=False,
+            )
+        return peeked_ports
 
     def collect_params(self, node_param: NodeParam):
         params = {}

@@ -7,14 +7,14 @@ export class TriggerControl extends Control {
     button: HTMLInputElement
 
     protected get template (){return `
-    <div class="control flex-horiz">
+    <div class="control flex-horiz control-always-show">
         
         <button class="btn" id="button"></button>
         <!-- a dotted line connecting the button to the control -->
-        <svg class="line" width="105" height="10">
+        <svg class="line" width="50" height="10">
             <line stroke-dasharray="4" x1="3" y1="5.5" x2="42" y2="5.5" />
         </svg>
-        <div ref="label" class="label"></div>
+        <div ref="label" class="label only-show-in-normal-node"></div>
     </div>
     `}
 
@@ -58,6 +58,9 @@ export class TriggerControl extends Control {
                     
         this.button.addEventListener("click", (e) => {
             this.emit("click")
+        })
+        this.button.addEventListener("mousedown", (e) => {
+            e.stopPropagation()
         })
     }
 

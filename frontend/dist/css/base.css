@@ -513,7 +513,11 @@ footer{
     width: 0px; 
 }
 
-.node:not(.normal-node) .port>.slot-control{
+.node:not(.normal-node) .port>.slot-control .control:not(.control-always-show){
+    display: none;
+}
+
+.node:not(.normal-node) .only-show-in-normal-node{
     display: none;
 }
 

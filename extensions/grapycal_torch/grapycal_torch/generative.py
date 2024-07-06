@@ -166,7 +166,9 @@ class ArangeNode(Node):
     category = "torch/generative"
 
     @func()
-    def output(self, start: float, stop: float | int, step: float) -> torch.Tensor:
+    def output(
+        self, start: float = 0.0, stop: float = 1.0, step: float = 0.1
+    ) -> torch.Tensor:
         return torch.arange(start, stop, step)
 
 
