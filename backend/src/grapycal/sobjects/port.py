@@ -7,6 +7,7 @@ from grapycal.core.typing import GType, AnyType
 from grapycal.sobjects.controls.control import ValuedControl
 from grapycal.sobjects.controls.nullControl import NullControl
 from grapycal.utils.misc import Action
+from topicsync.topic import GenericTopic
 
 if TYPE_CHECKING:
     from grapycal.sobjects.edge import Edge
@@ -88,6 +89,7 @@ class InputPort(Port, typing.Generic[T]):
         display_name=None,
         control_name=None,
         datatype: GType = AnyType,
+        activate_on_control_change=False,
         **control_kwargs,
     ):
         super().build(name, max_edges, display_name, datatype)
@@ -99,6 +101,9 @@ class InputPort(Port, typing.Generic[T]):
         self.control_takes_label = self.add_attribute(
             "control_takes_label", IntTopic, 0
         )
+        self.activate_on_control_change = self.add_attribute(
+            "activate_on_control_change", GenericTopic[bool], activate_on_control_change
+        )
         if self.default_control.take_label(self.display_name.get()):
             self.control_takes_label.set(1)
 
@@ -108,11 +113,12 @@ class InputPort(Port, typing.Generic[T]):
         self.use_default = len(self.edges) == 0 and not isinstance(
             self.default_control, NullControl
         )
-        self.default_control.set_activation_callback(
-            lambda *args,
-            **kwargs:  # so they can link the callback to Actions without worrying about redundant args
-            self.activated_by_control(self.default_control)
-        )
+        if self.activate_on_control_change.get():
+            self.default_control.set_activation_callback(
+                lambda *args,
+                **kwargs:  # so they can link the callback to Actions without worrying about redundant args
+                self.activated_by_control(self.default_control)
+            )
 
     def add_edge(self, edge: "Edge"):
         super().add_edge(edge)
@@ -164,6 +170,17 @@ class InputPort(Port, typing.Generic[T]):
         elif allow_no_data and not self.is_all_ready():
             return None
         return self.edges[0].get()
+
+    def peek(self, allow_no_data=False) -> Any:
+        """
+        If not using default control, return data from the first connected edge without taking it.
+        If using default control, return data from the default control.
+        """
+        if self.use_default:
+            return self.default_control.get()
+        elif allow_no_data and not self.is_all_ready():
+            return None
+        return self.edges[0].peek()
 
     def activated_by_edge(self, edge: "Edge"):
         try:

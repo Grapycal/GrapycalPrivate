@@ -1,6 +1,9 @@
+import argparse
+from datetime import datetime
 import json
 import os
 import pathlib
+import subprocess
 import threading
 import time
 from typing import Callable
@@ -190,10 +193,19 @@ def license_file_exists():
     return Path(GRAPYCAL_ROOT / "license.json").exists()
 
 
+def license_file_valid():
+    license_path = GRAPYCAL_ROOT / "license.json"
+    license = json.loads(open(license_path).read())
+    if license["license_data"]["expire_time"] < int(datetime.now().timestamp()):
+        return False
+    return True
+
+
 def acquire_license():
     import requests
 
-    serial = input_colored("Please enter your serial number: ")
+    # serial = input_colored("Please enter your serial number: ")
+    serial = "2501dc76b11a43e3b2421803f4f1f660"  # demo serial number. no need to input
 
     def get_ip_addresses(family):
         for interface, snics in psutil.net_if_addrs().items():
@@ -216,15 +228,18 @@ def acquire_license():
 
     if response.status_code == 200:
         response = response.json()
-        print(
-            "License acquired successfully. Remaining uses: ",
-            response["remaining_uses"],
-        )
+
+        # Not need to print remaining uses for demo license
+        # print(
+        #     "License acquired successfully. Remaining uses: ",
+        #     response["remaining_uses"],
+        # )
+
         with open(GRAPYCAL_ROOT / "license.json", "w") as f:
             json.dump(response["license"], f)
     elif response.status_code == 403:
         print(
-            "Invalid serial number. Maybe it has been used too many times, or it's invalid."
+            "Invalid serial number. Maybe it has been used too many times, or it's invalid. If you believe this is an error, please contact us at grapycal@gmail.com"
         )
         sys.exit(1)
     else:  # error
@@ -236,7 +251,7 @@ def acquire_license():
         sys.exit(1)
 
 
-def print_welcome():
+def print_welcome(port):
     with open(GRAPYCAL_ROOT / "build_info.json") as build_info_file:
         build_info = json.load(build_info_file)
         version = build_info["version"]
@@ -257,16 +272,33 @@ def print_welcome():
 
     print(
         "\nWelcome to Grapycal. Please go to "
-        + termcolor.colored("http://localhost:7943", "green")
+        + termcolor.colored(f"http://localhost:{port}", "green")
         + " with Chrome to access the frontend.\n"
     )
     print("=" * 50)
 
 
-def run():
+def show_license_info():
+    license_path = GRAPYCAL_ROOT / "license.json"
+    license = json.loads(open(license_path).read())
+    exp = datetime.fromtimestamp(license["license_data"]["expire_time"]).strftime(
+        "%Y-%m-%d"
+    )
+    print(f"Current license is valid until {exp}.")
+
+
+def run(cmds: CmdSelector):
     """
     Run Grapycal
     """
+
+    parser = argparse.ArgumentParser(prog=cmds.prefix)
+    parser.add_argument(
+        "--port", type=int, default=7943, help="Port Grapycal will listen to"
+    )
+
+    args = parser.parse_args(cmds.args)
+
     print("Checking for updates...")
 
     # if updated, this function will not return back
@@ -276,16 +308,22 @@ def run():
         print("License not found. Acquiring license...")
         acquire_license()
 
+    if not license_file_valid():
+        print("License expired. Acquiring new license...")
+        acquire_license()
+
+    show_license_info()
+
     def open_browser():
         time.sleep(4)
-        webbrowser.open("http://localhost:7943")
+        webbrowser.open(f"http://localhost:{args.port}")
 
     threading.Thread(target=open_browser).start()
 
     while True:
-        print_welcome()
+        print_welcome(args.port)
         core_return_code = os.system(
-            f'python {HERE/"entry/launcher.py"} --frontend-path {GRAPYCAL_ROOT/"frontend"} --port 7943 --cwd {CWD}'
+            f'python {HERE/"entry/launcher.py"} --frontend-path {GRAPYCAL_ROOT/"frontend"} --port {args.port} --cwd {CWD}'
         )
 
         if core_return_code in [3, 4, 5]:
@@ -316,10 +354,45 @@ def ext(cmds: CmdSelector):
     def install_ext():
         if not cmds.has_next():
             print("Please specify the extension name.")
+            available_exts = os.listdir(GRAPYCAL_ROOT / "extensions")
+            print("Available extensions:")
+            for ext in available_exts:
+                if ext.startswith("grapycal_"):
+                    print(f"  {ext[9:]}")
             return
         ext_name = cmds.next()
         if not ext_name.startswith("grapycal_"):
             ext_name = "grapycal_" + ext_name
+        ext_name = ext_name.replace("-", "_")
+        # check its dependency extensions are installed
+        # read the extension's pyproject.toml
+        ext_path = GRAPYCAL_ROOT / "extensions" / ext_name
+        if not ext_path.exists():
+            print(f"Extension {ext_name} not found.")
+            return
+        if (ext_path / "pyproject.toml").exists():
+            with open(ext_path / "pyproject.toml") as f:
+                lines = f.readlines()
+                for line in lines:
+                    if line.startswith("grapycal-"):
+                        dep = line.split("=")[0].strip()
+                        if (
+                            subprocess.run(
+                                f"pip show {dep}",
+                                shell=True,
+                                stdout=subprocess.PIPE,
+                                stderr=subprocess.PIPE,
+                            ).returncode
+                            != 0
+                        ):
+                            short_dep = dep[9:]
+                            print(
+                                f"Befor installing {ext_name}, please install {dep.replace('-','_')} first: `{termcolor.colored(f'grapycal ext install {short_dep}', 'green')}`"
+                            )
+                            return
+                        else:
+                            print(f"Dependency {dep} installed.")
+
         print(f"Installing extension {ext_name}...")
         pip_install_from_path(GRAPYCAL_ROOT / "extensions" / ext_name)
         print(f"Extension {ext_name} installed.")

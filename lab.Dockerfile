@@ -11,4 +11,4 @@ WORKDIR /lab
 COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
 COPY --from=builder /lab /lab
 
-CMD ["python", "entry/run.py", "--backend-path", "backend/src", "--frontend-path", "frontend", "--port", "7943", "--host", "0.0.0.0"]
+CMD ["python", "-m", "grapycal.entry.run", "--frontend-path", "frontend", "--port", "7943", "--host", "0.0.0.0"]

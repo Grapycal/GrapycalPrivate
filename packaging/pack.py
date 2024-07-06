@@ -262,7 +262,7 @@ class PackPythonPackage(Step):
     def run(self, src: Path, dst: Path):
         x = From(src / self.package_src_dir.parent) * Select(self.package_src_dir.name)
         if self.edition in ["demo", "full"]:
-            x *= AddLicenseCheckCode()
+            x *= Preprocessor()
         x * Pyarmor(self.pyarmor_config) * To(dst / self.package_src_dir.parent)
 
         From(src) * Select("pyproject.toml") * To(dst)
@@ -325,6 +325,20 @@ class PackGrapycal(Step):
                 pyarmor_config=self.pyarmor_config.copyWith(prefix="grapycal"),
             )
             * ToRelative("extensions/grapycal_torch")
+            + From(src / "extensions/grapycal_audio")
+            * PackPythonPackage(
+                edition=self.edition,
+                package_src_dir="grapycal_audio",
+                pyarmor_config=self.pyarmor_config.copyWith(prefix="grapycal"),
+            )
+            * ToRelative("extensions/grapycal_audio")
+            + From(src / "extensions/grapycal_audio_torch")
+            * PackPythonPackage(
+                edition=self.edition,
+                package_src_dir="grapycal_audio_torch",
+                pyarmor_config=self.pyarmor_config.copyWith(prefix="grapycal"),
+            )
+            * ToRelative("extensions/grapycal_audio_torch")
             + From(src / "frontend") * PackFrontend() * ToRelative("frontend")
             + From(src / "packaging/template")
         ) * To(dst)
@@ -364,6 +378,13 @@ def insert_code_into_lines(lines, idx, code, indent):
         added_lines[i] = " " * indent + line + "\n"
     lines = lines[:idx] + added_lines + lines[idx:]
     return lines
+
+
+def find_next_line_with(lines, start, text):
+    for i in range(start, len(lines)):
+        if text in lines[i].replace(" ", "").replace("\t", ""):
+            return i
+    raise Exception(f"Text {text} not found in lines")
 
 
 SIGNATURE_E = int(os.environ["SIGNATURE_E"])
@@ -430,12 +451,11 @@ del license_path, sha512, license, signature, license_data, hash, hashFromSignat
 """
 
 
-class AddLicenseCheckCode(Step):
+class Preprocessor(Step):
     """
     Replaces the # ===CHECK_LICENSE=== # markers in the source code with the actual license check code
+    And other preprocessing tasks
     """
-
-    # TODO check mac address and time
 
     def run(self, src: Path, dst: Path):
         # copy src to dst to avoid modifying the original files
@@ -449,11 +469,27 @@ class AddLicenseCheckCode(Step):
             # find the line with the license check code
             i = 0
             while i < len(lines):
-                if "# ===CHECK_LICENSE=== #" in lines[i]:
+                line_no_space = lines[i].replace(" ", "").replace("\t", "")
+                if "#===CHECK_LICENSE===#" in line_no_space:
                     indent = len(lines[i]) - len(lines[i].lstrip())
                     lines[i] = ""
                     # insert the license check code
                     lines = insert_code_into_lines(lines, i, check_license_code, indent)
+                elif "#%enable_for_demo" in line_no_space:
+                    j = find_next_line_with(lines, i, "#%end_enable_for_demo")
+                    lines[i] = ""
+                    lines[j] = ""
+                    for k in range(i + 1, j):
+                        assert "# " in lines[k], (
+                            f"Line {k} does not start with # ." + lines[k]
+                        )
+                        lines[k] = lines[k].replace("# ", "", 1)
+                elif "#%disable_for_demo" in line_no_space:
+                    j = find_next_line_with(lines, i, "#%end_disable_for_demo")
+                    lines[i] = ""
+                    lines[j] = ""
+                    for k in range(i, j):
+                        lines[k] = ""
                 i += 1
 
             # write the modified lines back to the file

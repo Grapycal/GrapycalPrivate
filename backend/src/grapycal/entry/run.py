@@ -1,8 +1,10 @@
 import asyncio
 import os
+import random
 import sys
 import threading
 from contextlib import asynccontextmanager
+import traceback
 from typing import Awaitable, Callable
 
 import uvicorn
@@ -158,6 +160,14 @@ def main():
     except KeyboardInterrupt:
         print("Exiting")
         sys.exit(1)
+    except Exception:
+        # if we get here, usually because fail to load the workspace. So have to open another workspace to avoid infinite failure
+        print("Something went wrong:")
+        print(traceback.format_exc())
+        here = os.path.dirname(os.path.abspath(__file__))
+
+        with open(os.path.join(here, "_grapycal_open_another_workspace.txt"), "w") as f:
+            f.write(f"workspace_{random.randint(100000, 999999)}.grapycal")
 
     if open_another.path is not None:
         print(f"User wants to open another workspace: {open_another.path}.")

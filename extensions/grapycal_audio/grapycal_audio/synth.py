@@ -4,6 +4,7 @@ from grapycal.extension_api.trait import ClockTrait
 from grapycal.sobjects.controls.optionControl import OptionControl
 from grapycal.sobjects.controls.textControl import TextControl
 from grapycal.sobjects.edge import Edge
+from grapycal.sobjects.node import background_task
 from grapycal.sobjects.port import InputPort
 from grapycal.utils.resource import get_resource
 from grapycal_audio.utils import Instrument, midi2Freq
@@ -255,13 +256,7 @@ class InstrumentNode(SynthNode):
         super().init_node()
         self.playing_notes: dict[int, InstrumentNode.Note] = {}
         self.releasing_notes: dict[int, InstrumentNode.Note] = {}
-        self.instrument = Instrument(
-            get_resource("download/audio/instrument/grand_piano", is_dir=True)
-        )
-        if not self.instrument.files_exist():
-            self.print_exception(
-                f"instrument file missing: {self.instrument._root}"
-            )  # TODO download the instrument
+        self.instrument: Instrument | None = None
         self.release_time = 0.05  # seconds
         self.relase_envelope = np.concatenate(
             [
@@ -274,6 +269,14 @@ class InstrumentNode(SynthNode):
 
     def edge_activated(self, edge: Edge, port: InputPort):
         super().edge_activated(edge, port)
+
+        if self.instrument is None:
+            if hasattr(self, "getting_instrument"):
+                return
+            self.getting_instrument = True
+            self.init_instrument()
+            return
+
         if port == self.note_on_port:
             note_info: dict = edge.get()
             note = InstrumentNode.Note(
@@ -298,9 +301,17 @@ class InstrumentNode(SynthNode):
                     "offset", int(self.sample_t * self.ext.sample_rate)
                 )
 
+    @background_task
+    def init_instrument(self):
+        self.instrument = Instrument(
+            get_resource("download/audio/instrument/grand_piano", is_dir=True)
+        )
+
     def sample(self, n: int, l: int):
         # stack all playing notes
         samples = np.zeros(self.ext.chunk_size, dtype="float32")
+        if self.instrument is None:
+            return samples
         to_delete = []
         for note in self.playing_notes.values():
             samples_since_onset = n - note.onset

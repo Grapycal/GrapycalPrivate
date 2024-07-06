@@ -137,7 +137,7 @@ class ExecNode(SourceNode):
             options=["yes", "no"],
             init_value="yes",
         )
-        self.icon_path_topic.set("python")
+        self.icon_path_topic.set("task")
 
         if self.is_new:
             self.code_control.set(text)

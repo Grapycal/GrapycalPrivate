@@ -17,7 +17,6 @@ class TextControl(ValuedControl[str]):
     class ActivationMode(Enum):
         ON_CHANGE = 0
         ON_FINISH = 1
-        NO_ACTIVATION = 2
 
         def __eq__(self, __value: object) -> bool:
             return self.value == __value
@@ -31,7 +30,7 @@ class TextControl(ValuedControl[str]):
         readonly=False,
         editable: bool = True,
         placeholder: str = "",
-        activation_mode: ActivationMode = ActivationMode.NO_ACTIVATION,
+        activation_mode: ActivationMode = ActivationMode.ON_FINISH,
     ):
         if readonly:
             editable = False
@@ -63,16 +62,15 @@ class TextControl(ValuedControl[str]):
     def value_ready(self) -> bool:
         return True
 
+    def get_value_topic(self):
+        return self.text
+
     def set_activation_callback(self, callback):
         if self.activation_mode.get() == TextControl.ActivationMode.ON_CHANGE:
             self.text.on_set += callback
 
         elif self.activation_mode.get() == TextControl.ActivationMode.ON_FINISH:
             self.on_finish += callback
-
-        elif self.activation_mode.get() == TextControl.ActivationMode.NO_ACTIVATION:
-            pass
-
         else:
             raise ValueError()
 

@@ -1,5 +1,7 @@
 from pathlib import Path
+from typing import Callable
 from grapycal.extension_api.trait import OutputsTrait, Chain, TriggerTrait
+from grapycal.sobjects.controls.sliderControl import SliderControl
 import torch.utils.data
 import torchvision
 from grapycal import SourceNode, Node
@@ -59,9 +61,17 @@ class ImageDataset(torch.utils.data.Dataset):
     A dataset with images.
     """
 
-    def __init__(self, path: str | Path):
+    def __init__(
+        self,
+        path: str | Path,
+        pre_transform: Callable | None = None,
+        post_transform: Callable | None = None,
+    ):
         self.path = Path(path)
+        self.pre_transform = pre_transform or transforms.ToTensor()
+        self.post_transform = post_transform or (lambda x: x)
         self.images = []
+        self.do_augment = True
         if self.path.is_dir():
             self.load_from_folder()
         else:
@@ -74,17 +84,19 @@ class ImageDataset(torch.utils.data.Dataset):
             for name in zip_ref.namelist():
                 if name.endswith(".jpg") or name.endswith(".png"):
                     with zip_ref.open(name) as f:
-                        self.images.append(transforms.ToTensor()(Image.open(f)))
+                        self.images.append(self.pre_transform(Image.open(f)))
 
     def load_from_folder(self):
         for file in self.path.iterdir():
             if file.is_file() and file.suffix in [".jpg", ".png"]:
-                self.images.append(transforms.ToTensor()(Image.open(file)))
+                self.images.append(self.pre_transform(Image.open(file)))
 
     def __len__(self):
         return len(self.images)
 
     def __getitem__(self, idx):
+        if self.do_augment:
+            return self.post_transform(self.images[idx])
         return self.images[idx]
 
 
@@ -115,11 +127,34 @@ class ImageDatasetNode(Node):
             value="dog",
             label="class",
         )
+        self.size_port = self.add_in_port(
+            "size",
+            1,
+            control_type=SliderControl,
+            min=1,
+            max=256,
+            value=256,
+            int_mode=True,
+        )
 
     @background_task
     def get_dataset(self):
         class_name = self.class_control.get()
         path = self.img_classes[class_name]
         path = get_resource(path)
-        dataset = ImageDataset(path)
+        size = self.size_port.get()
+
+        dataset = ImageDataset(
+            path,
+            pre_transform=transforms.Compose([transforms.ToTensor()]),
+            post_transform=transforms.Compose(
+                [
+                    # transforms.RandomAffine(
+                    #     15, translate=(0.05, 0.05), scale=(1.2, 1.3)
+                    # ),
+                    # transforms.RandomHorizontalFlip(),
+                    transforms.Resize((size, size)),
+                ]
+            ),
+        )
         return dataset

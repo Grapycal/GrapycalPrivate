@@ -30,6 +30,7 @@ class ConvTranspose2dNode(SimpleModuleNode):
         Parameter("stride", "int", 1),
         Parameter("dilation", "int", 1),
     ]
+    inputs = ["input"]
 
     def get_label(self, params):
         return f"ConvTr2d {params['in_channels']} → {params['out_channels']} {params['kernel_size']}"

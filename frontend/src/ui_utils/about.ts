@@ -17,7 +17,7 @@ export class About extends Componentable{
 
         If you're new, you may be unfamiliar with the syntax, but you'll soon find it easy to use! These may help you get started:
         <ul>
-        <li><a href="https://wiki.grapycal.org/index.php?title=Grapycal_Wiki_ouO">wiki.grapycal.org</a></li>
+        <li><a href="https://docs.grapycal.com/latest/docs/">docs.grapycal.com</a></li>
         <li>📁 Files > 💡Example workspaces</li>
     </div>
     `}

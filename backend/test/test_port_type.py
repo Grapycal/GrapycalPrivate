@@ -1,5 +1,6 @@
 from contextlib import contextmanager
 from unittest.mock import Mock, patch
+from typing import Protocol, runtime_checkable
 
 from grapycal import OutputPort, InputPort
 from grapycal.core.typing import PlainType, GType, AnyType
@@ -8,7 +9,7 @@ from grapycal.utils.misc import Action
 
 
 @contextmanager
-def mock_in_out_ports(in_type: GType, out_type: GType):
+def mock_in_out_ports(out_type: GType, in_type: GType):
     server_mock = Mock()
     topic_mock = Mock()
     server_mock.create_topic.return_value = topic_mock
@@ -33,21 +34,54 @@ def mock_in_out_ports(in_type: GType, out_type: GType):
 
 
 def test_simple_type_match():
-    with mock_in_out_ports(in_type=PlainType(int), out_type=PlainType(int)) as (in_port, out_port):
+    with mock_in_out_ports(out_type=PlainType(int), in_type=PlainType(int),) as (in_port, out_port):
         assert out_port.can_connect_to(in_port)
 
 def test_simple_type_mismatch():
-    with mock_in_out_ports(in_type=PlainType(str), out_type=PlainType(int)) as (in_port, out_port):
+    with mock_in_out_ports(out_type=PlainType(int), in_type=PlainType(str)) as (in_port, out_port):
         assert not out_port.can_connect_to(in_port)
 
 def test_any_on_input():
-    with mock_in_out_ports(in_type=AnyType, out_type=PlainType(int)) as (in_port, out_port):
+    with mock_in_out_ports(out_type=PlainType(int), in_type=AnyType) as (in_port, out_port):
         assert out_port.can_connect_to(in_port)
 
 def test_any_on_output():
-    with mock_in_out_ports(in_type=PlainType(int), out_type=AnyType) as (in_port, out_port):
+    with mock_in_out_ports(out_type=AnyType, in_type=PlainType(int)) as (in_port, out_port):
         assert out_port.can_connect_to(in_port)
 
 def test_any_on_both_in_out():
-    with mock_in_out_ports(in_type=AnyType, out_type=AnyType) as (in_port, out_port):
+    with mock_in_out_ports(out_type=AnyType, in_type=AnyType) as (in_port, out_port):
+        assert out_port.can_connect_to(in_port)
+        assert out_port.can_connect_to(in_port)
+
+def test_nominal_subclass_super_input_accept_child_output():
+    class Super:
+        pass
+    class Child(Super):
+        pass
+
+    with mock_in_out_ports(out_type=PlainType(Child), in_type=PlainType(Super)) as (in_port, out_port):
+        assert out_port.can_connect_to(in_port)
+
+def test_nominal_subclass_child_input_not_accept_super_output():
+    class Super:
+        pass
+    class Child(Super):
+        pass
+
+    with mock_in_out_ports(out_type=PlainType(Super), in_type=PlainType(Child)) as (in_port, out_port):
+        assert not out_port.can_connect_to(in_port)
+
+def test_structural_subtype():
+    @runtime_checkable
+    class Super(Protocol):
+        def a(self): ...
+        def b(self, arg): ...
+    class Child:
+        def a(self):
+            pass
+        def b(self, arg):
+            pass
+
+    with mock_in_out_ports(out_type=PlainType(Child), in_type=PlainType(Super)) as (in_port, out_port):
         assert out_port.can_connect_to(in_port)

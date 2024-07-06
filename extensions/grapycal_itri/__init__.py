@@ -123,12 +123,10 @@ class OpenAINode(Node):
         self.system_message = self.add_in_port(
             "system message",
             control_type=TextControl,
-            activation_mode=TextControl.ActivationMode.NO_ACTIVATION,
         )
         self.user_message = self.add_in_port(
             "user message",
             control_type=TextControl,
-            activation_mode=TextControl.ActivationMode.NO_ACTIVATION,
         )
         self.response = self.add_out_port("response")
         self.css_classes.append("fit-content")

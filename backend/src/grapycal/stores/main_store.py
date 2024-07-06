@@ -50,6 +50,7 @@ class MainStore:
         self.vars: Callable[[], Dict[str, Any]]
         self.record: Callable[[], _GeneratorContextManager[None]]
         self.slash: SlashCommandManager
+        self.session_id: int
 
         # set by workspaceObject
 

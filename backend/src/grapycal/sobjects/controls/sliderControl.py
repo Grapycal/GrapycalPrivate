@@ -1,4 +1,5 @@
-from objectsync import DictTopic, FloatTopic, StringTopic
+from typing import Callable
+from objectsync import DictTopic, FloatTopic, StringTopic, Topic
 
 from grapycal.sobjects.controls.control import ValuedControl
 
@@ -24,6 +25,11 @@ class SliderControl(ValuedControl[None]):
     ):
         self.label = self.add_attribute("label", StringTopic, label)
         self.value = self.add_attribute("value", FloatTopic, value)
+        if int_mode:
+            min = int(min)
+            max = int(max)
+            step = int(step)
+            value = int(value)
         self.config = self.add_attribute(
             "config",
             DictTopic,
@@ -34,13 +40,16 @@ class SliderControl(ValuedControl[None]):
     def init(self):
         self.on_set = self.value.on_set
 
-    def set_activation_callback(self, callback):
-        self.on_set += callback
+    # def set_activation_callback(self, callback):
+    #     self.on_set += callback
 
     def get(self) -> int | float:
         if self.config["int_mode"]:
             return int(self.value.get())
         return self.value.get()
+
+    def get_value_topic(self) -> Topic:
+        return self.value
 
     def get_int(self) -> int:
         return int(self.value.get())
@@ -66,6 +75,9 @@ class SliderControl(ValuedControl[None]):
             return True
         return False
 
+    def set_activation_callback(self, callback: Callable[[], None]):
+        self.on_set += callback
+
     def set_min(self, min: float):
         self.config["min"] = min
 
@@ -77,6 +89,9 @@ class SliderControl(ValuedControl[None]):
 
     def set_integer_mode(self):
         self.config["int_mode"] = True
+        self.config["min"] = int(self.config["min"])
+        self.config["max"] = int(self.config["max"])
+        self.config["step"] = int(self.config["step"])
 
     def set_float_mode(self):
         self.config["int_mode"] = False
