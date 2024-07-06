@@ -7,7 +7,6 @@ def func(
     sign_source: Callable | None = None,
     annotation_override: dict[str, Any] | None = None,
     default_override: dict[str, Any] | None = None,
-    needs_trigger: bool = True,
 ):
     """
     A decorator to register a node funcion to the Node.
