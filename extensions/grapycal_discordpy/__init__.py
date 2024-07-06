@@ -3,11 +3,12 @@ import discord
 from discord import app_commands, Interaction
 from discord.ext import commands
 from grapycal.extension_api.trait import InputsTrait, OutputsTrait
-from grapycal.sobjects.port import InputPort
+from grapycal.sobjects.port import OutputPort
 from objectsync.sobject import SObjectSerialized
 import inspect
 from typing import Union
-from topicsync.topic import GenericTopic
+from grapycal import GenericTopic, ListTopic, StringTopic
+from topicsync.topic import DictTopic
 
 class DiscordBotNode(Node):
     '''
@@ -57,57 +58,55 @@ class DiscordBotNode(Node):
 
 class DiscordCommandNode(Node):
     '''
-    Equivalent to discord.py's `commands.Command`. It creates a command and sends out the interaction and parameters.
+    Equivalent to discord.py's `commands.Command`. It adds a command to the bot.
 
-    To make it add the command to bot.tree (local command tree), send in the bot instance, command name to `cmd_name` and command description to `cmd_description`.
+    To make it add a command, send in the bot instance, the command name and the command description to `cmd`.
 
-    To make it sync to discord, double click on the node.
-
-    It runs when the command is invoked by the user in discord.
+    To make it sync the commands, double click on the node.
 
     :inputs:
         - bot: the discord bot instance
         - cmd_name: the command name
         - cmd_description: the command description
-        - cmd_params: the parameters of the command (optional)
+    
     :outputs:
-        - interaction: discord.Interaction
-        - params: the parameters passed to the command, data looks like {param1: value1, param2: value2, ...}
+        - interaction: the interaction
+        - *: the parameters
     '''
     category = "discordpy"
 
-    def init_node(self):
-        self.bot = None
-
-    def define_traits(self):
+    def define_traits(self): # type: ignore
         self.cmd = InputsTrait(
             name="cmd",
             attr_name="cmd",
             ins=["bot", "cmd_name", "cmd_description"],
             on_all_ready=self.task,
         )
-
-        self.cmd_params = InputsTrait(
-            name="cmd_params",
-            attr_name="cmd_params",
-            ins=[],
-            expose_attr=True,
-        )
-
-        self.cb = OutputsTrait(
-            outs=["interaction", "params"],
-        )
-        return [self.cmd, self.cmd_params, self.cb]
+        return [self.cmd]
     
     def build_node(self):
-        self.output_control = self.add_text_control(
-            "", readonly=True, name="output_control"
-        )
-        self.is_defer = self.add_attribute(
-            "is_defer", GenericTopic[bool], False, editor_type="toggle"
-        )
         self.css_classes.append("fit-content")
+        self.output_control = self.add_text_control("", readonly=True, name="output_control")
+        self.is_defer = self.add_attribute("is_defer", GenericTopic[bool], False, editor_type="toggle")
+        self.interaction_port = self.add_out_port("interaction", 1, display_name="Interaction")
+        self.param_ports_topic = self.add_attribute("param_ports_topic", ListTopic, [], editor_type="list", display_name="Parameters")
+        self.param_type_selector = self.add_attribute("param_type_selector", StringTopic, "str", editor_type="options", options=["str", "int", "bool", "User", "TextChannel", "VoiceChannel", "CategoryChannel", "Role", "Mentionable", "float", "Attachment"], display_name="New Parameter Type")
+        self.param_type_dict = self.add_attribute("param_type_dict", DictTopic)
+        for param_name, param_type in self.param_type_dict.get().items():
+            self.add_out_port(param_name, display_name=f'{param_name}:{param_type}')
 
+    def init_node(self):
+        self.param_ports_topic.on_insert.add_auto(self.on_param_insert)
+        self.param_ports_topic.on_pop.add_auto(self.on_param_pop)
+
+    def on_param_insert(self, param_name, _):
+        self.add_out_port(param_name,display_name=f'{param_name}:{self.param_type_selector.get()}')
+        self.param_type_dict[param_name] = self.param_type_selector.get()
+    
+    def on_param_pop(self, param_name, _):
+        self.remove_out_port(param_name)
+        self.param_type_dict.pop(param_name)
+        
     def double_click(self):
         if self.bot:
             self.run(self.sync)
@@ -117,24 +116,24 @@ class DiscordCommandNode(Node):
         self.output_control.set("Commands synced")
 
     def task(self, **kwargs):
-        bot: commands.Bot = kwargs["bot"]
-        self.bot = bot
-        cmd_name = kwargs['cmd_name']
-        cmd_description = kwargs['cmd_description']
+        self.bot:commands.Bot = kwargs["bot"]
+        self.run(self.add_command, **kwargs)
 
-        params = kwargs.copy()
-        for key in ["bot", "cmd_name", "cmd_description"]:
-            params.pop(key)
-        
+    def callback(self, interaction: Interaction, params):
+        self.get_out_port("interaction").push(interaction)
+        for name in params:
+            self.get_out_port(name).push(params[name])
+    
+    def add_command(self, bot: commands.Bot, cmd_name, cmd_description):
+        params = self.param_type_dict.get()
+
         if self.is_defer.get():
             async def callback(interaction:Interaction, **params):
                 await interaction.response.defer()
-                self.cb.push('interaction', interaction)
-                self.cb.push('params', params)
+                self.callback(interaction, params)
         else:
             async def callback(interaction:Interaction, **params):
-                self.cb.push('interaction', interaction)
-                self.cb.push('params', params)
+                self.callback(interaction, params)
 
         parameters = [
             # Required parameter
@@ -166,7 +165,7 @@ class DiscordCommandNode(Node):
                 )
             )
 
-        callback.__signature__ = inspect.Signature(parameters)
+        callback.__signature__ = inspect.Signature(parameters) # type: ignore
         command = app_commands.Command(
             name=cmd_name,
             description=cmd_description,
@@ -192,7 +191,7 @@ class DiscordSendMessageNode(Node):
     '''
     category = "discordpy"
 
-    def define_traits(self):
+    def define_traits(self): # type: ignore
         self.ins = InputsTrait(
             ins=["interaction", "content"],
             on_all_ready=self.task,
