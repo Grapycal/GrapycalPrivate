@@ -4,7 +4,8 @@ from grapycal import func, Node
 
 class AddNode(Node):
     category = "function/math"
-    label_ =
+    label = "+"
+
     @func()
     def output(self, a=0, b=0):
         return a + b
@@ -28,8 +29,6 @@ class AdditionNode(FunctionNode):
     max_in_degree = [None]
     outputs = ["sum"]
     display_port_names = False
-    label_ = "+"
-    search = ["sum"]
 
     def build_node(self):
         super().build_node()

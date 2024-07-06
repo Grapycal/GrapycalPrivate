@@ -143,7 +143,7 @@ class SimpleModuleNode(ModuleNode):
     inputs: list[str] = []
     max_in_degree = [1]
     outputs = ["output"]
-    shape_ = "simple"
+    shape = "simple"
     display_port_names: bool | None = None
 
     """

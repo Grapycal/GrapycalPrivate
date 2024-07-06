@@ -360,9 +360,9 @@ class ExtensionManager:
                 source=name,
                 prefix="",
             )
-            if node_type.label_ is not None:
+            if node_type.label is not None:
                 main_store.slash.register(
-                    node_type.label_,
+                    node_type.label,
                     lambda ctx,
                     args,
                     n=node_type_name: self._create_node_slash_listener(

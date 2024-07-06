@@ -360,7 +360,7 @@ class GetGradientNode(Node):
     """
 
     category = "torch/operations"
-    label_ = "∇"
+    label = "∇"
 
     def build_node(self):
         self.shape_topic.set("round")
