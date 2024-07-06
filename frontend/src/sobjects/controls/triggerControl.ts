@@ -67,6 +67,9 @@ export class TriggerControl extends Control {
         this.button.addEventListener("mousedown", (e) => {
             e.stopPropagation()
         })
+        this.button.addEventListener("dblclick", (e) => {
+            e.stopPropagation()
+        })
     }
 
 }
