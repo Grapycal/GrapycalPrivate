@@ -50,16 +50,20 @@ class Port(SObject):
     def init(self):
         self.edges: List[Edge] = []
         self.node: Node = self.get_parent()  # type: ignore
+        self.on_edge_connected = Action()
+        self.on_edge_disconnected = Action()
 
     def add_edge(self, edge: "Edge"):
         if len(self.edges) >= self.max_edges.get():
             raise Exception("Max edges reached")
         self.edges.append(edge)
+        self.on_edge_connected.invoke()
 
     def remove_edge(self, edge: "Edge"):
         if edge not in self.edges:
             return
         self.edges.remove(edge)
+        self.on_edge_disconnected.invoke()
 
     def is_full(self):
         return len(self.edges) >= self.max_edges.get()

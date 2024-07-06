@@ -12,6 +12,7 @@ from grapycal.sobjects.controlPanel import ControlPanel
 from grapycal.sobjects.controls.floatControl import FloatControl
 from grapycal.sobjects.controls.intControl import IntControl
 from grapycal.sobjects.controls.objectControl import ObjectControl
+from grapycal.sobjects.controls.triggerControl import TriggerControl
 import grapycal.utils.logging
 from grapycal.utils.misc import SemVer
 from grapycal.utils.os_stat import OSStat
@@ -180,6 +181,7 @@ class Workspace:
         self._objectsync.register(IntControl)
         self._objectsync.register(FloatControl)
         self._objectsync.register(ObjectControl)
+        self._objectsync.register(TriggerControl)
 
         self._objectsync.register(WebcamStream)
         self._objectsync.register(LinePlotControl)

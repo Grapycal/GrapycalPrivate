@@ -1,12 +1,12 @@
 import math
 
 # ported from https://github.com/pvigier/perlin-numpy/blob/master/perlin2d.py
+from grapycal.extension_api.decor import func
 import torch
 from grapycal import FunctionNode, StringTopic
 from grapycal.extension.utils import NodeInfo
 from grapycal.sobjects.sourceNode import SourceNode
-
-from .settings import SettingsNode
+from grapycal import Node
 
 
 def rand_perlin_2d(shape, res, fade=lambda t: 6 * t**5 - 15 * t**4 + 10 * t**3):
@@ -162,42 +162,12 @@ class ConvolutionKernelNode(SourceNode):
         return res[:-1]
 
 
-class ArangeNode(SourceNode):
+class ArangeNode(Node):
     category = "torch/generative"
 
-    def build_node(self):
-        super().build_node()
-        self.label.set("Arange")
-        self.shape.set("simple")
-        self.out_port = self.add_out_port("arange", display_name="")
-        self.start = self.add_attribute("start", StringTopic, "0", editor_type="text")
-        self.stop = self.add_attribute("stop", StringTopic, "10", editor_type="text")
-        self.step = self.add_attribute("step", StringTopic, "1", editor_type="text")
-        self.update_label()
-
-    def init_node(self):
-        super().init_node()
-        self.start.on_set.add_manual(self.update_label)
-        self.stop.on_set.add_manual(self.update_label)
-        self.step.on_set.add_manual(self.update_label)
-
-    def restore_from_version(self, version: str, old: NodeInfo):
-        super().restore_from_version(version, old)
-        self.restore_attributes("start", "stop", "step")
-
-    def update_label(self, _=None):
-        self.label.set(
-            f"Arange [{self.start.get()},{self.stop.get()},{self.step.get()}]"
-        )
-
-    def task(self):
-        start = float(self.start.get())
-        stop = float(self.stop.get())
-        step = float(self.step.get())
-        device = SettingsNode.instance.default_device.get()
-        self.out_port.push(torch.arange(start, stop, step, device=device))
-
-
+    @func()
+    def output(self, start: float, stop: float | int, step: float) -> torch.Tensor:
+        return torch.arange(start, stop, step)
 
 
 class Arange2Node(FunctionNode):

@@ -16,6 +16,7 @@ from grapycal.sobjects.controls.intControl import IntControl
 from grapycal.sobjects.controls.objectControl import ObjectControl
 from grapycal.sobjects.controls.textControl import TextControl
 from grapycal.sobjects.controls.toggleControl import ToggleControl
+from grapycal.sobjects.controls.triggerControl import TriggerControl
 from grapycal.sobjects.port import UNSPECIFY_CONTROL_VALUE, OutputPort
 from objectsync.topic import ObjDictTopic, ListTopic
 from .trait import Trait
@@ -149,6 +150,9 @@ class DecorTrait(Trait):
         self.param_ports = self.node.add_attribute(
             f"{self.name}.param_ports", ObjDictTopic[InputPort], restore_from=None
         )
+        self.tr_ports = self.node.add_attribute(
+            f"{self.name}.tr_ports", ObjDictTopic[InputPort], restore_from=None
+        )
         self.show_inputs = self.node.add_attribute(
             f"{self.name}.show_inputs",
             ListTopic,
@@ -166,6 +170,20 @@ class DecorTrait(Trait):
             editor_type="multiselect",
             options=list(self.params.keys()),
         )
+
+        # generate a trigger input port for each function
+        for name, node_func in self.node_funcs.items():
+            self.tr_ports[f"{self.name}.tr.{name}"] = self.node.add_in_port(
+                f"{self.name}.tr.{name}",
+                64,
+                display_name="trigger",
+                datatype=AnyType,
+                control_type=TriggerControl,
+                control_value=UNSPECIFY_CONTROL_VALUE,
+                activate_on_control_change=True,
+                update_control_from_edge=False,
+            )
+            self.show_inputs.insert(f"{self.name}.tr.{name}")
 
         # generate input ports for function inputs
         for name, inp in self.inputs.items():
@@ -259,8 +277,25 @@ class DecorTrait(Trait):
             if name.split(".param.")[-1] not in self.show_params.get():
                 port.set_hidden(True)
 
+        for name, port in self.in_ports.get().items():
+            port.on_edge_connected += lambda name=name: self._edge_changed(name)
+            port.on_edge_disconnected += lambda name=name: self._edge_changed(name)
+
         self.show_inputs.on_set2.add_auto(self.show_inputs_changed)
         self.show_params.on_set2.add_auto(self.show_params_changed)
+
+    def _edge_changed(self, changed_port_name: str):
+        changed_port_name = changed_port_name.split(".")[-1]
+        for func in self.node_funcs.values():
+            if changed_port_name in func.inputs:
+                trigger_port = self.tr_ports[f"{self.name}.tr.{func.name}"]
+                trigger_port.set_hidden(not self.needs_trigger_port(func))
+
+    def needs_trigger_port(self, func: NodeFunc):
+        for input_name in func.inputs:
+            if len(self.in_ports[f"{self.name}.in.{input_name}"].edges) > 0:
+                return False
+        return True
 
     def show_inputs_changed(self, old, new):
         old = set(old)
@@ -461,7 +496,7 @@ def collect_input_output_params(
         cur_outputs: dict[str, Output] = {}
         if not hasattr(func.sign_source, "__annotations__"):
             raise ValueError(
-                f"Cannot get __annotations__ from function `{func.sign_source.__name__}`. Please provide a function with annotations."
+                f"Cannot get __annotations__ from function `{func.sign_source.__name__}`. Please provide a function with annotations for sign_source."
             )
         if "return" in func.sign_source.__annotations__:
             if "return" in func.annotation_override:

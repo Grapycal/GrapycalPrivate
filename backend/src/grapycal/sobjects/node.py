@@ -654,6 +654,7 @@ class Node(SObject, metaclass=NodeMeta):
         datatype: GType = AnyType,
         activate_on_control_change=False,
         update_control_from_edge=False,
+        is_param=False,
         **control_kwargs,
     ) -> InputPort[T]:
         """
@@ -674,6 +675,7 @@ class Node(SObject, metaclass=NodeMeta):
             datatype=datatype,
             activate_on_control_change=activate_on_control_change,
             update_control_from_edge=update_control_from_edge,
+            is_param=is_param,
             **control_kwargs,
         )
         self.in_ports.insert(port)
