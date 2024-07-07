@@ -7,7 +7,7 @@ from dataclasses import dataclass
 import inspect
 import logging
 import traceback
-from typing import TYPE_CHECKING, Any, Callable, TypeVar
+from typing import TYPE_CHECKING, Any, Callable, Iterable, TypeVar
 
 from grapycal.core.typing import AnyType, GType
 from grapycal.sobjects.controls.buttonControl import ButtonControl
@@ -29,34 +29,53 @@ if TYPE_CHECKING:
     pass
 
 
+class SHOW_ALL_PORTS_T:
+    pass
+
+
+SHOW_ALL_PORTS = SHOW_ALL_PORTS_T()
+
+
 class NodeFuncSpec:
     def __init__(
         self,
         function: Callable,
-        sign_source: Callable | None = None,
+        sign_source: Callable | list[Callable | inspect.Parameter] | None = None,
         annotation_override: dict[str, Any] | None = None,
         default_override: dict[str, Any] | None = None,
+        shown_ports: list[str] | SHOW_ALL_PORTS_T = SHOW_ALL_PORTS,
     ):
         self.name = function.__name__
-        self.sign_source = sign_source or function
+        if sign_source is None:
+            self.sign_source = [function]
+        elif not isinstance(sign_source, list):
+            self.sign_source = [sign_source]
+        else:
+            self.sign_source = sign_source
         self.annotation_override = annotation_override or {}
         self.default_override = default_override or {}
+        self.shown_ports = shown_ports
 
 
 class NodeParamSpec:
     def __init__(
         self,
         function: Callable,
-        sign_source: Callable | None = None,
+        sign_source: Callable | list[Callable | inspect.Parameter] | None = None,
         annotation_override: dict[str, Any] | None = None,
         default_override: dict[str, Any] | None = None,
-        show_ports_by_default: bool = True,
+        shown_ports: list[str] | SHOW_ALL_PORTS_T = SHOW_ALL_PORTS,
     ):
         self.name = function.__name__
-        self.sign_source = sign_source or function
+        if sign_source is None:
+            self.sign_source = [function]
+        elif not isinstance(sign_source, list):
+            self.sign_source = [sign_source]
+        else:
+            self.sign_source = sign_source
         self.annotation_override = annotation_override or {}
         self.default_override = default_override or {}
-        self.show_ports_by_default = show_ports_by_default
+        self.shown_ports = shown_ports
 
 
 @dataclass
@@ -91,6 +110,7 @@ class Input:
     name: str
     datatype: GType
     default: Any = NO_DEFAULT
+    show_port_by_default: bool = True
 
 
 @dataclass
@@ -157,13 +177,18 @@ class DecorTrait(Trait):
         self.tr_ports = self.node.add_attribute(
             f"{self.name}.tr_ports", ObjDictTopic[InputPort], restore_from=None
         )
+
+        default_inputs_to_show = [
+            input.name for input in self.inputs.values() if input.show_port_by_default
+        ]
+
         self.show_inputs = self.node.add_attribute(
             f"{self.name}.show_inputs",
             ListTopic,
             display_name="Apparance/input",
             editor_type="multiselect",
             options=list(self.inputs.keys()),
-            init_value=list(self.inputs.keys()),
+            init_value=default_inputs_to_show,
         )
 
         default_params_to_show = [
@@ -506,11 +531,25 @@ def consistent_default_values(defaults: "list[Any]") -> bool:
         return True
 
     first_default = defaults[0]
-    for default in defaults:
+    for default in defaults[1:]:
         if default != first_default:
             return False
 
     return True
+
+
+def iterate_sign_sources(
+    sign_sources: Iterable[Callable | inspect.Parameter],
+) -> Iterable[tuple[str, inspect.Parameter]]:
+    for sign_source in sign_sources:
+        if isinstance(sign_source, inspect.Parameter):
+            yield sign_source.name, sign_source
+            continue
+        signature = inspect.signature(sign_source)
+        for param_item_name, arg in signature.parameters.items():
+            if param_item_name == "self":
+                continue
+            yield param_item_name, arg
 
 
 def collect_input_output_params(
@@ -530,16 +569,27 @@ def collect_input_output_params(
     for func in funcs.values():
         cur_inputs: dict[str, Input] = {}
         cur_outputs: dict[str, Output] = {}
-        if not hasattr(func.sign_source, "__annotations__"):
+        # get the first callable in sign_source
+
+        for sign_source in func.sign_source:
+            if not isinstance(sign_source, inspect.Parameter):
+                fisrt_callable = sign_source
+                break
+        else:
             raise ValueError(
-                f"Cannot get __annotations__ from function `{func.sign_source.__name__}`. Please provide a function with annotations for sign_source."
+                f"Please at least provide one function in sign_source for function `{func.name}`."
             )
-        if "return" in func.sign_source.__annotations__:
+
+        if not hasattr(fisrt_callable, "__annotations__"):
+            raise ValueError(
+                f"Cannot get __annotations__ from function `{fisrt_callable.__name__}`. Please provide a function with annotations for sign_source."
+            )
+        if "return" in fisrt_callable.__annotations__:
             if "return" in func.annotation_override:
                 datatype = GType.from_annotation(func.annotation_override["return"])
             else:
                 datatype = GType.from_annotation(
-                    func.sign_source.__annotations__["return"]
+                    fisrt_callable.__annotations__["return"]
                 )
         else:
             datatype = AnyType
@@ -548,8 +598,7 @@ def collect_input_output_params(
         outputs[func.name].append(out)
         cur_outputs[func.name] = out
 
-        signature = inspect.signature(func.sign_source)
-        for arg_name, arg in signature.parameters.items():
+        for arg_name, arg in iterate_sign_sources(func.sign_source):
             if arg_name == "self":
                 continue
 
@@ -566,11 +615,19 @@ def collect_input_output_params(
                     if arg.default != inspect.Parameter.empty
                     else NO_DEFAULT
                 )
+            if default is ...:
+                default = NO_DEFAULT
+
+            if isinstance(func.shown_ports, SHOW_ALL_PORTS_T):
+                show_port_by_default = True
+            else:
+                show_port_by_default = arg_name in func.shown_ports
 
             inp = Input(
                 name=arg_name,
                 datatype=datatype,
                 default=default,
+                show_port_by_default=show_port_by_default,
             )
             inputs[arg_name].append(inp)
             cur_inputs[arg_name] = inp
@@ -580,12 +637,8 @@ def collect_input_output_params(
         )
 
     for param in param_funcs.values():
-        signature = inspect.signature(param.sign_source)
         cur_params: dict[str, ParamItem] = {}
-        for param_item_name, arg in signature.parameters.items():
-            if param_item_name == "self":
-                continue
-
+        for param_item_name, arg in iterate_sign_sources(param.sign_source):
             if param_item_name in param.annotation_override:
                 datatype = GType.from_annotation(
                     param.annotation_override[param_item_name]
@@ -601,12 +654,19 @@ def collect_input_output_params(
                     if arg.default != inspect.Parameter.empty
                     else NO_DEFAULT
                 )
+            if default is ...:
+                default = NO_DEFAULT
+
+            if isinstance(param.shown_ports, SHOW_ALL_PORTS_T):
+                show_port_by_default = True
+            else:
+                show_port_by_default = param_item_name in param.shown_ports
 
             par = ParamItem(
                 name=param_item_name,
                 datatype=datatype,
                 default=default,
-                show_port_by_default=param.show_ports_by_default,
+                show_port_by_default=show_port_by_default,
             )
 
             params[param_item_name].append(par)

@@ -182,7 +182,7 @@ class SimpleModuleNode(ModuleNode):
                 self.module_type.__init__,
                 annotation_override=self.annotation_override,
                 default_override=self.default_override,
-                show_ports_by_default=False,
+                shown_ports=[],
             )
         ]
 

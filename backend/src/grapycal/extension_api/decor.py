@@ -1,12 +1,19 @@
+import inspect
 from typing import Any, Callable
 
-from grapycal.extension_api.node_def import NodeFuncSpec, NodeParamSpec
+from grapycal.extension_api.node_def import (
+    SHOW_ALL_PORTS,
+    SHOW_ALL_PORTS_T,
+    NodeFuncSpec,
+    NodeParamSpec,
+)
 
 
 def func(
-    sign_source: Callable | None = None,
+    sign_source: Callable | list[Callable | inspect.Parameter] | None = None,
     annotation_override: dict[str, Any] | None = None,
     default_override: dict[str, Any] | None = None,
+    shown_ports: list[str] | SHOW_ALL_PORTS_T = SHOW_ALL_PORTS,
 ):
     """
     A decorator to register a node funcion to the Node.
@@ -25,6 +32,7 @@ def func(
             sign_source=sign_source,
             annotation_override=annotation_override,
             default_override=default_override,
+            shown_ports=shown_ports,
         )
 
         func._node_func_spec = node_func_spec
@@ -35,10 +43,10 @@ def func(
 
 
 def param(
-    sign_source: Callable | None = None,
+    sign_source: Callable | list[Callable | inspect.Parameter] | None = None,
     annotation_override: dict[str, Any] | None = None,
     default_override: dict[str, Any] | None = None,
-    show_ports_by_default: bool = True,
+    shown_ports: list[str] | SHOW_ALL_PORTS_T = SHOW_ALL_PORTS,
 ):
     """
     A decorator to register a set of node parameter to the Node.
@@ -64,7 +72,7 @@ def param(
             sign_source=sign_source,
             annotation_override=annotation_override,
             default_override=default_override,
-            show_ports_by_default=show_ports_by_default,
+            shown_ports=shown_ports,
         )
         func._node_param_spec = node_param_spec
         return func
