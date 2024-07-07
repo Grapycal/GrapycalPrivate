@@ -3,11 +3,12 @@ import discord
 from discord import app_commands, Interaction
 from discord.ext import commands
 from grapycal.extension_api.trait import InputsTrait, OutputsTrait
+from grapycal.sobjects.controls.buttonControl import ButtonControl
 from grapycal.sobjects.port import OutputPort
 from objectsync.sobject import SObjectSerialized
 import inspect
 from typing import Union
-from grapycal import GenericTopic, ListTopic, StringTopic
+from grapycal import GenericTopic, ListTopic, StringTopic, func, param, Edge, InputPort, task
 from topicsync.topic import DictTopic
 
 class DiscordBotNode(Node):
@@ -26,30 +27,45 @@ class DiscordBotNode(Node):
     '''
     category = "discordpy"
 
-    def define_traits(self):
-        self.ins = InputsTrait(
-            ins=["token"],
-            on_all_ready=self.task,
-        )
-        self.outs = OutputsTrait(
-            outs=["bot"],
-        )
-        return [self.ins, self.outs]
+    @func()
+    def get_bot(self):
+        return self.bot
+    
+    def build_node(self):
+        self.tree_port = self.add_out_port("tree", 64)
+        self.token_port = self.add_in_port("token", 1)
 
     def init_node(self):
         super().init_node()
+        self.started = False
         self.bot = commands.Bot(command_prefix="g!", intents=discord.Intents.all())
+        self.tree_port.on_edge_connected += self.command_node_conencted
+        self.tree_port.on_edge_disconnected += self.command_node_disconnected
 
-    def double_click(self):
-        self.outs.push("bot", self.bot)
+        self.token_port.on_activate += self.token_input
 
-    def task(self, token):
-        self.run(self.start_bot, token=token)
-        self.outs.push("bot", self.bot)
+    def command_node_conencted(self, edge:Edge, sync=True):
+        if not self.started:
+            return
+        node = edge.get_head().node
+        if isinstance(node, DiscordCommandNode):
+            node.set_bot(self.bot, sync=sync)
+
+    def command_node_disconnected(self, edge:Edge):
+        node = edge.get_head().node
+        if isinstance(node, DiscordCommandNode):
+            node.remove_from_bot()
+
+    def token_input(self, port:InputPort):
+        self.run(self.start_bot, token=port.get())
 
     async def start_bot(self, token):
         await self.bot.login(token)
+        self.started = True
+        for edge in self.tree_port.edges:
+            self.command_node_conencted(edge, sync=False)
         await self.bot.connect()
+        
 
     def destroy(self) -> SObjectSerialized:
         self.run(self.bot.close)
@@ -75,14 +91,11 @@ class DiscordCommandNode(Node):
     '''
     category = "discordpy"
 
-    def define_traits(self): # type: ignore
-        self.cmd = InputsTrait(
-            name="cmd",
-            attr_name="cmd",
-            ins=["bot", "cmd_name", "cmd_description"],
-            on_all_ready=self.task,
-        )
-        return [self.cmd]
+    @param()
+    def param(self, cmd_name:str, cmd_description:str):
+        self.cmd_name = cmd_name
+        self.cmd_description = cmd_description
+        self.set_status("🟠Press to sync")
     
     def build_node(self):
         self.css_classes.append("fit-content")
@@ -94,35 +107,65 @@ class DiscordCommandNode(Node):
         self.param_type_dict = self.add_attribute("param_type_dict", DictTopic)
         for param_name, param_type in self.param_type_dict.get().items():
             self.add_out_port(param_name, display_name=f'{param_name}:{param_type}')
+        self.sync_button = self.add_button_control("Sync Commands")
+        self.tree_port = self.add_in_port("tree",1)
 
     def init_node(self):
+        self.bot = None
         self.param_ports_topic.on_insert.add_auto(self.on_param_insert)
         self.param_ports_topic.on_pop.add_auto(self.on_param_pop)
+        self.sync_button.on_click += lambda: self.run(self.add_and_sync)
+        self.set_status("")
 
     def on_param_insert(self, param_name, _):
         self.add_out_port(param_name,display_name=f'{param_name}:{self.param_type_selector.get()}')
         self.param_type_dict[param_name] = self.param_type_selector.get()
+        self.set_status(f"🟠Press to sync")
     
     def on_param_pop(self, param_name, _):
         self.remove_out_port(param_name)
         self.param_type_dict.pop(param_name)
-        
-    def double_click(self):
-        if self.bot:
-            self.run(self.sync)
+        self.set_status(f"🟠Press to sync")
 
-    async def sync(self):
-        await self.bot.tree.sync()
-        self.output_control.set("Commands synced")
+    @task
+    def set_bot(self, bot: commands.Bot, sync: bool):
+        self.bot = bot
+        if sync:
+            self.add_and_sync()
+        else:
+            self.add_command(bot, self.cmd_name, self.cmd_description)
+            self.set_status("🟢Command synced")
 
-    def task(self, **kwargs):
-        self.bot:commands.Bot = kwargs["bot"]
-        self.run(self.add_command, **kwargs)
+    @task
+    def remove_from_bot(self):
+        self.bot.tree.remove_command(self.cmd_name)
+        self.bot = None
+        self.set_status("")
+
+    def add_and_sync(self):
+        if self.bot is None:
+            self.print_exception("Not connected to a bot. Please connect 'tree' port to a DiscordBotNode")
+        self.run(self.async_add_and_sync, bot=self.bot, cmd_name=self.cmd_name, cmd_description=self.cmd_description)
 
     def callback(self, interaction: Interaction, params):
         self.get_out_port("interaction").push(interaction)
         for name in params:
             self.get_out_port(name).push(params[name])
+
+    def set_status(self, status:str):
+        self.sync_button.label.set(status)
+
+    '''
+    Utility function to sync the commands
+    '''
+
+    async def async_add_and_sync(self, bot: commands.Bot, cmd_name, cmd_description):
+        self.add_command(bot, cmd_name, cmd_description)
+        await self.sync(bot)
+
+    async def sync(self, bot: commands.Bot):
+        await bot.tree.sync()
+        self.set_status("🟢Command synced")
     
     def add_command(self, bot: commands.Bot, cmd_name, cmd_description):
         params = self.param_type_dict.get()
@@ -174,7 +217,6 @@ class DiscordCommandNode(Node):
         
         bot.tree.remove_command(cmd_name)
         bot.tree.add_command(command)
-        self.output_control.set(f"Command {cmd_name} added")
 
 class DiscordSendMessageNode(Node):
     '''
