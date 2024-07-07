@@ -50,11 +50,13 @@ class NodeParamSpec:
         sign_source: Callable | None = None,
         annotation_override: dict[str, Any] | None = None,
         default_override: dict[str, Any] | None = None,
+        show_ports_by_default: bool = True,
     ):
         self.name = function.__name__
         self.sign_source = sign_source or function
         self.annotation_override = annotation_override or {}
         self.default_override = default_override or {}
+        self.show_ports_by_default = show_ports_by_default
 
 
 @dataclass
@@ -102,6 +104,7 @@ class ParamItem:
     name: str
     datatype: GType
     default: Any = NO_DEFAULT
+    show_port_by_default: bool = True
 
 
 @dataclass
@@ -158,18 +161,22 @@ class DecorTrait(Trait):
             f"{self.name}.show_inputs",
             ListTopic,
             display_name="Apparance/input",
-            restore_from=None,
             editor_type="multiselect",
             options=list(self.inputs.keys()),
             init_value=list(self.inputs.keys()),
         )
+
+        default_params_to_show = [
+            param.name for param in self.params.values() if param.show_port_by_default
+        ]
+
         self.show_params = self.node.add_attribute(
             f"{self.name}.show_params",
             ListTopic,
             display_name="Apparance/param",
-            restore_from=None,
             editor_type="multiselect",
             options=list(self.params.keys()),
+            init_value=default_params_to_show,
         )
 
         # generate a trigger input port for each function
@@ -599,6 +606,7 @@ def collect_input_output_params(
                 name=param_item_name,
                 datatype=datatype,
                 default=default,
+                show_port_by_default=param.show_ports_by_default,
             )
 
             params[param_item_name].append(par)

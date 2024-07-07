@@ -171,7 +171,7 @@ class NewAddNode(Node):
 
 class BiasNode(NewAddNode):
     @param()
-    def param(self, bias: int = 5) -> None:
+    def param(self, bias: int) -> None:
         self.bias = bias
         self.label_topic.set(f"bias: {bias}")
 

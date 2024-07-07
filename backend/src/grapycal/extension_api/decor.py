@@ -38,6 +38,7 @@ def param(
     sign_source: Callable | None = None,
     annotation_override: dict[str, Any] | None = None,
     default_override: dict[str, Any] | None = None,
+    show_ports_by_default: bool = True,
 ):
     """
     A decorator to register a set of node parameter to the Node.
@@ -63,6 +64,7 @@ def param(
             sign_source=sign_source,
             annotation_override=annotation_override,
             default_override=default_override,
+            show_ports_by_default=show_ports_by_default,
         )
         func._node_param_spec = node_param_spec
         return func
