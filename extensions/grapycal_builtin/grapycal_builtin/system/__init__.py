@@ -5,25 +5,6 @@ import dotenv
 from grapycal import InputPort, Node, SourceNode, TextControl
 
 
-class LoadDotEnvNode(SourceNode):
-    """
-    Parse a .env file and then load all the variables found as environment variables.
-    """
-
-    category = "system"
-
-    def build_node(self):
-        super().build_node()
-        self.label_topic.set("Load .env")
-        self.shape_topic.set("simple")
-        self.css_classes.append("fit-content")
-        self.out_port = self.add_out_port("run")
-
-    def task(self):
-        dotenv.load_dotenv("./.env")
-        self.out_port.push(None)
-
-
 class EnvironmentVariableNode(SourceNode):
     """
 
@@ -48,6 +29,7 @@ class EnvironmentVariableNode(SourceNode):
         self.css_classes.append("fit-content")
 
     def port_activated(self, port: InputPort):
+        dotenv.load_dotenv("./.env")
         if port == self.in_port:
             os.environ[self.variable_name.text.get()] = port.get()
         self.flash_running_indicator()
