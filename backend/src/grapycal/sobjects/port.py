@@ -57,13 +57,13 @@ class Port(SObject):
         if len(self.edges) >= self.max_edges.get():
             raise Exception("Max edges reached")
         self.edges.append(edge)
-        self.on_edge_connected.invoke()
+        self.on_edge_connected.invoke(edge)
 
     def remove_edge(self, edge: "Edge"):
         if edge not in self.edges:
             return
         self.edges.remove(edge)
-        self.on_edge_disconnected.invoke()
+        self.on_edge_disconnected.invoke(edge)
 
     def is_full(self):
         return len(self.edges) >= self.max_edges.get()

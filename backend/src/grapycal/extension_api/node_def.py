@@ -293,8 +293,8 @@ class DecorTrait(Trait):
                 port.set_hidden(True)
 
         for name, port in self.in_ports.get().items():
-            port.on_edge_connected += lambda name=name: self._edge_changed(name)
-            port.on_edge_disconnected += lambda name=name: self._edge_changed(name)
+            port.on_edge_connected += lambda _, name=name: self._edge_changed(name)
+            port.on_edge_disconnected += lambda _, name=name: self._edge_changed(name)
 
         self.show_inputs.on_set2.add_auto(self.show_inputs_changed)
         self.show_params.on_set2.add_auto(self.show_params_changed)
