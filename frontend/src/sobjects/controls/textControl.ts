@@ -26,7 +26,7 @@ export class TextControl extends Control {
         }
     `
 
-
+    private lastFinishedText: string = ""
 
     protected onStart(): void {
         super.onStart()
@@ -37,13 +37,18 @@ export class TextControl extends Control {
             (this.htmlItem.baseElement as HTMLDivElement).style.minHeight = "0px"
         }
         this.textBox.textarea.classList.add("control-text","text-field")
-        this.textBox.value = this.text.getValue()
+        this.textBox.value = this.text.getValue() 
         this.textBox.onResize.add(()=>{this.node.moved.invoke()})
-
+ 
         new BindInputBoxAndTopic(this,this.textBox, this.text,this.objectsync,true)
 
+        this.lastFinishedText = this.text.getValue()
         this.link2(this.textBox as any, "blur", () => {
+            if (this.textBox.value == this.lastFinishedText) {
+                return
+            } 
             this.makeRequest('finish')
+            this.lastFinishedText = this.textBox.value
         })
 
         let labelEl = this.htmlItem.getEl("label", HTMLDivElement)
