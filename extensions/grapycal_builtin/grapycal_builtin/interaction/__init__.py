@@ -14,9 +14,9 @@ class LabelNode(Node):
     category = "interaction"
 
     def build_node(self):
-        self.shape.set("simple")
+        self.shape_topic.set("simple")
         self.css_classes.append("fit-content")
-        self.expose_attribute(self.label, editor_type="text")
+        self.expose_attribute(self.label_topic, editor_type="text")
         self.restore_attributes("label")
 
 
@@ -25,8 +25,8 @@ class WebcamNode(Node):
     category = "interaction"
 
     def build_node(self):
-        self.label.set("Webcam")
-        self.shape.set("simple")
+        self.label_topic.set("Webcam")
+        self.shape_topic.set("simple")
         self.format = self.add_attribute(
             "format",
             StringTopic,
@@ -88,9 +88,9 @@ class WebcamNode(Node):
 
 class TemplateNode(Node):
     def build_node(self):
-        self.expose_attribute(self.label, "text")
+        self.expose_attribute(self.label_topic, "text")
         self.expose_attribute(
-            self.shape, "options", options=["normal", "simple", "round"]
+            self.shape_topic, "options", options=["normal", "simple", "round"]
         )
         self.restore_attributes("shape", "label")
         self.in_ports_topic = self.add_attribute(

@@ -99,7 +99,7 @@ export class CompSObject extends SObject implements IComponentable {
     }
 
     protected applyTemplate(template: string): void {
-        this.htmlItem.applyTemplate(template);
+        this.htmlItem.applyTemplate(template, "append");
         for (let [name,el] of this._htmlItem.getRefs()) {
             (this as any)[name] = el;
         }

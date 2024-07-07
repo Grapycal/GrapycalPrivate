@@ -134,6 +134,12 @@ export class HtmlItem extends Component{
         return slot;
     }
 
+    removeChild(child: HtmlItem){
+        const index = this.children.findIndex(c => c.item === child);
+        if(index === -1) return;
+        this.children.splice(index,1);
+    }
+
     getHtmlEl(id: string): HTMLElement{
         //match id and template_id
         const element = this.baseElement.querySelector(`[template_id="${this.templateId}"]#${id}`);
@@ -287,6 +293,7 @@ export class HtmlItem extends Component{
     }
 
     onDestroy(){
+        this.parent?.removeChild(this);
         this.parent_slot?.removeChild(this.baseElement);
     }
 }

@@ -17,6 +17,7 @@ import { Componentable } from "../component/componentable"
 import { Editor } from "./Editor"
 import { DictEditor } from "./DictEditor"
 import { ToggleEditor } from "./ToggleEditor"
+import { MultiSelectEditor } from "./MultiSelectEditor"
 
 export function object_equal(a:any,b:any){
     return JSON.stringify(a) === JSON.stringify(b);
@@ -35,8 +36,8 @@ export class Inspector extends Componentable{
         'button':ButtonEditor,
         'options':OptionsEditor,
         'dict':DictEditor,
-        'toggle':ToggleEditor
-
+        'toggle':ToggleEditor,
+        'multiselect':MultiSelectEditor,
     }
 
     protected get template(): string {return `

@@ -1,5 +1,5 @@
 .edge{
-    stroke: var(--z3);
+    stroke: #777777
 }
 
 .edge-label{
@@ -8,7 +8,7 @@
 
 
 .edge.hover{
-    stroke: var(--z4);
+    stroke: #aaaaaa;
 }
 
 .edge.selected{
@@ -16,7 +16,7 @@
 }
 
 .edge.data-ready{
-    stroke: var(--t2);
+    stroke: #33ff33 ;
     opacity: 0.7;
 }
 

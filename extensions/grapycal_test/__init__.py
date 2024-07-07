@@ -1,6 +1,7 @@
 import enum
 import io
 import json
+from types import FunctionType
 from typing import Any, Dict, List
 
 from grapycal.core.typing import PlainType
@@ -35,7 +36,7 @@ class OUONode(Node):
     category = "test"
 
     def build_node(self):
-        self.label.set("testing")
+        self.label_topic.set("testing")
         self.add_control(ToggleControl, name="toggle_conutrol", label="toggle")
 
         self.add_control(ToggleControl, name="toggle_conetrol", label="toeuytggle")
@@ -48,7 +49,7 @@ class TestNode(FunctionNode):
     default_ports = []
 
     def build_node(self):
-        self.label.set("testing")
+        self.label_topic.set("testing")
         self.send_port = self.add_in_port("send")
         self.recv_port = self.add_out_port("recv")
         self.subs_info = self.add_attribute(
@@ -104,8 +105,8 @@ class DefaultTestNode(DVfunctionNode):
 
     def build_node(self):
         super().build_node()
-        self.label.set("default testing")
-        self.shape.set("normal")
+        self.label_topic.set("default testing")
+        self.shape_topic.set("normal")
         self.send_port = self.add_in_port("test")
         self.recv_port = self.add_out_port("b")
         self.inputs_attribute.add("ccccc", "<requests.get>")
@@ -145,20 +146,38 @@ class OldAddNode(Node):
                 self.result.push(self.a.get() + self.b.get())
 
 
+def aaa(a: int) -> int:
+    return a + 1
+
+
+def aaaa(a: str) -> str:
+    return a * 2
+
+
 class NewAddNode(Node):
-    @func()
-    def sum(self, a: int, b: int, c: int) -> int:
-        return a + b + c + self.bias
+    bbb: FunctionType
+
+    def init_node(self):
+        self.bias = 0
+
+    # @func()
+    # def sum(self, a: int, b: int, c: int) -> int:
+    #     return a + b + c + self.bias
 
     @func()
-    def diff(self, a: int, b: int) -> int:
-        return a - b
+    def ouo(self, a=1):
+        return a + self.bias
 
+
+class BiasNode(NewAddNode):
     @param()
     def param(self, bias: int) -> None:
         self.bias = bias
-        self.label.set(f"bias: {bias}")
+        self.label_topic.set(f"bias: {bias}")
 
-    @func()
-    def aaa(self, t: str):
-        return t
+
+class Bias2Node(NewAddNode):
+    @param()
+    def param(self, bias: int) -> None:
+        self.bias = bias
+        self.label_topic.set(f"bias: {bias}")

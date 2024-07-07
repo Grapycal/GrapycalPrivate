@@ -1,6 +1,6 @@
 import { Componentable } from "../component/componentable"
 import { Node } from "../sobjects/node"
-import { Vector2 } from "../utils"
+import { Vector2, textToHtml } from "../utils"
 
 export class ErrorPopup extends Componentable{
     protected get template(): string {
@@ -70,7 +70,7 @@ export class ErrorPopup extends Componentable{
     }
 
     set(title:string,message: string){
-        message = message.replace(/\n/g,"<br>").replace(/ /g,"&nbsp;")
+        message = textToHtml(message)
         this.messageDiv.innerHTML = message
     }
 

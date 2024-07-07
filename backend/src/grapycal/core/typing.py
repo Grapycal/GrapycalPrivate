@@ -1,10 +1,13 @@
 import abc
+import inspect
 from typing import Any, Type
 
 
 class GType(abc.ABC):
     @staticmethod
-    def from_annotation(annotation: "Type|GType|Any") -> "GType":
+    def from_annotation(
+        annotation: "Type|GType|Any|inspect.Parameter.empty",
+    ) -> "GType":
         """
         The annotation can be a type expr. Currently type expr in string is not supported.
         """
@@ -12,9 +15,11 @@ class GType(abc.ABC):
             return annotation
         if annotation is None or annotation == Any:
             return AnyType
+        if annotation == inspect.Parameter.empty:
+            return AnyType
         if isinstance(annotation, type):
             return PlainType(annotation)
-        raise NotImplementedError(f"Unsupported annotation {annotation}")
+        return AnyType
 
     # we use a >> b (__rshift__) to indicate that a is compatible with b
     # because the symbol looks like plugging a into b
@@ -52,3 +57,6 @@ class PlainType(GType):
 
     def _can_accept(self, other: GType):
         return isinstance(other, PlainType) and issubclass(other._type, self._type)
+
+    def __repr__(self):
+        return f"PlainType({self._type})"

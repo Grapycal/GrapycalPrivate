@@ -29,15 +29,20 @@ export class FloatControl extends Control{
             this.input.valueAsNumber = newValue
         })
         this.input.onblur = () => {
-            this.value.set(parseFloat(this.input.value))
+            this.valueChanged()
         }
         this.input.onkeydown = (e) => {
             if (e.key == 'Enter') {
-                this.value.set(parseFloat(this.input.value))
+                this.valueChanged()
             }
         }
         this.link(this.label.onSet, (newValue) => {
             this.labelEl.innerText = newValue
         })
+    }
+
+    private valueChanged(){
+        if (this.value.getValue() == parseFloat(this.input.value)) return
+        this.value.set(parseFloat(this.input.value))
     }
 }

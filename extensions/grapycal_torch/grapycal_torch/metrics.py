@@ -11,8 +11,8 @@ class AccuracyNode(FunctionNode):
 
     def build_node(self):
         super().build_node()
-        self.label.set("Accuracy")
-        self.shape.set("simple")
+        self.label_topic.set("Accuracy")
+        self.shape_topic.set("simple")
         self.icon_path_topic.set("metrics")
 
     def calculate(self, prediction, target) -> Any:

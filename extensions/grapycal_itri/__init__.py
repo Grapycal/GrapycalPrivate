@@ -75,7 +75,7 @@ class QADatasetNode(SourceNode):
 
     def build_node(self):
         super().build_node()
-        self.label.set("QA Dataset")
+        self.label_topic.set("QA Dataset")
         self.out_port = self.add_out_port("dataset")
         self.path_port = self.add_in_port("path", control_type=TextControl)
 
@@ -99,8 +99,8 @@ class SplitCorpusNode(FunctionNode):
 
     def build_node(self):
         super().build_node()
-        self.shape.set("normal")
-        self.label.set("Split Corpus")
+        self.shape_topic.set("normal")
+        self.label_topic.set("Split Corpus")
         self.length_port = self.add_in_port(
             "max length", control_type=SliderControl, min=1, max=1000, step=1, value=500
         )
@@ -119,7 +119,7 @@ class OpenAINode(Node):
 
     def build_node(self):
         super().build_node()
-        self.label.set("OpenAI")
+        self.label_topic.set("OpenAI")
         self.system_message = self.add_in_port(
             "system message",
             control_type=TextControl,
@@ -180,8 +180,8 @@ class GPT2ChineseEncodeNode(FunctionNode):
 
     def build_node(self):
         super().build_node()
-        self.label.set("GPT2 Chinese: Encode")
-        self.shape.set("normal")
+        self.label_topic.set("GPT2 Chinese: Encode")
+        self.shape_topic.set("normal")
 
     def init_node(self):
         super().init_node()
@@ -205,8 +205,8 @@ class GPT2ChineseDecodeNode(FunctionNode):
 
     def build_node(self):
         super().build_node()
-        self.label.set("GPT2 Chinese: Decode")
-        self.shape.set("normal")
+        self.label_topic.set("GPT2 Chinese: Decode")
+        self.shape_topic.set("normal")
 
     def init_node(self):
         super().init_node()
@@ -230,7 +230,7 @@ class GPT2ChineseNode(SimpleModuleNode):
 
     def build_node(self):
         super().build_node()
-        self.label.set("GPT2 Chinese")
+        self.label_topic.set("GPT2 Chinese")
 
     def create_module(self) -> Module:
         module = GPT2LMHeadModel.from_pretrained(
@@ -252,8 +252,8 @@ class VectorDbMockNode(FunctionNode):
 
     def build_node(self):
         super().build_node()
-        self.label.set("Vector DB (mock)")
-        self.shape.set("normal")
+        self.label_topic.set("Vector DB (mock)")
+        self.shape_topic.set("normal")
 
     def calculate(self, query):
         if "圖書館" in query:

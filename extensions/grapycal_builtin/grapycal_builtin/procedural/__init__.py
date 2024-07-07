@@ -32,12 +32,12 @@ class TriggerNode(Node):
     category = "procedural"
 
     def build_node(self):
-        self.shape.set("simple")
+        self.shape_topic.set("simple")
         self.name = self.add_attribute("name", StringTopic, editor_type="text")
         self.in_port = self.add_in_port("jump", display_name="")
         self.out_port = self.add_out_port("then", display_name="")
         self.css_classes.append("fit-content")
-        self.label.set(f"{self.name.get()}")
+        self.label_topic.set(f"{self.name.get()}")
 
     def init_node(self):
         if self.is_preview.get():
@@ -50,7 +50,7 @@ class TriggerNode(Node):
         if self.is_preview.get():
             return
 
-        self.label.set(f"{new}")
+        self.label_topic.set(f"{new}")
         TaskNodeManager.trigger_nodes.remove(old, self)
         TaskNodeManager.trigger_nodes.append(new, self)
 
@@ -84,7 +84,7 @@ class TaskNode(Node):
     category = "procedural"
 
     def build_node(self):
-        self.shape.set("simple")
+        self.shape_topic.set("simple")
         self.name = self.add_attribute("name", StringTopic, editor_type="text")
         self.out_port = self.add_out_port("do", display_name="")
         self.css_classes.append("fit-content")
@@ -94,7 +94,7 @@ class TaskNode(Node):
             return
 
         TaskNodeManager.task_nodes.append(self.name.get(), self)
-        self.label.set(f"{self.name.get()}")
+        self.label_topic.set(f"{self.name.get()}")
         self.name.on_set2.add_manual(self.on_name_set)
         ControlPanel.on_run_task += self.on_run_task
 
@@ -102,7 +102,7 @@ class TaskNode(Node):
         if self.is_preview.get():
             return
 
-        self.label.set(f"{new}")
+        self.label_topic.set(f"{new}")
         TaskNodeManager.task_nodes.remove(old, self)
         TaskNodeManager.task_nodes.append(new, self)
 
@@ -144,8 +144,8 @@ class SleepNode(FunctionNode):
         time_port = self.add_in_port(
             "seconds", control_type=TextControl, display_name="time", text="1"
         )
-        self.shape.set("normal")
-        self.label.set("Sleep")
+        self.shape_topic.set("normal")
+        self.label_topic.set("Sleep")
         self.time_control = time_port.default_control
 
     def calculate(self, **inputs) -> Any:
@@ -157,7 +157,7 @@ class IfNode(Node):
     category = "procedural"
 
     def build_node(self):
-        self.shape.set("round")
+        self.shape_topic.set("round")
         self.add_in_port("if")
         self.then_port = self.add_out_port("then")
         self.else_port = self.add_out_port("else")

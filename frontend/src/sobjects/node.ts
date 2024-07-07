@@ -77,6 +77,7 @@ export class Node extends CompSObject implements IControlHost {
                 <div slot="input_port" class=" flex-vert space-evenly slot-input-port"></div>
                 <div slot="output_port" class=" flex-vert space-evenly slot-output-port"></div>
                 <div slot="control" class="slot-control flex-vert space-between"></div>
+                <div slot="param_input_port" class=" flex-vert space-evenly slot-input-port  slot-param-input-port"></div>
             </div>
         </div>`,
     simple:
@@ -88,7 +89,10 @@ export class Node extends CompSObject implements IControlHost {
             <div class="node-selection"></div>
             
             <div class="flex-horiz stretch-align space-between">
-                <div slot="input_port" class=" flex-vert justify-start slot-input-port"></div>
+                <div class="flex-vert justify-start">
+                    <div slot="input_port" class=" flex-vert justify-start slot-input-port"></div>
+                    <div slot="param_input_port" class=" flex-vert justify-start slot-input-port slot-param-input-port"></div>
+                </div>
 
                 <div class="full-width flex-vert space-evenly">
                     <div class="node-label full-width flex-horiz">
@@ -110,6 +114,7 @@ export class Node extends CompSObject implements IControlHost {
             <div class="node-selection"></div>
             <div class="flex-horiz node-content">
                 <div slot="input_port" class=" flex-vert space-evenly slot-input-port"></div>
+                <div slot="param_input_port" class=" flex-vert space-evenly slot-input-port slot-param-input-port"></div>
                 <div class="full-width flex-vert space-evenly node-label"> 
                     <div class="node-label-underlay"></div>
                     <div ref="labelDiv" class="center-align"></div>
@@ -140,9 +145,6 @@ export class Node extends CompSObject implements IControlHost {
 
         // Bind attributes to UI
         
-        this.link(this.eventDispatcher.onDoubleClick, () => {
-            this.emit('double_click')
-        })
 
         this.link(this.shape.onSet,this.reshape)
 
@@ -155,9 +157,6 @@ export class Node extends CompSObject implements IControlHost {
             label_el.style.marginTop = offset + 'em'
         })
 
-        for(let className of Node.getCssClassesFromCategory(this.category.getValue())){
-            this.htmlItem.baseElement.classList.add(className)
-        }
 
         this.link(this.category.onSet2, (oldCategory: string, newCategory: string) => {
             if(this.parent instanceof NodeLibrary){
@@ -174,6 +173,14 @@ export class Node extends CompSObject implements IControlHost {
         })
 
         if (!this.isPreview){
+
+            this.link(this.eventDispatcher.onDoubleClick, () => {
+                if(this.shape.getValue() == 'normal'){
+                    this.shape.set('simple')
+                }else{
+                    this.shape.set('normal')
+                }
+            })
             this.link(this.editor.runningChanged.slice(this), (running: boolean) => {
                 if(running == true)
                     this.htmlItem.baseElement.classList.add('running')
@@ -327,10 +334,6 @@ export class Node extends CompSObject implements IControlHost {
             this.link(this.transform.onChange,this.moved.invoke)
             this.transform.updateUI() // This line is necessary to make edges spawning in this frame to be connected to the node
         }
-        //set background image
-        if(this.icon_path.getValue() != ''){
-            this.setIcon(this.icon_path.getValue())
-        }
     }
 
     protected postStart(): void {
@@ -371,6 +374,7 @@ export class Node extends CompSObject implements IControlHost {
             if(input) input.focus();
             (window as any).i = input
         }
+        this.portVisibilityChanged()
     }
 
     setIcon(path: string){
@@ -388,6 +392,8 @@ export class Node extends CompSObject implements IControlHost {
         // the reason not using img tag is because its tint color cannot be changed by css
         fetchWithCache(path)
         .then(svg => {
+            // skip if node-icon already exists. Not sure why this is necessary
+            if(base.querySelector('.node-icon') != null) return
             let t = document.createElement('template')
             t.innerHTML = svg
             let svgEl = null;
@@ -461,6 +467,16 @@ export class Node extends CompSObject implements IControlHost {
         for(let className of Node.getCssClassesFromCategory(this.category.getValue())){
             this.htmlItem.baseElement.classList.add(className)
         }
+
+        for(let className of Node.getCssClassesFromCategory(this.category.getValue())){
+            this.htmlItem.baseElement.classList.add(className)
+        }
+
+        if(this.icon_path.getValue() != ''){
+            this.setIcon(this.icon_path.getValue())
+        }
+
+        this.portVisibilityChanged()
     }
 
     private minWidth: number = 0;
@@ -478,5 +494,48 @@ export class Node extends CompSObject implements IControlHost {
             this.parent.removeItem(this.htmlItem, this.category.getValue())
         }
         this.errorPopup.destroy()
+    }
+
+    public portVisibilityChanged(): void {
+        let hasVisibleInput = false
+        let hasVisibleParam = false
+        let hasVisibleOutput = false
+
+        for(let port of this.in_ports.getValue()){
+            if(!port.hidden){
+                if(port.is_param.getValue()){
+                    hasVisibleParam = true
+                }
+                else{
+                    hasVisibleInput = true
+                }
+            }
+        }
+        for(let port of this.out_ports.getValue()){
+            if(!port.hidden){
+                hasVisibleOutput = true
+            }
+        }
+
+        if(hasVisibleInput){
+            this.htmlItem.baseElement.classList.add('has-visible-input')
+        }
+        else{
+            this.htmlItem.baseElement.classList.remove('has-visible-input')
+        }
+
+        if(hasVisibleOutput){
+            this.htmlItem.baseElement.classList.add('has-visible-output')
+        }
+        else{
+            this.htmlItem.baseElement.classList.remove('has-visible-output')
+        }
+
+        if(hasVisibleParam){
+            this.htmlItem.baseElement.classList.add('has-visible-param')
+        }
+        else{
+            this.htmlItem.baseElement.classList.remove('has-visible-param')
+        }
     }
 }

@@ -4,12 +4,18 @@ from pprint import pprint
 from grapycal.core.background_runner import RunnerInterrupt
 from grapycal.core.client_msg_types import ClientMsgTypes
 from grapycal.core.typing import GType, AnyType
-from grapycal.extension_api.node_def import generate_traits, get_node_def_info
+from grapycal.extension_api.node_def import (
+    DecorTrait,
+    NodeFuncSpec,
+    NodeParamSpec,
+    generate_traits,
+    get_node_def_info,
+)
 from grapycal.extension_api.trait import Chain, Trait
 from grapycal.sobjects.controls.keyboardControl import KeyboardControl
 from grapycal.sobjects.controls.sliderControl import SliderControl
 from grapycal.sobjects.controls.toggleControl import ToggleControl
-from grapycal.utils.misc import Action
+from grapycal.utils.misc import Action, as_type
 
 logger = logging.getLogger(__name__)
 import asyncio
@@ -32,7 +38,7 @@ from grapycal.sobjects.controls.nullControl import NullControl
 from grapycal.sobjects.controls.optionControl import OptionControl
 from grapycal.sobjects.controls.textControl import TextControl
 from grapycal.sobjects.edge import Edge
-from grapycal.sobjects.port import InputPort, OutputPort, Port
+from grapycal.sobjects.port import UNSPECIFY_CONTROL_VALUE, InputPort, OutputPort, Port
 from grapycal.stores import main_store
 from grapycal.utils.io import OutputStream
 from grapycal.utils.logging import user_logger, warn_extension
@@ -195,9 +201,17 @@ class NodeMeta(ABCMeta):
             False  # True if @sigletonNode. Used internally by the ExtensionManager.
         )
         self._auto_instantiate = True  # Used internally by the ExtensionManager.
-        self._node_def_info = get_node_def_info(
-            attrs
-        )  # used to generate traits out of high level node def interface
+
+        # There may be @funcs or @params etc in the base classes. In that case, we need to merge them.
+        base_node_def_info = None
+        if len(bases) > 0:
+            base = bases[0]
+            if isinstance(base, NodeMeta):
+                base_node_def_info = base._node_def_info
+
+        # used to generate traits out of high level node def interface
+        self._node_def_info = get_node_def_info(attrs, base_node_def_info)
+
         return super().__init__(name, bases, attrs)
 
 
@@ -208,13 +222,17 @@ class RESTORE_FROM(enum.Enum):
 class Node(SObject, metaclass=NodeMeta):
     frontend_type = "Node"
     category = "hidden"
-    label_: str | None = None
-    shape_ = "normal"
+    label: str | None = None
+    shape = "normal"
     instance: Self  # The singleton instance. Used by singleton nodes.
     _deprecated = False  # TODO: If set to True, the node will be marked as deprecated in the inspector.
     ext: "Extension"
     icon_path: str | None = None
     search = []
+
+    @classmethod
+    def get_doc_string(cls):
+        return cls.__doc__
 
     @classmethod
     def get_default_label(cls):
@@ -246,6 +264,14 @@ class Node(SObject, metaclass=NodeMeta):
         self.on_double_click = Action()
         self.on_destroy = Action()
 
+        from grapycal.sobjects.editor import Editor
+
+        parent = self.get_parent()
+        if isinstance(parent, Editor):
+            self.editor = parent
+        else:
+            self.editor = None
+
         trait_list: list[Trait] = []
 
         trait_list += self.define_traits_gen()
@@ -276,7 +302,18 @@ class Node(SObject, metaclass=NodeMeta):
         super().initialize(serialized, *args, **kwargs)
 
     def define_traits_gen(self) -> list[Trait]:
-        return generate_traits(self._node_def_info)
+        # self._node_def_info.funcs.update(self.define_funcs())
+        # self._node_def_info.params.update(self.define_params())
+        for func in self.define_funcs():
+            self._node_def_info.funcs[func.name] = func
+        for param in self.define_params():
+            self._node_def_info.params[param.name] = param
+        try:
+            return generate_traits(self._node_def_info)
+        except Exception as e:
+            raise RuntimeError(
+                f"Failed to define node type {self.get_type_name()}: {e}"
+            )
 
     def define_traits(self) -> list[Trait | Chain] | Trait | Chain:
         return []
@@ -287,22 +324,28 @@ class Node(SObject, metaclass=NodeMeta):
         translation="0,0",
         is_new=True,
         old_node_info: NodeInfo | None = None,
+        input_values=None,
+        param_values=None,
         **build_node_args,
     ):
         self.is_new = is_new
         self.old_node_info = old_node_info
         self.is_building = True
 
-        self.shape = self.add_attribute(
-            "shape", StringTopic, self.shape_, restore_from=None
+        # DecorTrait reads input_values and param_values
+        self.input_values = input_values or {}
+        self.param_values = param_values or {}
+
+        self.shape_topic = self.add_attribute(
+            "shape", StringTopic, self.shape
         )  # normal, simple, round
-        self.output = self.add_attribute(
+        self.output_topic = self.add_attribute(
             "output", ListTopic, [], is_stateful=False, restore_from=None
         )
-        self.label = self.add_attribute(
+        self.label_topic = self.add_attribute(
             "label",
             StringTopic,
-            self.label_ if self.label_ is not None else self.get_default_label(),
+            self.label if self.label is not None else self.get_default_label(),
             is_stateful=False,
             restore_from=None,
         )
@@ -341,6 +384,13 @@ class Node(SObject, metaclass=NodeMeta):
             restore_from=None,
         )
 
+        self.expose_attribute(
+            self.shape_topic,
+            display_name="Apparance/shape",
+            editor_type="options",
+            options=["normal", "simple", "round"],
+        )
+
         # for inspector
         self.type_topic = self.add_attribute(
             "type", StringTopic, self.get_type_name(), restore_from=None
@@ -364,9 +414,9 @@ class Node(SObject, metaclass=NodeMeta):
             is_stateful=False,
         )
 
-        self.build_node_args = (
-            build_node_args  # some traits may need to access the build_node_args
-        )
+        # some traits may need to access the build_node_args
+        self.build_node_args = build_node_args
+
         self.on_build_node.invoke()  # not passing build_node_args because traits should be independent of the node type
         self.build_node(**build_node_args)
         self.is_building = False
@@ -376,6 +426,27 @@ class Node(SObject, metaclass=NodeMeta):
         for trait in self.traits.values():
             trait_info[trait.name] = trait.get_info()
         self.traits_info.set(trait_info)
+
+    def define_funcs(self) -> list[NodeFuncSpec]:
+        """
+        Put node functions here. This is a more dynamic way to define node functions than using the @func decorator.
+        """
+        return []
+
+    def define_params(self) -> list[NodeParamSpec]:
+        """
+        Put node parameters here. This is a more dynamic way to define node parameters than using the @param decorator.
+        """
+        return []
+
+    def get_decor_trait(self) -> DecorTrait:
+        return as_type(self.traits["_decor"], DecorTrait)
+
+    def set_input(self, name, value):
+        self.get_decor_trait().set_input(name, value)
+
+    def set_param(self, name, value):
+        self.get_decor_trait().set_param(name, value)
 
     def build_node(self):
         """
@@ -387,14 +458,6 @@ class Node(SObject, metaclass=NodeMeta):
         """
 
     def init(self):
-        from grapycal.sobjects.editor import Editor
-
-        parent = self.get_parent()
-        if isinstance(parent, Editor):
-            self.editor = parent
-        else:
-            self.editor = None
-
         self.on("double_click", self.double_click, is_stateful=False)
         self.on("double_click", self.on_double_click.invoke, is_stateful=False)
         self.on("spawn", self.spawn, is_stateful=False)
@@ -586,9 +649,12 @@ class Node(SObject, metaclass=NodeMeta):
         display_name=None,
         control_type: type[T] = NullControl,
         control_name=None,
+        control_value=UNSPECIFY_CONTROL_VALUE,
         restore_from: str | None | RESTORE_FROM = RESTORE_FROM.SAME,
         datatype: GType = AnyType,
         activate_on_control_change=False,
+        update_control_from_edge=False,
+        is_param=False,
         **control_kwargs,
     ) -> InputPort[T]:
         """
@@ -605,8 +671,11 @@ class Node(SObject, metaclass=NodeMeta):
             max_edges=max_edges,
             display_name=display_name,
             control_name=control_name,
+            control_value=control_value,
             datatype=datatype,
             activate_on_control_change=activate_on_control_change,
+            update_control_from_edge=update_control_from_edge,
+            is_param=is_param,
             **control_kwargs,
         )
         self.in_ports.insert(port)
@@ -1057,10 +1126,10 @@ class Node(SObject, metaclass=NodeMeta):
                 f"Output received from a destroyed node {self.get_id()}: {data}"
             )
         else:
-            if len(self.output) > 100:
-                self.output.set([])
-                self.output.insert(["error", "Too many output lines. Cleared.\n"])
-            self.output.insert(["output", data])
+            if len(self.output_topic) > 100:
+                self.output_topic.set([])
+                self.output_topic.insert(["error", "Too many output lines. Cleared.\n"])
+            self.output_topic.insert(["output", data])
 
     def get_position(self, translation: list[float]):
         """
@@ -1208,10 +1277,10 @@ class Node(SObject, metaclass=NodeMeta):
                 f"Exception occured in a destroyed node {self.get_id()}: {message}"
             )
         else:
-            if len(self.output) > 100:
-                self.output.set([])
-                self.output.insert(["error", "Too many output lines. Cleared.\n"])
-            self.output.insert(["error", message])
+            if len(self.output_topic) > 100:
+                self.output_topic.set([])
+                self.output_topic.insert(["error", "Too many output lines. Cleared.\n"])
+            self.output_topic.insert(["error", message])
 
         if clear_graph:
             main_store.clear_edges_and_tasks()
@@ -1221,6 +1290,8 @@ class Node(SObject, metaclass=NodeMeta):
         self.decr_n_running_tasks()
 
     def set_running(self, running: bool):
+        if self.is_preview.get() == 1:
+            return
         with self._server.record(
             allow_reentry=True
         ):  # aquire the lock to prevent setting the attribute while the sobject being deleted

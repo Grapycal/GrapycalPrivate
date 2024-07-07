@@ -13,8 +13,8 @@ class DataLoaderNode(Node):
 
     def build_node(self):
         super().build_node()
-        self.label.set("DataLoader")
-        self.shape.set("simple")
+        self.label_topic.set("DataLoader")
+        self.shape_topic.set("simple")
         self.dataset = self.add_in_port("dataset")
         self.num_epochs = self.add_attribute("epochs", IntTopic, 1, editor_type="int")
         self.batch_size = self.add_attribute(

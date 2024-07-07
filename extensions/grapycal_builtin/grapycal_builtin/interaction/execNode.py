@@ -119,8 +119,8 @@ class ExecNode(SourceNode):
         super().build_node()
         self.out_port = self.add_out_port("done")
         self.code_control = self.add_code_control(name="text")
-        self.label.set("Execute")
-        self.shape.set("simple")
+        self.label_topic.set("Execute")
+        self.shape_topic.set("simple")
         self.css_classes.append("fit-content")
         self.output_control = self.add_text_control(
             "", readonly=True, name="output_control"
@@ -154,7 +154,7 @@ class ExecNode(SourceNode):
         self.outputs.on_insert.add_auto(self.add_output)
         self.outputs.on_pop.add_auto(self.pop_output)
         self.code_control.on_execute += lambda: self.run(self.task)
-        self.is_async.on_set += lambda v: self.label.set(
+        self.is_async.on_set += lambda v: self.label_topic.set(
             "Execute" + (" (async)" if v else "")
         )
 
