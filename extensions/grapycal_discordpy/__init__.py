@@ -92,8 +92,8 @@ class DiscordCommandNode(Node):
 
     :inputs:
         - bot: the discord bot instance
-        - cmd_name: the command name
-        - cmd_description: the command description
+        - name: the command name
+        - description: the command description
 
     :outputs:
         - interaction: the interaction
@@ -103,9 +103,9 @@ class DiscordCommandNode(Node):
     category = "discordpy"
 
     @param()
-    def param(self, cmd_name: str, cmd_description: str):
-        self.cmd_name = cmd_name
-        self.cmd_description = cmd_description
+    def param(self, name: str, description: str):
+        self.name = name
+        self.description = description
         self.set_status("🟠Press to sync")
 
     def build_node(self):
@@ -177,12 +177,12 @@ class DiscordCommandNode(Node):
         if sync:
             self.add_and_sync()
         else:
-            self.add_command(bot, self.cmd_name, self.cmd_description)
+            self.add_command(bot, self.name, self.description)
             self.set_status("🟢Command synced")
 
     @task
     def remove_from_bot(self):
-        self.bot.tree.remove_command(self.cmd_name)
+        self.bot.tree.remove_command(self.name)
         self.bot = None
         self.set_status("")
 
@@ -194,8 +194,8 @@ class DiscordCommandNode(Node):
         self.run(
             self.async_add_and_sync,
             bot=self.bot,
-            cmd_name=self.cmd_name,
-            cmd_description=self.cmd_description,
+            name=self.name,
+            description=self.description,
         )
 
     def callback(self, interaction: Interaction, params):
@@ -210,15 +210,15 @@ class DiscordCommandNode(Node):
     Utility function to sync the commands
     """
 
-    async def async_add_and_sync(self, bot: commands.Bot, cmd_name, cmd_description):
-        self.add_command(bot, cmd_name, cmd_description)
+    async def async_add_and_sync(self, bot: commands.Bot, name, description):
+        self.add_command(bot, name, description)
         await self.sync(bot)
 
     async def sync(self, bot: commands.Bot):
         await bot.tree.sync()
         self.set_status("🟢Command synced")
 
-    def add_command(self, bot: commands.Bot, cmd_name, cmd_description):
+    def add_command(self, bot: commands.Bot, name, description):
         params = self.param_type_dict.get()
 
         if self.is_defer.get():
@@ -263,12 +263,12 @@ class DiscordCommandNode(Node):
 
         callback.__signature__ = inspect.Signature(parameters)  # type: ignore
         command = app_commands.Command(
-            name=cmd_name,
-            description=cmd_description,
+            name=name,
+            description=description,
             callback=callback,
         )
 
-        bot.tree.remove_command(cmd_name)
+        bot.tree.remove_command(name)
         bot.tree.add_command(command)
 
 
