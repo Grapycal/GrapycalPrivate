@@ -14,6 +14,7 @@ def func(
     annotation_override: dict[str, Any] | None = None,
     default_override: dict[str, Any] | None = None,
     shown_ports: list[str] | SHOW_ALL_PORTS_T = SHOW_ALL_PORTS,
+    background: bool = True,
 ):
     """
     A decorator to register a node funcion to the Node.
@@ -33,6 +34,7 @@ def func(
             annotation_override=annotation_override,
             default_override=default_override,
             shown_ports=shown_ports,
+            background=background,
         )
 
         func._node_func_spec = node_func_spec

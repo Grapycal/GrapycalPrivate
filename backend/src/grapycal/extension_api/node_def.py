@@ -44,6 +44,7 @@ class NodeFuncSpec:
         annotation_override: dict[str, Any] | None = None,
         default_override: dict[str, Any] | None = None,
         shown_ports: list[str] | SHOW_ALL_PORTS_T = SHOW_ALL_PORTS,
+        background: bool = True,
     ):
         self.name = function.__name__
         if sign_source is None:
@@ -55,6 +56,14 @@ class NodeFuncSpec:
         self.annotation_override = annotation_override or {}
         self.default_override = default_override or {}
         self.shown_ports = shown_ports
+        self.background = background
+
+        # if function is async function, background should be False
+        if inspect.iscoroutinefunction(function) and background:
+            logger.warning(
+                f"Node function {function.__name__} is an async function, background should be False. Setting background to False."
+            )
+            self.background = False
 
 
 class NodeParamSpec:
@@ -633,7 +642,10 @@ def collect_input_output_params(
             cur_inputs[arg_name] = inp
 
         node_funcs[func.name] = NodeFunc(
-            name=func.name, inputs=cur_inputs, outputs=cur_outputs
+            name=func.name,
+            inputs=cur_inputs,
+            outputs=cur_outputs,
+            background=func.background,
         )
 
     for param in param_funcs.values():

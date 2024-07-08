@@ -2,6 +2,7 @@ import io
 from contextlib import contextmanager
 from typing import Generator, Tuple
 
+from grapycal.extension_api.decor import func
 from grapycal.extension_api.trait import Chain, Parameter, ParameterTrait, Trait
 import matplotlib
 from grapycal import FloatTopic, StringTopic, to_numpy
@@ -178,97 +179,15 @@ class ImageDisplayNode(Node):
     def build_node(self):
         self.label_topic.set("Display Image")
         self.shape_topic.set("simple")
-        self.img = self.add_image_control(name="img")
+        self.img_control = self.add_image_control(name="img")
         self.cmap = self.add_attribute(
             "cmap",
             StringTopic,
             "viridis",
             editor_type="options",
-            options=[
-                "gray",
-                "viridis",
-                "plasma",
-                "inferno",
-                "magma",
-                "cividis",
-                "Greys",
-                "Purples",
-                "Blues",
-                "Greens",
-                "Oranges",
-                "Reds",
-                "YlOrBr",
-                "YlOrRd",
-                "OrRd",
-                "PuRd",
-                "RdPu",
-                "BuPu",
-                "GnBu",
-                "PuBu",
-                "YlGnBu",
-                "PuBuGn",
-                "BuGn",
-                "YlGn",
-                "binary",
-                "gist_yarg",
-                "gist_gray",
-                "gray",
-                "bone",
-                "pink",
-                "spring",
-                "summer",
-                "autumn",
-                "winter",
-                "cool",
-                "Wistia",
-                "hot",
-                "afmhot",
-                "gist_heat",
-                "copper",
-                "PiYG",
-                "PRGn",
-                "BrBG",
-                "PuOr",
-                "RdGy",
-                "RdBu",
-                "RdYlBu",
-                "RdYlGn",
-                "Spectral",
-                "coolwarm",
-                "bwr",
-                "seismic",
-                "twilight",
-                "twilight_shifted",
-                "hsv",
-                "Pastel1",
-                "Pastel2",
-                "Paired",
-                "Accent",
-                "Dark2",
-                "Set1",
-                "Set2",
-                "Set3",
-                "tab10",
-                "tab20",
-                "tab20b",
-                "tab20c",
-                "flag",
-                "prism",
-                "ocean",
-                "gist_earth",
-                "terrain",
-                "gist_stern",
-                "gnuplot",
-                "gnuplot2",
-                "CMRmap",
-                "cubehelix",
-                "brg",
-                "gist_rainbow",
-                "rainbow",
-                "jet",
-                "nipy_spectral",
-                "gist_ncar",
-            ],
+            options="gray,viridis,plasma,inferno,magma,cividis,Greys,Purples,Blues,Greens,Oranges,Reds,YlOrBr,YlOrRd,OrRd,PuRd,RdPu,BuPu,GnBu,PuBu,YlGnBu,PuBuGn,BuGn,YlGn,binary,gist_yarg,gist_gray,gray,bone,pink,spring,summer,autumn,winter,cool,Wistia,hot,afmhot,gist_heat,copper,PiYG,PRGn,BrBG,PuOr,RdGy,RdBu,RdYlBu,RdYlGn,Spectral,coolwarm,bwr,seismic,twilight,twilight_shifted,hsv,Pastel1,Pastel2,Paired,Accent,Dark2,Set1,Set2,Set3,tab10,tab20,tab20b,tab20c,flag,prism,ocean,gist_earth,terrain,gist_stern,gnuplot,gnuplot2,CMRmap,cubehelix,brg,gist_rainbow,rainbow,jet,nipy_spectral,gist_ncar".split(
+                ","
+            ),
         )
         self.use_vmin = self.add_attribute(
             "use vmin", GenericTopic[bool], False, editor_type="toggle"
@@ -279,7 +198,6 @@ class ImageDisplayNode(Node):
         )
         self.vmax = self.add_attribute("vmax", FloatTopic, 1, editor_type="float")
         self.slice = self.add_text_control(label="slice: ", name="slice", text=":")
-        self.in_port = self.add_in_port("data", 1, "")
         self.icon_path_topic.set("image")
         self.format = self.add_attribute(
             "format", StringTopic, "jpg", editor_type="options", options=["jpg", "png"]
@@ -297,9 +215,6 @@ class ImageDisplayNode(Node):
             dpi=128,
         )  # 1.299 makes pyplot outputs correctly
         self.ax = self.fig.gca()
-
-    def edge_activated(self, edge: Edge, port: InputPort):
-        self.run(self.update_image, data=self.in_port.get())
 
     def find_valid_slice(self, data: np.ndarray) -> str | None:
         if data.ndim == 2:
@@ -365,7 +280,8 @@ class ImageDisplayNode(Node):
 
         return data
 
-    def update_image(self, data):
+    @func()
+    def img(self, data):
         data = self.preprocess_data(data)
         # use plt to convert to jpg
         buf = io.BytesIO()
@@ -389,13 +305,15 @@ class ImageDisplayNode(Node):
                 pad_inches=0,
                 dpi=128,
             )
+            self.img_control.set(buf)
+            buf.seek(0)
+            return buf
         finally:
-            self.img.set(buf)
-            buf.close()
+            # buf.close()
             self.ax.clear()
 
     def input_edge_removed(self, edge: Edge, port: InputPort):
-        self.img.set(None)
+        self.img_control.set(None)
 
     def destroy(self):
         plt.close(self.fig)

@@ -11,6 +11,15 @@ class AddNode(Node):
         return a + b
 
 
+class SubtractNode(Node):
+    category = "function/math"
+    label = "-"
+
+    @func()
+    def output(self, a=0, b=0):
+        return a - b
+
+
 class AdditionNode(FunctionNode):
     """
     Adds a set of values together. The values can be of any addable type, such as numbers, NumPy arrays,

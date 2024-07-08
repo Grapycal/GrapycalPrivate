@@ -1,5 +1,6 @@
 from typing import Any
 
+from grapycal import func, Node
 import torch
 from grapycal import FloatTopic, IntTopic, StringTopic, TextControl
 from grapycal.extension.utils import NodeInfo
@@ -90,29 +91,10 @@ class RandNode(SourceNode):
         )
 
 
-class RandnNode(SourceNode):
-    category = "torch/generative"
-
-    def build_node(self):
-        super().build_node()
-        self.label_topic.set("Randn")
-        self.out = self.add_out_port("tensor")
-        self.shape_text = self.add_in_port(
-            "shape",
-            control_type=TextControl,
-            text="2,2",
-        )
-        self.device = self.add_attribute(
-            "device", StringTopic, "cpu", editor_type="text"
-        )
-
-    def task(self):
-        self.out.push(
-            torch.randn(
-                *map(int, self.shape_text.get().split(",")),
-                device=self.device.get(),
-            )
-        )
+class RandnNode(Node):
+    @func()
+    def output(self, size: tuple = (2, 2), device="cpu", dtype=torch.float32):
+        return torch.randn(size=size, device=device, dtype=dtype)
 
 
 class GridNode(SourceNode):

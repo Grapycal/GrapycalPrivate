@@ -205,7 +205,9 @@ class BuildStringNode(Node):
         return [self.ins, self.outs]
 
     def task(self, **kwargs):
-        result = "".join([value for value in kwargs.values()])
+        result = ""
+        for value in kwargs.values():
+            result += str(value) if not isinstance(value, str) else value
         self.outs.push("result", result)
 
 
@@ -459,5 +461,5 @@ class AttributeNode(Node):
     category = "data"
 
     @func()
-    def attribute(self, obj:object, attribute_name:str) -> object:
+    def attribute(self, obj: object, attribute_name: str) -> object:
         return getattr(obj, attribute_name)

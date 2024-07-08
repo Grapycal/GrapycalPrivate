@@ -83,6 +83,8 @@ class ObjectControl(ValuedControl[Any]):
         self.set(value)
 
     def get_text_from_value(self):
+        if isinstance(self.value, str):
+            return '"' + self.value + '"'  # add quotes
         return str(self.value)[:100]
 
     def text_changed(self, text):
