@@ -1,6 +1,6 @@
 from grapycal import Node, FunctionNode
 import discord
-from discord import app_commands, Interaction
+from discord import File, app_commands, Interaction
 from discord.ext import commands
 from grapycal.extension_api.trait import InputsTrait, OutputsTrait
 from grapycal.sobjects.controls.buttonControl import ButtonControl
@@ -117,7 +117,7 @@ class DiscordCommandNode(Node):
             "is_defer", GenericTopic[bool], False, editor_type="toggle"
         )
         self.interaction_port = self.add_out_port(
-            "interaction", 1, display_name="Interaction"
+            "interaction", 64, display_name="Interaction"
         )
         self.param_ports_topic = self.add_attribute(
             "param_ports_topic",
@@ -198,7 +198,10 @@ class DiscordCommandNode(Node):
             description=self.description,
         )
 
-    def callback(self, interaction: Interaction, params):
+    async def callback(self, interaction: Interaction, params):
+        if self.is_defer.get():
+            await interaction.response.defer()
+
         self.get_out_port("interaction").push(interaction)
         for name in params:
             self.get_out_port(name).push(params[name])
@@ -221,15 +224,8 @@ class DiscordCommandNode(Node):
     def add_command(self, bot: commands.Bot, name, description):
         params = self.param_type_dict.get()
 
-        if self.is_defer.get():
-
-            async def callback(interaction: Interaction, **params):
-                await interaction.response.defer()
-                self.callback(interaction, params)
-        else:
-
-            async def callback(interaction: Interaction, **params):
-                self.callback(interaction, params)
+        async def callback(interaction: Interaction, **params):
+            await self.callback(interaction, params)
 
         parameters = [
             # Required parameter
@@ -295,7 +291,7 @@ class DiscordSendMessageNode(Node):
                 annotation=discord.Interaction,
                 kind=inspect.Parameter.POSITIONAL_OR_KEYWORD,
             ),
-            discord.InteractionResponse.send_message,
+            discord.Webhook.send,
         ],
         shown_ports=["interaction", "content"],
     )
@@ -307,6 +303,16 @@ class DiscordSendMessageNode(Node):
             await interaction.followup.send(**kwargs)
         else:
             await interaction.response.send_message(**kwargs)
+
+
+class DiscordFileNode(Node):
+    @func(
+        sign_source=[discord.File.__init__],
+        annotation_override={"spoiler": bool, "description": str},
+        default_override={"spoiler": False, "description": ""},
+    )
+    def file(self, **kwargs):
+        return File(**kwargs)
 
 
 del FunctionNode, Node
