@@ -1,13 +1,8 @@
 from grapycal import Node, FunctionNode
-import discord
-from discord import File, app_commands, Interaction
-from discord.ext import commands
 from grapycal.extension_api.trait import InputsTrait, OutputsTrait
 from grapycal.sobjects.controls.buttonControl import ButtonControl
 from grapycal.sobjects.port import OutputPort
 from objectsync.sobject import SObjectSerialized
-import inspect
-from typing import Union
 from grapycal import (
     GenericTopic,
     ListTopic,
@@ -20,8 +15,18 @@ from grapycal import (
 )
 from topicsync.topic import DictTopic
 
+import discord
+from discord import File, app_commands, Interaction, Webhook, Embed, AllowedMentions, ForumTag, Poll
+from discord.ext import commands
+from discord.utils import MISSING
+from discord.ui import View
+from discord.abc import Snowflake
 
-class DiscordBotNode(Node):
+from typing import Union, Any, Optional, Sequence, List
+import inspect
+
+
+class BotNode(Node):
     """
     Equivalent to discord.py's `commands.Bot`. It creates a bot instance and sends it out.
 
@@ -59,12 +64,12 @@ class DiscordBotNode(Node):
         if not self.started:
             return
         node = edge.get_head().node
-        if isinstance(node, DiscordCommandNode):
+        if isinstance(node, CommandNode):
             node.set_bot(self.bot, sync=sync)
 
     def command_node_disconnected(self, edge: Edge):
         node = edge.get_head().node
-        if isinstance(node, DiscordCommandNode):
+        if isinstance(node, CommandNode):
             node.remove_from_bot()
 
     def token_input(self, port: InputPort):
@@ -82,7 +87,7 @@ class DiscordBotNode(Node):
         return super().destroy()
 
 
-class DiscordCommandNode(Node):
+class CommandNode(Node):
     """
     Equivalent to discord.py's `commands.Command`. It adds a command to the bot.
 
@@ -268,44 +273,124 @@ class DiscordCommandNode(Node):
         bot.tree.add_command(command)
 
 
-class DiscordSendMessageNode(Node):
+class SendMessageNode(Node):
     """
     Equivalent to discord.py's `Interaction.send_message if command hasn't deferred, else Interaction.followup.send`. It sends a message to the interaction.
 
     To make it send the message, send in the interaction and content to `content`.
 
+    
     :inputs:
-        - interaction: discord.Interaction
+        - interaction: the interaction
         - content: the message content
+        - embed: the embed
+        - embeds: the list of embeds
+        - file: the file
+        - files: the list of files
+        - tts: whether the message should be tts
+        - view: the view
+        - ephemeral: whether the message should be ephemeral
+        - allowed_mentions: the allowed mentions
+        - suppress_embeds: whether to suppress embeds
+        - silent: whether to suppress errors
+        - delete_after: the time after which the message should be deleted
+        - poll: the poll
 
     :outputs:
         - None
     """
 
-    category = "discordpy"
+    category = "discordpy/interaction/response"
 
-    @func(
-        sign_source=[
-            inspect.Parameter(
-                name="interaction",
-                annotation=discord.Interaction,
-                kind=inspect.Parameter.POSITIONAL_OR_KEYWORD,
-            ),
-            discord.Webhook.send,
-        ],
-        shown_ports=["interaction", "content"],
-    )
-    def task(self, interaction: Interaction, **kwargs):
-        self.run(self.send, interaction=interaction, kwargs=kwargs)
-
-    async def send(self, interaction: Interaction, kwargs):
+    @func(shown_ports=["interaction", "content"])
+    def send_message(
+        self, 
+        interaction: Interaction, 
+        content: str, 
+        embed: discord.Embed = MISSING, embeds: Sequence[discord.Embed] = MISSING, 
+        file: discord.File = MISSING, files: Sequence[discord.File] = MISSING, 
+        tts: bool = False,
+        view: discord.ui.View = MISSING,
+        ephemeral: bool = False,
+        allowed_mentions: discord.AllowedMentions = MISSING,
+        suppress_embeds: bool = False,
+        silent: bool = False,
+        delete_after: Optional[float] = None,
+        poll: discord.Poll = MISSING,
+        ):
+        print("Sending message")
         if interaction.response.is_done():
-            await interaction.followup.send(**kwargs)
-        else:
-            await interaction.response.send_message(**kwargs)
+            self.print_exception("Interaction already responded, If message is deferred, use WebhookSend")
+        self.run(self.async_send_message, interaction=interaction, content=content, embed=embed, embeds=embeds, file=file, files=files, tts=tts, view=view, ephemeral=ephemeral, allowed_mentions=allowed_mentions, suppress_embeds=suppress_embeds, silent=silent, delete_after=delete_after, poll=poll)
+
+    async def async_send_message(self, interaction:Interaction, content, embed, embeds, file, files, tts, view, ephemeral, allowed_mentions, suppress_embeds, silent, delete_after, poll):
+        await interaction.response.send_message(content=content, embed=embed, embeds=embeds, file=file, files=files, tts=tts, view=view, ephemeral=ephemeral, allowed_mentions=allowed_mentions, suppress_embeds=suppress_embeds, silent=silent, delete_after=delete_after, poll=poll)
 
 
-class DiscordFileNode(Node):
+class WebhookSendNode(Node):
+    """
+    Equivalent to discord.py's `Webhook.send`. It sends a message to the webhook.
+
+    To make it send the message, send in the webhook and content to `content`.
+
+
+    :inputs:
+        - webhook: the webhook
+        - content: the message content
+        - username: the username
+        - avatar_url: the avatar url
+        - tts: whether the message should be tts
+        - ephemeral: whether the message should be ephemeral
+        - file: the file
+        - files: the list of files
+        - embed: the embed
+        - embeds: the list of embeds
+        - allowed_mentions: the allowed mentions
+        - view: the view
+        - thread: the thread
+        - thread_name: the thread name
+        - wait: whether to wait
+        - suppress_embeds: whether to suppress embeds
+        - silent: whether to suppress errors
+        - applied_tags: the applied tags
+        - poll: the poll
+    
+    :outputs:
+        - None
+    """
+    category = "discordpy/webhook"
+
+    @func(shown_ports=["webhook", "content"])
+    def send(
+        self,
+        webhook: Webhook,
+        content: str,
+        username: Optional[str] = MISSING,
+        avatar_url: Any = MISSING,
+        tts: bool = False,
+        ephemeral: bool = False,
+        file: File = MISSING,
+        files: Sequence[File] = MISSING,
+        embed: Embed = MISSING,
+        embeds: Sequence[Embed] = MISSING,
+        allowed_mentions: AllowedMentions = MISSING,
+        view: View = MISSING,
+        thread: Snowflake = MISSING,
+        thread_name: Optional[str] = MISSING,
+        wait: bool = False,
+        suppress_embeds: bool = False,
+        silent: bool = False,
+        applied_tags: List[ForumTag] = MISSING,
+        poll: Poll = MISSING,
+    ):
+        self.run(self.async_send, webhook=webhook, content=content, username=username, avatar_url=avatar_url, tts=tts, ephemeral=ephemeral, file=file, files=files, embed=embed, embeds=embeds, allowed_mentions=allowed_mentions, view=view, thread=thread, thread_name=thread_name, wait=wait, suppress_embeds=suppress_embeds, silent=silent, applied_tags=applied_tags, poll=poll)
+    
+    async def async_send(self, webhook: Webhook, content: str, username, avatar_url, tts, ephemeral, file, files, embed, embeds, allowed_mentions, view, thread, thread_name, wait, suppress_embeds, silent, applied_tags, poll):
+        await webhook.send(content=content, username=username, avatar_url=avatar_url, tts=tts, ephemeral=ephemeral, file=file, files=files, embed=embed, embeds=embeds, allowed_mentions=allowed_mentions, view=view, thread=thread, thread_name=thread_name, wait=wait, suppress_embeds=suppress_embeds, silent=silent, applied_tags=applied_tags, poll=poll)
+             
+
+
+class FileNode(Node):
     @func(
         sign_source=[discord.File.__init__],
         annotation_override={"spoiler": bool, "description": str},
@@ -313,6 +398,5 @@ class DiscordFileNode(Node):
     )
     def file(self, **kwargs):
         return File(**kwargs)
-
 
 del FunctionNode, Node
