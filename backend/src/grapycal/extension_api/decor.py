@@ -15,6 +15,7 @@ def func(
     default_override: dict[str, Any] | None = None,
     shown_ports: list[str] | SHOW_ALL_PORTS_T = SHOW_ALL_PORTS,
     background: bool = True,
+    create_trigger_port: bool | None = None,
 ):
     """
     A decorator to register a node funcion to the Node.
@@ -35,6 +36,7 @@ def func(
             default_override=default_override,
             shown_ports=shown_ports,
             background=background,
+            create_trigger_port=create_trigger_port,
         )
 
         func._node_func_spec = node_func_spec

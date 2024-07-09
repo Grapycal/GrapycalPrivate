@@ -247,8 +247,6 @@ class AdditionNode(FunctionNode):
     Adds a set of numbers together.
     """
 
-    category = "function/math"
-
     inputs = ["numbers"]
     max_in_degree = [None]
     outputs = ["sum"]

@@ -35,8 +35,8 @@ class Trait:
             self.node.on_init_node += self.init_node
         if is_overridden(self.port_activated, Trait):
             self.node.on_port_activated += self.port_activated
-        if is_overridden(self.double_click, Trait):
-            self.node.on_double_click += self.double_click
+        if is_overridden(self.icon_clicked, Trait):
+            self.node.on_icon_clicked += self.icon_clicked
         if is_overridden(self.destroy, Trait):
             self.node.on_destroy += self.destroy
 
@@ -75,7 +75,7 @@ class Trait:
         called when a port is activated
         """
 
-    def double_click(self):
+    def icon_clicked(self):
         """
         called when a node is double clicked
         """
@@ -213,7 +213,7 @@ class TriggerTrait(SourceTrait):
             self.node.flash_running_indicator()
             self.output_to_chain_void()
 
-    def double_click(self):
+    def icon_clicked(self):
         self.node.flash_running_indicator()
         self.output_to_chain_void()
 

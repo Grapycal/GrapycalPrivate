@@ -57,7 +57,7 @@ class ForNode(Node):
         for edge in self.item_port.edges:
             edge.push(item)
 
-    def double_click(self):
+    def icon_clicked(self):
         self.iterator = None
         self.print("Iteration interrupted")
 
@@ -104,9 +104,9 @@ class RepeatNode(SourceNode):
         for edge in self.item_port.edges:
             edge.push(item)
 
-    def double_click(self):
+    def icon_clicked(self):
         if self.iterator is None:
-            super().double_click()
+            super().icon_clicked()
         else:
             self.iterator = None
             self.print("Iteration interrupted")

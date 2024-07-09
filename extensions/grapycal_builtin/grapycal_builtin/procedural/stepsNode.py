@@ -47,7 +47,7 @@ class StepsNode(Node):
     def edge_activated(self, edge: Edge, port: InputPort):
         self.run(self.task)
 
-    def double_click(self):
+    def icon_clicked(self):
         self.run(self.task)
 
     def task(self):

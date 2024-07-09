@@ -261,7 +261,7 @@ class Node(SObject, metaclass=NodeMeta):
         self.on_build_node = Action()
         self.on_init_node = Action()
         self.on_port_activated = Action()
-        self.on_double_click = Action()
+        self.on_icon_clicked = Action()
         self.on_destroy = Action()
 
         from grapycal.sobjects.editor import Editor
@@ -458,8 +458,8 @@ class Node(SObject, metaclass=NodeMeta):
         """
 
     def init(self):
-        self.on("double_click", self.double_click, is_stateful=False)
-        self.on("double_click", self.on_double_click.invoke, is_stateful=False)
+        self.on("icon_clicked", self.icon_clicked, is_stateful=False)
+        self.on("icon_clicked", self.on_icon_clicked.invoke, is_stateful=False)
         self.on("spawn", self.spawn, is_stateful=False)
 
         self._output_stream: OutputStream | None = None
@@ -1358,7 +1358,7 @@ class Node(SObject, metaclass=NodeMeta):
         """
         pass
 
-    def double_click(self):
+    def icon_clicked(self):
         """
         Called when the node is double clicked by an user.
         """

@@ -68,7 +68,7 @@ class FileLoaderNode(Node):
         self.file_num = len(self.files_path)
         self.text.set(str(self.file_num))
 
-    def double_click(self):
+    def icon_clicked(self):
         self.run(self.task)
 
     def task(self):

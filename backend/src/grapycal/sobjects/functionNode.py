@@ -133,7 +133,7 @@ class FunctionNode(Node):
 
         return res
 
-    def double_click(self):
-        super().double_click()
+    def icon_clicked(self):
+        super().icon_clicked()
         if self.is_source:
             self.run(self._task)

@@ -82,10 +82,7 @@ export class Node extends CompSObject implements IControlHost {
         </div>`,
     simple:
         `<div class="node simple-node" slot="default">
-            <div class="node-border-container">
-                <div class="node-border"id="node-border">
-                </div>
-            </div>
+
             <div class="node-selection"></div>
             
             <div class="flex-horiz stretch-align space-between">
@@ -98,6 +95,10 @@ export class Node extends CompSObject implements IControlHost {
                     <div class="node-label full-width flex-horiz">
                         <div class="node-label-underlay"></div>
                         <div ref="labelDiv"></div>
+                    </div>
+                    <div class="node-border-container">
+                        <div class="node-border"id="node-border">
+                        </div>
                     </div>
                     <div slot="control"  class="slot-control main-section"></div>
                 </div>
@@ -414,6 +415,9 @@ export class Node extends CompSObject implements IControlHost {
                 }
             }
             svgEl.classList.add('node-icon')
+            this.link2(svgEl,'click',() => {
+                this.emit('icon_clicked')
+            })
             this.moved.invoke()
         })   
     }

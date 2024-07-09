@@ -77,6 +77,6 @@ class DataLoaderNode(Node):
     def edge_activated(self, edge: Edge, port: InputPort):
         self.run(self.task)
 
-    def double_click(self):
+    def icon_clicked(self):
         # stop the task
         self.double_clicked = True

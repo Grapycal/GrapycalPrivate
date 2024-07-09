@@ -62,7 +62,7 @@ class TestDefaultNode(Node):
     def port_activated(self, port: InputPort):
         self.out_port.push(self.opt.get())
 
-    def double_click(self):
+    def icon_clicked(self):
         self.out_port.push(self.in_port.get())
 
 

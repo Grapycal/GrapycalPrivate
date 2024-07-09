@@ -60,7 +60,7 @@ class TriggerNode(Node):
         for node in TaskNodeManager.task_nodes.get(self.name.get()):
             node.jump(data)
 
-    def double_click(self):
+    def icon_clicked(self):
         if self.is_preview.get():
             return
 
@@ -106,7 +106,7 @@ class TaskNode(Node):
         TaskNodeManager.task_nodes.remove(old, self)
         TaskNodeManager.task_nodes.append(new, self)
 
-    def double_click(self):
+    def icon_clicked(self):
         if self.is_preview.get():
             return
 

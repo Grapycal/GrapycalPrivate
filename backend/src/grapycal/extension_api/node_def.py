@@ -45,6 +45,7 @@ class NodeFuncSpec:
         default_override: dict[str, Any] | None = None,
         shown_ports: list[str] | SHOW_ALL_PORTS_T = SHOW_ALL_PORTS,
         background: bool = True,
+        create_trigger_port: bool | None = None,
     ):
         self.name = function.__name__
         if sign_source is None:
@@ -57,6 +58,7 @@ class NodeFuncSpec:
         self.default_override = default_override or {}
         self.shown_ports = shown_ports
         self.background = background
+        self.create_trigger_port = create_trigger_port
 
         # if function is async function, background should be False
         if inspect.iscoroutinefunction(function) and background:
@@ -141,7 +143,7 @@ class NodeFunc:
     name: str
     inputs: dict[str, Input]
     outputs: dict[str, Output]
-    background: bool = True
+    spec: NodeFuncSpec
 
 
 @dataclass
@@ -217,7 +219,7 @@ class DecorTrait(Trait):
         for name, node_func in self.node_funcs.items():
             # Only add trigger port if all inputs have default values. For functions with an input without a default value,
             # it's likely to go wrong if user triggers it without setting the input.
-            if all(
+            if node_func.spec.create_trigger_port and all(
                 map(lambda inp: inp.default != NO_DEFAULT, node_func.inputs.values())
             ):
                 self.tr_ports[f"{self.name}.tr.{name}"] = self.node.add_in_port(
@@ -479,7 +481,7 @@ class DecorTrait(Trait):
 
         for name in node_func.inputs:
             peeked_ports.add(self.in_ports[f"{self.name}.in.{name}"])
-        if node_func.background:
+        if node_func.spec.background:
             self.node.run(
                 lambda func=func,
                 inputs=inputs,
@@ -645,7 +647,7 @@ def collect_input_output_params(
             name=func.name,
             inputs=cur_inputs,
             outputs=cur_outputs,
-            background=func.background,
+            spec=func,
         )
 
     for param in param_funcs.values():

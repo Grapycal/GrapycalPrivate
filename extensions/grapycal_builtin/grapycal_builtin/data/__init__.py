@@ -256,7 +256,7 @@ class RegexFindAllNode(Node):
     def edge_activated(self, edge: Edge, port: InputPort):
         self.task()
 
-    def double_click(self):
+    def icon_clicked(self):
         self.task()
 
     def task(self):
@@ -319,7 +319,7 @@ class ZipNode(Node):
         new_item += 1
         self.items.insert(str(new_item))
 
-    def double_click(self):
+    def icon_clicked(self):
         self.task()
 
     def edge_activated(self, edge: Edge, port: InputPort):

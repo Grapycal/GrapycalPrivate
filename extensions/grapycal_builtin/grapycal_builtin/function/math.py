@@ -1,183 +1,173 @@
-from grapycal.sobjects.functionNode import FunctionNode
-from grapycal import func, Node
+import math
+from grapycal import func, Node, param
 
 
-class AddNode(Node):
+class MathBaseNode(Node):
     category = "function/math"
+    shape = "round"
+
+
+class AddNode(MathBaseNode):
     label = "+"
 
-    @func()
+    @func(create_trigger_port=False)
     def output(self, a=0, b=0):
         return a + b
 
 
-class SubtractNode(Node):
-    category = "function/math"
+class SubtractNode(MathBaseNode):
     label = "-"
 
-    @func()
+    @func(create_trigger_port=False)
     def output(self, a=0, b=0):
         return a - b
 
 
-class AdditionNode(FunctionNode):
-    """
-    Adds a set of values together. The values can be of any addable type, such as numbers, NumPy arrays,
-    PyTorch tensors, or strings.
+class MultiplyNode(MathBaseNode):
+    label = "*"
 
-    :inputs:
-        - values: a set of values
-
-    :outputs:
-        - sum: sum of all values
-    """
-
-    category = "function/math"
-
-    inputs = ["items"]
-    max_in_degree = [None]
-    outputs = ["sum"]
-    display_port_names = False
-
-    def build_node(self):
-        super().build_node()
-        self.label_offset.set(-0.09)
-        self.shape_topic.set("round")
-
-    def calculate(self, items):
-        if len(items) == 0:
-            summation = 0
-        else:
-            summation = items[0]
-            for d in items[1:]:
-                summation = summation + d  # type: ignore
-        return summation
+    @func(create_trigger_port=False)
+    def output(self, a=1, b=2):
+        return a * b
 
 
-class SubtractionNode(FunctionNode):
-    """
-    Calculates sum(`B`) - sum(`A`).
+class DivideNode(MathBaseNode):
+    label = "/"
 
-    :inputs:
-       - A: A set of values, `A`
-       - B: A set of values, `B`
-
-    :outputs:
-        -  Difference: sum(`A`) - sum(`B`)
-    """
-
-    category = "function/math"
-    inputs = ["a", "b"]
-    max_in_degree = [None, None]
-    outputs = ["a-b"]
-    display_port_names = False
-
-    def build_node(self):
-        super().build_node()
-        self.label_topic.set("-")
-        self.label_offset.set(-0.09)
-        self.shape_topic.set("round")
-
-    def calculate(self, a, b):
-        return sum(a) - sum(b)
+    @func(create_trigger_port=False)
+    def output(self, a=1, b=2):
+        return a / b
 
 
-class MultiplicationNode(FunctionNode):
-    """
-    Multiplies a set of values together. The values can be of any multipliable type, such as numbers, NumPy arrays, or
-    PyTorch tensors.
+class PowerNode(MathBaseNode):
+    label = "**"
 
-    :inputs:
-        - values: a set of values
-
-    :outputs:
-        - product: product of all values
-    """
-
-    category = "function/math"
-    inputs = ["items"]
-    max_in_degree = [None]
-    outputs = ["product"]
-    display_port_names = False
-
-    def build_node(self):
-        super().build_node()
-        self.label_topic.set("*")
-        self.label_offset.set(-0.09)
-        self.shape_topic.set("round")
-
-    def calculate(self, items):
-        if len(items) == 0:
-            product = 1
-        else:
-            product = items[0]
-            for d in items[1:]:
-                product = product * d
-        return product
+    @func(create_trigger_port=False)
+    def output(self, a=1, b=2):
+        return a**b
 
 
-class DivisionNode(FunctionNode):
-    """
-    Calculates product(`B`) / product(`A`).
+class ModulusNode(MathBaseNode):
+    label = "%"
 
-    :inputs:
-        - A: A set of values, `A`
-        - B: A set of values, `B`
-
-    :outputs:
-        -  Quotient: product(`B`) / product(`A`)
-    """
-
-    category = "function/math"
-    inputs = ["a", "b"]
-    max_in_degree = [None, None]
-    outputs = ["a/b"]
-    display_port_names = False
-
-    def build_node(self):
-        super().build_node()
-        self.label_topic.set("/")
-        self.shape_topic.set("round")
-
-    def calculate(self, a, b):
-        if len(a) == 0:
-            nominator = 1
-        else:
-            nominator = a[0]
-            for d in a[1:]:
-                nominator *= d
-
-        if len(b) == 0:
-            denominator = 1
-        else:
-            denominator = b[0]
-            for d in b[1:]:
-                denominator *= d
-        return nominator / denominator
+    @func(create_trigger_port=False)
+    def output(self, a=1, b=2):
+        return a % b
 
 
-class GreaterThanNode(FunctionNode):
-    """
-    Determines whether the sum of `A` is greater than the sum of `B`.
+class FloorDivideNode(MathBaseNode):
+    label = "//"
 
-    :inputs:
-        - A: A set of values, `A`
-        - B: A set of values, `B`
+    @func(create_trigger_port=False)
+    def output(self, a=1, b=2):
+        return a // b
 
-    :outputs:
-        -  Greater: True if sum(`A`) > sum(`B`), False otherwise
-    """
 
-    category = "function/math"
-    inputs = ["a", "b"]
-    max_in_degree = [1, 1]
-    outputs = ["a>b"]
-    display_port_names = False
+class AbsNode(MathBaseNode):
+    @func(create_trigger_port=False)
+    def output(self, a=1):
+        return abs(a)
 
-    def build_node(self):
-        super().build_node()
-        self.label_topic.set(">")
-        self.shape_topic.set("round")
 
-    def calculate(self, a, b):
+class RoundNode(MathBaseNode):
+    label = "round"
+    shape = "normal"
+
+    @param()
+    def param(self, digits: int | None = 0):
+        self.digits = digits
+
+    @func(create_trigger_port=False)
+    def output(self, a=1):
+        return round(a, self.digits)
+
+
+class CeilNode(MathBaseNode):
+    label = "⌈ ⌉"
+
+    @func(create_trigger_port=False)
+    def output(self, a=1):
+        return math.ceil(a)
+
+
+class FloorNode(MathBaseNode):
+    label = "⌊ ⌋"
+
+    @func(create_trigger_port=False)
+    def output(self, a=1):
+        return math.floor(a)
+
+
+class GreaterThanNode(MathBaseNode):
+    label = ">"
+
+    @func(create_trigger_port=False)
+    def output(self, a=1, b=2):
         return a > b
+
+
+class GreaterThanEqualNode(MathBaseNode):
+    label = ">="
+
+    @func(create_trigger_port=False)
+    def output(self, a=1, b=2):
+        return a >= b
+
+
+class LessThanNode(MathBaseNode):
+    label = "<"
+
+    @func(create_trigger_port=False)
+    def output(self, a=1, b=2):
+        return a < b
+
+
+class LessThanEqualNode(MathBaseNode):
+    label = "<="
+
+    @func(create_trigger_port=False)
+    def output(self, a=1, b=2):
+        return a <= b
+
+
+class EqualNode(MathBaseNode):
+    label = "=="
+
+    @func(create_trigger_port=False)
+    def output(self, a=1, b=2):
+        return a == b
+
+
+class NotEqualNode(MathBaseNode):
+    label = "!="
+
+    @func(create_trigger_port=False)
+    def output(self, a=1, b=2):
+        return a != b
+
+
+class AndNode(MathBaseNode):
+    label = "and"
+
+    @func(create_trigger_port=False)
+    def output(self, a=1, b=2):
+        return a and b
+
+
+class OrNode(MathBaseNode):
+    label = "or"
+
+    @func(create_trigger_port=False)
+    def output(self, a=1, b=2):
+        return a or b
+
+
+class NotNode(MathBaseNode):
+    label = "not"
+
+    @func(create_trigger_port=False)
+    def output(self, a=1):
+        return not a
+
+
+del MathBaseNode

@@ -144,7 +144,7 @@ class OpenAINode(Node):
             user_message=self.user_message.get(),
         )
 
-    def double_click(self):
+    def icon_clicked(self):
         for port in [self.system_message, self.user_message]:
             if not port.is_all_ready():
                 return

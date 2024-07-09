@@ -52,7 +52,7 @@ class CommandNode(Node):
             self.stderr_port.push(result.stderr)
             self.print_exception(Exception(result.stderr))
 
-    def double_click(self):
+    def icon_clicked(self):
         if (
             self.command_port.is_all_ready()
             and self.cwd_port.is_all_ready()
