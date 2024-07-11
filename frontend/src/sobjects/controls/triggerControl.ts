@@ -28,6 +28,7 @@ export class TriggerControl extends Control {
         align-items: center;
         border-radius: 2px;
         transform: translateX(-100%);
+        cursor: pointer;
     }
     .line {
         stroke: #777777;

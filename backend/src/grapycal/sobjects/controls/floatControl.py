@@ -37,5 +37,7 @@ class FloatControl(ValuedControl[float]):
         return self.value.get()
 
     def set_from_port(self, value):
-        assert isinstance(value, float), f"Expected float, got {type(value)}"
-        self.set(value)
+        assert isinstance(value, float) or isinstance(
+            value, int
+        ), f"Expected float or int, got {type(value)}"
+        self.set(float(value))

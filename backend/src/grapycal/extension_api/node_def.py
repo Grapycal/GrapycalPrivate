@@ -9,12 +9,13 @@ import logging
 import traceback
 from typing import TYPE_CHECKING, Any, Callable, Iterable, TypeVar
 
-from grapycal.core.typing import AnyType, GType
+from grapycal.core.typing import AnyType, GType, LiteralType
 from grapycal.sobjects.controls.buttonControl import ButtonControl
 from grapycal.sobjects.controls.floatControl import FloatControl
 from grapycal.sobjects.controls.intControl import IntControl
 from grapycal.sobjects.controls.nullControl import NullControl
 from grapycal.sobjects.controls.objectControl import ObjectControl
+from grapycal.sobjects.controls.optionControl import OptionControl
 from grapycal.sobjects.controls.textControl import TextControl
 from grapycal.sobjects.controls.toggleControl import ToggleControl
 from grapycal.sobjects.controls.triggerControl import TriggerControl
@@ -219,8 +220,13 @@ class DecorTrait(Trait):
         for name, node_func in self.node_funcs.items():
             # Only add trigger port if all inputs have default values. For functions with an input without a default value,
             # it's likely to go wrong if user triggers it without setting the input.
-            if node_func.spec.create_trigger_port and all(
-                map(lambda inp: inp.default != NO_DEFAULT, node_func.inputs.values())
+            if (node_func.spec.create_trigger_port is True) or (
+                (node_func.spec.create_trigger_port is None)
+                and all(
+                    map(
+                        lambda inp: inp.default != NO_DEFAULT, node_func.inputs.values()
+                    )
+                )
             ):
                 self.tr_ports[f"{self.name}.tr.{name}"] = self.node.add_in_port(
                     f"{self.name}.tr.{name}",
@@ -396,6 +402,12 @@ class DecorTrait(Trait):
         elif gtype >> float:
             control_type = FloatControl
             editor_type = "float"
+        elif isinstance(gtype, LiteralType):
+            control_type = OptionControl
+            control_kwargs["options"] = list(gtype.values)
+            editor_type = "options"
+            editor_args["options"] = list(gtype.values)
+
         elif gtype >> None:
             control_type = ButtonControl
             editor_type = "button"

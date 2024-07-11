@@ -13,8 +13,8 @@ from grapycal.sobjects.edge import Edge
 from grapycal.sobjects.node import Node, deprecated
 from grapycal.sobjects.port import InputPort
 from grapycal.sobjects.sourceNode import SourceNode
-from topicsync.topic import FloatTopic, IntTopic
-from grapycal.extension_api.decor import func
+from topicsync.topic import FloatTopic, GenericTopic, IntTopic
+from grapycal.extension_api.decor import func, param
 
 
 class VariableNode(SourceNode):
@@ -23,7 +23,7 @@ class VariableNode(SourceNode):
     VariableNode stores a variable in the workspace. It can be used to store data for later use.
 
     :inputs:
-        - run: send in a signal to actively output the variable's value
+        - trigger: to output the variable's value to the `get` port
         - set: set the variable's value
 
     :outputs:
@@ -64,74 +64,17 @@ class VariableNode(SourceNode):
             edge.push(self.value)
 
 
-@deprecated("Use SplitList or SplitDict instead", "0.12.0", "0.13.0")
-class SplitNode(Node):
+class GetItemNode(Node):
     """
-    SplitNode is used to get items from a list or a dictionary using keys.
-    It is equivalent to `data[key]` in Python.
-
-    Multiple keys can be used at the same time. Each value will be sent to a corresponding output port.
-
-    :inputs:
-        - list/dict: the list or dictionary to be split
-
-    :outputs:
-        - value1: the value of the first key
-        - value2: the value of the second key
-        etc.
+    Get items from a list, dictionary, array, tensor, etc. by specifying the keys.
+    Note that the keys must be valid Python expressions. If the key is a string, it must be enclosed in quotes.
+    To omit quotes for string indicies, use GetItemStringIndexNode instead.
     """
 
     category = "data"
 
     def build_node(self):
-        self.in_port = self.add_in_port("list/dict", 1)
-        self.label_topic.set("Split")
-        self.shape_topic.set("normal")
-        self.keys = self.add_attribute("keys", ListTopic, editor_type="list")
-        self.key_mode = self.add_attribute(
-            "key mode",
-            StringTopic,
-            "string",
-            editor_type="options",
-            options=["string", "eval"],
-        )
-
-        if not self.is_new:
-            for key in self.keys:
-                self.add_out_port(key)
-
-    def init_node(self):
-        self.keys.on_insert.add_auto(self.add_key)
-        self.keys.on_pop.add_auto(self.remove_key)
-
-    def add_key(self, key, position):
-        self.add_out_port(key)
-
-    def remove_key(self, key, position):
-        self.remove_out_port(key)
-
-    def edge_activated(self, edge: Edge, port: InputPort):
-        self.run(self.task, background=False)
-
-    def task(self):
-        data = self.in_port.get()
-        for out_port in self.out_ports:
-            key = out_port.name.get()
-            if self.key_mode.get() == "eval":
-                out_port.push(eval(f"_data[{key}]", self.get_vars(), {"_data": data}))
-            else:
-                out_port.push(data[key])
-
-
-class SplitListNode(Node):
-    """ """
-
-    category = "data"
-
-    def build_node(self):
-        self.in_port = self.add_in_port("list", 1)
-        self.label_topic.set("Split List")
-        self.shape_topic.set("normal")
+        self.in_port = self.add_in_port("data structure", 1)
         self.keys = self.add_attribute("keys", ListTopic, editor_type="list")
 
         if not self.is_new:
@@ -158,13 +101,15 @@ class SplitListNode(Node):
             out_port.push(eval(f"_data[{key}]", self.get_vars(), {"_data": data}))
 
 
-class SplitDictNode(Node):
-    """ """
+class GetItemStringIndexNode(Node):
+    """
+    Get items from a data structure using string indices. Quotes are not required for the keys.
+    """
 
     category = "data"
 
     def build_node(self):
-        self.in_port = self.add_in_port("dict", 1)
+        self.in_port = self.add_in_port("data structure", 1)
         self.keys = self.add_attribute("keys", ListTopic, editor_type="list")
 
         if not self.is_new:
@@ -238,35 +183,11 @@ class RegexFindAllNode(Node):
     category = "data"
 
     def build_node(self):
-        self.in_port = self.add_in_port(
-            "string",
-            1,
-            control_type=TextControl,
-        )
-        self.pattern_port = self.add_in_port(
-            "pattern",
-            1,
-            control_type=TextControl,
-        )
-        self.out_port = self.add_out_port("matches")
-        self.label_topic.set("Regex Find All")
-        self.shape_topic.set("normal")
         self.css_classes.append("fit-content")
 
-    def edge_activated(self, edge: Edge, port: InputPort):
-        self.task()
-
-    def icon_clicked(self):
-        self.task()
-
-    def task(self):
-        for port in [self.in_port, self.pattern_port]:
-            if not port.is_all_ready():
-                return
-        string = self.in_port.get()
-        pattern = self.pattern_port.get()
-        self.out_port.push(re.findall(pattern, string))
-        self.flash_running_indicator()
+    @func(background=False)
+    def matches(self, string: str = "123ouo456", pattern: str = "[0-9]+") -> list:
+        return re.findall(pattern, string)
 
 
 class ZipNode(Node):
@@ -280,9 +201,15 @@ class ZipNode(Node):
 
     :outputs:
         - list: the combined list
+
+    :param required_length: the required length of all input lists. If set to -1, nothing will be checked. If set to a positive integer, all input lists must have that length, otherwise an error will be raised.
     """
 
     category = "data"
+
+    @param()
+    def param(self, required_length: int = -1):
+        self.required_length = required_length
 
     def build_node(self):
         self.out_port = self.add_out_port("output")
@@ -290,9 +217,6 @@ class ZipNode(Node):
         self.shape_topic.set("normal")
         self.items = self.add_attribute("items", ListTopic, editor_type="list")
         self.add_button = self.add_control(ButtonControl, name="add", label="Add")
-        self.required_length = self.add_control(
-            TextControl, name="required_length", label="Required Length"
-        )
 
         if not self.is_new:
             for item in self.items:
@@ -329,19 +253,14 @@ class ZipNode(Node):
         if not all([port.is_all_ready() for port in self.in_ports]):
             return
         inputs = []
-        required_length_str = self.required_length.text.get()
-        try:
-            required_length = int(required_length_str)
-        except ValueError:
-            required_length = None
         for item in self.items:
             inputs.append(self.get_in_port(item).get())
 
-        if required_length is not None:
+        if self.required_length != -1:
             for input_list in inputs:
-                if len(input_list) != required_length:
+                if len(input_list) != self.required_length:
                     self.print_exception(
-                        f"Length of input lists must be {required_length}"
+                        f"Length of input lists must be {self.required_length}"
                     )
                     return
 
@@ -355,7 +274,14 @@ class ZipNode(Node):
 
 class EmaNode(Node):
     """
-    Exponential moving average
+    Exponential moving average.
+    For each new input, the EMA is updated as follows:
+
+    EMA[0] = input[0]
+
+    EMA[t] = alpha * input[t] + (1 - alpha) * EMA[t-1]
+
+    Every `output_interval` steps, the EMA is outputted.
     """
 
     category = "data/dynamics"
@@ -398,14 +324,18 @@ class EmaNode(Node):
 
 class MeanNode(Node):
     """
-    Average
+    Calculate the mean of a stream of inputs.
+    The mean is calculated as follows:
+
+    mean = (input[0] + input[1] + ... + input[t]) / (t + 1)
+
+    Every `output_interval` steps, the mean is outputted.
     """
 
     category = "data/dynamics"
 
     def build_node(self):
         super().build_node()
-        self.label_topic.set("Average")
         self.reset_port = self.add_in_port("reset")
         self.in_port = self.add_in_port("input")
         self.out_port = self.add_out_port("output")
@@ -414,10 +344,9 @@ class MeanNode(Node):
         )
         self.reset_when_output = self.add_attribute(
             "reset_when_output",
-            StringTopic,
-            "No",
-            editor_type="options",
-            options=["Yes", "No"],
+            GenericTopic[bool],
+            False,
+            editor_type="toggle",
         )
 
     def init_node(self):
@@ -446,9 +375,9 @@ class MeanNode(Node):
                 self.num = 0
 
 
-class AttributeNode(Node):
+class GetAttributeNode(Node):
     """
-    AttributeNode is used to get an attribute of an object.
+    Get an attribute of an object.
 
     :inputs:
         - object: the object

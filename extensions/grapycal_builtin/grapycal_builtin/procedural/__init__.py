@@ -1,13 +1,11 @@
 import time
-from collections import defaultdict
 from typing import Any
 
-from grapycal.extension.utils import NodeInfo
+from grapycal.extension_api.decor import func
 from grapycal.sobjects.controlPanel import ControlPanel
 from grapycal.sobjects.controls.textControl import TextControl
-from grapycal.sobjects.edge import Edge
-from grapycal.sobjects.functionNode import FunctionNode
-from grapycal.sobjects.port import InputPort
+from grapycal.sobjects.controls.triggerControl import TriggerControl
+from grapycal import InputPort, param
 from objectsync.sobject import SObjectSerialized
 
 from grapycal_builtin.utils import ListDict, ListDictWithNotify
@@ -22,19 +20,24 @@ from grapycal import Node
 
 
 class TaskNodeManager:
-    trigger_nodes = ListDict["TriggerNode"]()
+    runtask_nodes = ListDict["RunTaskNode"]()
     task_nodes = ListDictWithNotify["TaskNode"]()
     task_nodes.key_added += ControlPanel.add_task
     task_nodes.key_removed += ControlPanel.remove_task
 
 
-class TriggerNode(Node):
+class RunTaskNode(Node):
     category = "procedural"
 
     def build_node(self):
         self.shape_topic.set("simple")
         self.name = self.add_attribute("name", StringTopic, editor_type="text")
-        self.in_port = self.add_in_port("jump", display_name="")
+        self.in_port = self.add_in_port(
+            "jump",
+            display_name="",
+            control_type=TriggerControl,
+            activate_on_control_change=True,
+        )
         self.out_port = self.add_out_port("then", display_name="")
         self.css_classes.append("fit-content")
         self.label_topic.set(f"{self.name.get()}")
@@ -43,7 +46,7 @@ class TriggerNode(Node):
         if self.is_preview.get():
             return
 
-        TaskNodeManager.trigger_nodes.append(self.name.get(), self)
+        TaskNodeManager.runtask_nodes.append(self.name.get(), self)
         self.name.on_set2.add_manual(self.on_name_set)
 
     def on_name_set(self, old, new):
@@ -51,20 +54,14 @@ class TriggerNode(Node):
             return
 
         self.label_topic.set(f"{new}")
-        TaskNodeManager.trigger_nodes.remove(old, self)
-        TaskNodeManager.trigger_nodes.append(new, self)
+        TaskNodeManager.runtask_nodes.remove(old, self)
+        TaskNodeManager.runtask_nodes.append(new, self)
 
-    def edge_activated(self, edge: Edge, port: InputPort):
-        data = edge.get()
-        self.run(self.after_jump, to_queue=False, data=data)
-        for node in TaskNodeManager.task_nodes.get(self.name.get()):
-            node.jump(data)
-
-    def icon_clicked(self):
+    def port_activated(self, port: InputPort):
         if self.is_preview.get():
             return
-
-        data = None
+        data = port.get()
+        self.flash_running_indicator()
         self.run(self.after_jump, to_queue=False, data=data)
         for node in TaskNodeManager.task_nodes.get(self.name.get()):
             node.jump(data)
@@ -76,7 +73,7 @@ class TriggerNode(Node):
         if self.is_preview.get():
             return super().destroy()
 
-        TaskNodeManager.trigger_nodes.remove(self.name.get(), self)
+        TaskNodeManager.runtask_nodes.remove(self.name.get(), self)
         return super().destroy()
 
 
@@ -85,7 +82,9 @@ class TaskNode(Node):
 
     def build_node(self):
         self.shape_topic.set("simple")
-        self.name = self.add_attribute("name", StringTopic, editor_type="text")
+        self.name = self.add_attribute(
+            "name", StringTopic, editor_type="text", init_value="Task"
+        )
         self.out_port = self.add_out_port("do", display_name="")
         self.css_classes.append("fit-content")
 
@@ -134,23 +133,16 @@ class TaskNode(Node):
         return super().destroy()
 
 
-class SleepNode(FunctionNode):
+class SleepNode(Node):
     category = "procedural"
-    inputs = ["start"]
-    outputs = ["done"]
 
-    def build_node(self):
-        super().build_node()
-        time_port = self.add_in_port(
-            "seconds", control_type=TextControl, display_name="time", text="1"
-        )
-        self.shape_topic.set("normal")
-        self.label_topic.set("Sleep")
-        self.time_control = time_port.default_control
+    @param()
+    def param(self, seconds: float = 1):
+        self.seconds = seconds
 
-    def calculate(self, **inputs) -> Any:
-        time.sleep(float(self.time_control.get()))
-        return inputs["start"]
+    @func()
+    def done(self):
+        time.sleep(self.seconds)
 
 
 class IfNode(Node):

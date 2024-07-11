@@ -14,6 +14,7 @@ from objectsync import (
     ObjTopic,
     SetTopic,
     StringTopic,
+    BoolTopic,
     Topic,
 )
 

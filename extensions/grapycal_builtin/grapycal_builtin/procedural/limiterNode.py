@@ -1,5 +1,6 @@
 import time
-from grapycal import FloatTopic, IntTopic, Node
+from grapycal import Node
+from grapycal.extension_api.decor import param
 from grapycal.extension_api.trait import ClockTrait
 from grapycal.sobjects.edge import Edge
 from grapycal.sobjects.port import InputPort
@@ -18,12 +19,6 @@ class LimiterNode(Node):
         self.shape_topic.set("simple")
         self.in_port = self.add_in_port("in", display_name="")
         self.out_port = self.add_out_port("out", display_name="")
-        self.reduce_factor = self.add_attribute(
-            "reduce_factor", IntTopic, 10, editor_type="int"
-        )
-        self.time_span = self.add_attribute(
-            "time_span", FloatTopic, 0.2, editor_type="float"
-        )
 
     def init_node(self):
         self.value = None
@@ -32,15 +27,20 @@ class LimiterNode(Node):
         self.counter = 0
         self.last_push_time = 0
 
+    @param()
+    def param(self, reduce_factor: int = 10, time_span: float = 0.2):
+        self.reduce_factor = reduce_factor
+        self.time_span = time_span
+
     def edge_activated(self, edge: Edge, port: InputPort):
         with self.lock:
             self.value = edge.get()
             self.counter += 1
             self.has_value = True
 
-            if self.reduce_factor.get() == 0:
+            if self.reduce_factor == 0:
                 return
-            if self.counter == self.reduce_factor.get():
+            if self.counter == self.reduce_factor:
                 self.counter = 0
                 self.last_push_time = time.time()
                 self.has_value = False
@@ -50,13 +50,13 @@ class LimiterNode(Node):
     def tick(self):
         if not self.has_value:
             return
-        if self.time_span.get() == 0:
+        if self.time_span == 0:
             return
 
         with self.lock:
             if (
                 self.value is not None
-                and time.time() - self.last_push_time > self.time_span.get()
+                and time.time() - self.last_push_time > self.time_span
             ):
                 self.counter = 0
                 self.last_push_time = time.time()

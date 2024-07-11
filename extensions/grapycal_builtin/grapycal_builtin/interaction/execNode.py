@@ -98,9 +98,8 @@ async def aexec(code, globals_=None, locals_=None, print_=None):
 
 class ExecNode(SourceNode):
     """
-    Equivalent to Python's `exec` function. It executes the statements in the input text box.
-
-    To make it run, either send in a signal to the `run` input port, or double click on the node.
+    Executes Python code. Equivalent to Python's `exec` function or a Notebook cell.
+    If the last line is an expression, it will be displayed and returned as the output of the node.
 
     :inputs:
         - run: send in a signal to run the statements
@@ -137,7 +136,7 @@ class ExecNode(SourceNode):
             options=["yes", "no"],
             init_value="yes",
         )
-        self.icon_path_topic.set("task")
+        self.icon_path_topic.set("python")
 
         if self.is_new:
             self.code_control.set(text)

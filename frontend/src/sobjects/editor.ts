@@ -252,7 +252,7 @@ export class Editor extends CompSObject{
                 Workspace.instance.appNotif.add("Image is too large. Max size is 2MB")
                 return
             }
-            this.createNode('grapycal_builtin.ImagePasteNode',
+            this.createNode('grapycal_builtin.ImageSourceNode',
                 {image:base64String}
             )
         },()=>{

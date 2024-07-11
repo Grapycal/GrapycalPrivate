@@ -1,17 +1,20 @@
 from typing import Iterable
 
 from grapycal import Node
+from grapycal.extension_api.decor import param
 from grapycal.sobjects.edge import Edge
 from grapycal.sobjects.port import InputPort
 from grapycal.sobjects.sourceNode import SourceNode
-from objectsync import IntTopic
 from topicsync.topic import StringTopic
 
 
 class ForNode(Node):
     """
-    Iterate through an iterable object. Each iteration will push the next item to the ``item`` port.
-    Double click to interrupt the iteration.
+    Iterate through an iterable object such as a list or a range.
+
+    Each item is pushed to the ``item`` port in order.
+
+    Equivalent to a for loop in Python.
     """
 
     category = "procedural"
@@ -67,6 +70,8 @@ class RepeatNode(SourceNode):
     𝄆 Repeatly push numbers from 0 to ``times``-1 to the ``item`` port. 𝄇
 
     Shortcut for ``For`` node with ``range`` as iterable.
+
+    Equivalent to `for i in range(times):` in Python.
     """
 
     category = "procedural"
@@ -74,22 +79,26 @@ class RepeatNode(SourceNode):
     def build_node(self):
         super().build_node()
         self.item_port = self.add_out_port("item")
+        self.label_topic.set("For")
         self.shape_topic.set("simple")
-        self.times = self.add_attribute(
-            "times", IntTopic, editor_type="int", init_value=10
-        )
 
     def init_node(self):
         super().init_node()
         self.iterator: Iterable | None = None
-        self.times.on_set += lambda times: self.label_topic.set(f"⟳ Repeat {times}")
-        self.label_topic.set(f"⟳ Repeat {self.times.get()}")
+
+    @param()
+    def param(self, times: int = 10):
+        """
+        Number of times to repeat.
+        """
+        self.times = times
+        self.label_topic.set(f"⟳ Repeat {self.times}")
 
     def edge_activated(self, edge: Edge, port: InputPort):
         self.run(self.task)
 
     def task(self):
-        self.iterator = iter(range(self.times.get()))
+        self.iterator = iter(range(self.times))
         self.run(self.next, to_queue=False)
 
     def next(self):

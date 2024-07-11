@@ -91,7 +91,7 @@ class Editor(SObject):
             node_type_cls = node_type
         if node_type_cls._is_singleton and hasattr(node_type_cls, "instance"):
             user_logger.warning(
-                f"Node type {node_type} is a singleton and already exists"
+                f"Cannot create {node_type} because it is a singleton and already exists"
             )
             return None
         with self._server.record(allow_reentry=True):
@@ -410,6 +410,12 @@ class Editor(SObject):
             # For example, copy and paste a node that should be unique.
             try:
                 old_node_info = NodeInfo(obj)
+                node_type_cls = self._server._object_types[obj.type]
+                if node_type_cls._is_singleton and hasattr(node_type_cls, "instance"):  # type: ignore
+                    user_logger.warning(
+                        f"Cannot create {obj.type} because it is a singleton and already exists"
+                    )
+                    continue
                 node = self.add_child_s(
                     obj.type, id=new_node_id, is_new=False, old_node_info=old_node_info
                 )

@@ -418,6 +418,10 @@ export class Node extends CompSObject implements IControlHost {
             this.link2(svgEl,'click',() => {
                 this.emit('icon_clicked')
             })
+            if(path == 'svg/task.svg'){
+                // change cursor to pointer
+                svgEl.style.cursor = 'pointer'
+            }
             this.moved.invoke()
         })   
     }

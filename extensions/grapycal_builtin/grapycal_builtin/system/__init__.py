@@ -3,13 +3,14 @@ import os
 
 import dotenv
 from grapycal import InputPort, Node, SourceNode, TextControl
+from grapycal.extension_api.decor import func
 
 
 class EnvironmentVariableNode(SourceNode):
     """
 
     :inputs:
-        - run: send in a signal to actively output the environment variable's value
+        - trigger: send in a signal to actively output the environment variable's value
         - set: set the environment variable's value
 
     :outputs:
@@ -44,24 +45,20 @@ class EnvironmentVariableNode(SourceNode):
         self.out_port.push(value)
 
 
-class ReadJsonNode(SourceNode):
+class ReadJsonNode(Node):
     """
-    Read a JSON file and output the data.
+    Read a JSON file and get the data.
     """
 
     category = "system"
 
     def build_node(self):
-        super().build_node()
-        self.label_topic.set("Read JSON")
         self.css_classes.append("fit-content")
-        self.out_port = self.add_out_port("data")
-        self.path_port = self.add_in_port("path", control_type=TextControl)
 
-    def task(self):
-        with open(self.path_port.get(), "r") as f:
-            data = json.load(f)
-        self.out_port.push(data)
+    @func()
+    def data(self, path: str = "data.json"):
+        with open(path, "r") as f:
+            return json.load(f)
 
 
 class WriteJsonNode(Node):
@@ -72,16 +69,9 @@ class WriteJsonNode(Node):
     category = "system"
 
     def build_node(self):
-        super().build_node()
-        self.label_topic.set("Write JSON")
         self.css_classes.append("fit-content")
-        self.in_port = self.add_in_port("data", 1)
-        self.path_port = self.add_in_port("path", control_type=TextControl)
 
-    def port_activated(self, port: InputPort):
-        if port == self.in_port:
-            self.run(self.task)
-
-    def task(self):
-        with open(self.path_port.get(), "w") as f:
-            json.dump(self.in_port.get(), f, ensure_ascii=False)
+    @func()
+    def done(self, path: str = "data.json", data: dict = {}):
+        with open(path, "w") as f:
+            json.dump(data, f, ensure_ascii=False)

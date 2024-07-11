@@ -1,6 +1,7 @@
 import re
 
-from grapycal import ButtonControl, Edge, InputPort, ListTopic
+from grapycal import ButtonControl, InputPort, ListTopic
+from grapycal.sobjects.controls.triggerControl import TriggerControl
 from grapycal.sobjects.node import Node
 
 
@@ -8,7 +9,9 @@ class StepsNode(Node):
     category = "procedural"
 
     def build_node(self):
-        self.in_port = self.add_in_port("", 1)
+        self.in_port = self.add_in_port(
+            "trigger", 1, control_type=TriggerControl, activate_on_control_change=True
+        )
         self.label_topic.set("Steps")
         self.shape_topic.set("normal")
         self.steps = self.add_attribute("steps", ListTopic, editor_type="list")
@@ -44,7 +47,7 @@ class StepsNode(Node):
     def remove_step(self, step, position):
         self.remove_out_port(step)
 
-    def edge_activated(self, edge: Edge, port: InputPort):
+    def port_activated(self, port: InputPort):
         self.run(self.task)
 
     def icon_clicked(self):

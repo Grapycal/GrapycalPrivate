@@ -1,13 +1,9 @@
-from grapycal.extension.utils import NodeInfo
-from grapycal.sobjects.edge import Edge
 from grapycal.sobjects.node import singletonNode
-from grapycal.sobjects.port import InputPort
 from grapycal.stores import main_store
 from objectsync.sobject import SObjectSerialized
 from .printNode import *
-from .evalNode import *
 from .execNode import *
-from .imagePasteNode import *
+from .image import *
 
 
 class LabelNode(Node):
@@ -87,6 +83,10 @@ class WebcamNode(Node):
 
 
 class TemplateNode(Node):
+    """
+    Used as a placeholder for nodes that are not yet implemented
+    """
+
     def build_node(self):
         self.expose_attribute(self.label_topic, "text")
         self.expose_attribute(

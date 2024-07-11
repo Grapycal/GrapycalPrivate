@@ -12,7 +12,12 @@ class ClockNode(Node):
 
     def build_node(self):
         self.rate_port = self.add_in_port(
-            "rate", control_type=SliderControl, min=0.01, max=10, value=1
+            "rate",
+            control_type=SliderControl,
+            min=0.01,
+            max=10,
+            value=1,
+            activate_on_control_change=True,
         )
         self.tick_port = self.add_out_port("tick")
 

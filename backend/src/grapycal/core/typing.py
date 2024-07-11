@@ -1,6 +1,6 @@
 import abc
 import inspect
-from typing import Any, Type
+from typing import Any, Literal, Type, get_origin
 
 
 class GType(abc.ABC):
@@ -19,6 +19,8 @@ class GType(abc.ABC):
             return AnyType
         if isinstance(annotation, type):
             return PlainType(annotation)
+        if get_origin(annotation) is Literal:
+            return LiteralType(annotation.__args__)  # type: ignore
         return AnyType
 
     # we use a >> b (__rshift__) to indicate that a is compatible with b
@@ -60,3 +62,14 @@ class PlainType(GType):
 
     def __repr__(self):
         return f"PlainType({self._type})"
+
+
+class LiteralType(GType):
+    def __init__(self, values: list):
+        self.values = values
+
+    def _can_accept(self, other: GType):
+        return isinstance(other, LiteralType) and set(other.values) <= set(self.values)
+
+    def __repr__(self):
+        return f"LiteralType({self.values})"

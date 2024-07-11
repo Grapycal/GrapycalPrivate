@@ -1,11 +1,10 @@
 import io
 from contextlib import contextmanager
-from typing import Generator, Tuple
+from typing import Generator, Literal, Tuple
 
 from grapycal.extension_api.decor import func
-from grapycal.extension_api.trait import Chain, Parameter, ParameterTrait, Trait
 import matplotlib
-from grapycal import FloatTopic, StringTopic, to_numpy
+from grapycal import FloatTopic, StringTopic, to_numpy, param
 from grapycal.sobjects.edge import Edge
 from grapycal.sobjects.node import Node
 from grapycal.sobjects.port import InputPort
@@ -28,7 +27,7 @@ import numpy as np
 from numpy import ndarray
 
 try:
-    from PIL import Image
+    from PIL import Image, ImageOps
 
     HAS_PIL = True
 except ImportError:
@@ -38,30 +37,6 @@ except ImportError:
 plt.style.use("dark_background")
 matplotlib.use("Agg")
 plt.ioff()
-
-
-def render_from_fig(
-    fig: Figure,
-    x_range: tuple[float, float] | None = None,
-    y_range: tuple[float, float] | None = None,
-) -> io.BytesIO:
-    if x_range is not None:
-        plt.xlim(x_range)
-    if y_range is not None:
-        plt.ylim(y_range)
-
-    plt.axis("off")
-
-    buf = io.BytesIO()
-    plt.savefig(
-        buf,
-        format="jpg",
-        bbox_inches="tight",
-        pad_inches=0,
-        facecolor=fig.get_facecolor(),
-    )
-    plt.close(fig)
-    return buf
 
 
 @contextmanager
@@ -75,13 +50,12 @@ def open_fig(equal=False) -> Generator[Tuple[Figure, Axes], None, None]:
         plt.close(fig)
 
 
-class ImagePasteNode(SourceNode):
+class ImageSourceNode(SourceNode):
     category = "interaction"
 
     def build_node(self, image: str | None = ""):
         super().build_node()
         self.shape_topic.set("simple")
-        self.label_topic.set("Paste Image")
         self.img = self.add_image_control(name="img")
         self.format = self.add_attribute(
             "format",
@@ -92,26 +66,27 @@ class ImagePasteNode(SourceNode):
         )
         self.out_port = self.add_out_port("img")
         self.icon_path_topic.set("image")
-        self.preserve_alpha = self.add_attribute(
-            "preserve alpha",
-            StringTopic,
-            "no",
-            editor_type="options",
-            options=["yes", "no"],
-        )
-        self.gray_scale = self.add_attribute(
-            "gray scale",
-            StringTopic,
-            "no",
-            editor_type="options",
-            options=["yes", "no"],
-        )
         if image:
             self.img.set(image)
             self.format.add_validator(self.format_validator)
 
     def init_node(self):
         super().init_node()
+
+    @param()
+    def param(
+        self,
+        channels: Literal["gray scale", "rgb", "rgba"] = "rgb",
+        resize: bool = False,
+        width: int = 256,
+        height: int = 256,
+        resize_mode: Literal["fit", "contain"] = "fit",
+    ):
+        self.resize = resize
+        self.width = width
+        self.height = height
+        self.resize_mode = resize_mode
+        self.channels = channels
 
     def format_validator(self, format, _):
         if "torch" in format:
@@ -130,25 +105,98 @@ class ImagePasteNode(SourceNode):
         image_bytes: bytes = self.img.get()
         # convert image to PIL
         img = Image.open(io.BytesIO(image_bytes))
+
+        if self.resize:
+            if self.resize_mode == "fit":
+                img = ImageOps.fit(img, (self.width, self.height))
+            elif self.resize_mode == "contain":
+                img = ImageOps.contain(img, (self.width, self.height))
+                img = ImageOps.pad(img, (self.width, self.height))
+
         # comvert image to torch or numpy
         if self.format.get() == "torch":
             img = torch.from_numpy(np.array(img))
             img = img.permute(2, 0, 1).to(torch.float32) / 255
-            if self.gray_scale.get() == "yes":
-                img = img.mean(0, keepdim=True)
-            if (self.preserve_alpha.get() == "no") and img.shape[0] == 4:
-                img = img[:3]
+            if self.channels == "gray scale":
+                img = img[:3].mean(0, keepdim=True)
+            elif self.channels == "rgb":
+                if img.shape[0] == 1:
+                    img = torch.cat([img, img, img], dim=0)
+                if img.shape[0] == 4:
+                    img = img[:3]
+            elif self.channels == "rgba":
+                if img.shape[0] == 1:
+                    img = torch.cat([img, img, img, torch.ones_like(img)], dim=0)
+                if img.shape[0] == 3:
+                    img = torch.cat([img, torch.ones_like(img[:1])], dim=0)
+
         elif self.format.get() == "numpy":
             img = np.array(img).astype(np.float32).transpose(2, 0, 1) / 255
-            if self.gray_scale.get() == "yes":
-                img = img.mean(0, keepdims=True)
-            if (self.preserve_alpha.get() == "no") and img.shape[0] == 4:
-                img = img[:3]
+            if self.channels == "gray scale":
+                img = img[:3].mean(0, keepdims=True)
+            elif self.channels == "rgb":
+                if img.shape[0] == 1:
+                    img = np.concatenate([img, img, img], axis=0)
+                if img.shape[0] == 4:
+                    img = img[:3]
+            elif self.channels == "rgba":
+                if img.shape[0] == 1:
+                    img = np.concatenate([img, img, img, np.ones_like(img)], axis=0)
+                if img.shape[0] == 3:
+                    img = np.concatenate([img, np.ones_like(img[:1])], axis=0)
 
         self.out_port.push(img)
 
 
-class ImageDisplayNode(Node):
+class Renderer:
+    def __init__(self, width: int, height: int):
+        self._set_size(width, height)
+
+    def set_size(self, width, height):
+        if width == self.width and height == self.height:
+            return
+        self.close()
+        self._set_size(width, height)
+
+    def _set_size(self, width, height):
+        self.width = width
+        self.height = height
+        self.fig = plt.figure(
+            figsize=(width / 128 * 1.299, height / 128 * 1.299),
+            dpi=128,
+        )  # 1.299 makes pyplot outputs correctly
+        self.ax = self.fig.gca()
+
+    def render(
+        self,
+        x_range: tuple[float, float] | None = None,
+        y_range: tuple[float, float] | None = None,
+        format="jpg",
+    ) -> io.BytesIO:
+        if x_range is not None:
+            plt.xlim(x_range)
+        if y_range is not None:
+            plt.ylim(y_range)
+        buf = io.BytesIO()
+        self.ax.axis("off")
+        self.fig.savefig(
+            buf,
+            format=format,
+            bbox_inches="tight",
+            transparent=True,
+            pad_inches=0,
+            dpi=128,
+            facecolor=self.fig.get_facecolor(),
+        )
+        self.ax.clear()
+        buf.seek(0)
+        return buf
+
+    def close(self):
+        plt.close(self.fig)
+
+
+class DisplayImageNode(Node):
     """
     Display an image from the input data
     The input data can be a numpy array or a torch tensor, with one of the following shapes:
@@ -167,19 +215,11 @@ class ImageDisplayNode(Node):
 
     category = "interaction"
 
-    def define_traits(self) -> list[Trait | Chain] | Trait | Chain:
-        self.size_param = ParameterTrait(
-            [
-                Parameter("width", "int", 256),
-                Parameter("height", "int", 256),
-            ]
-        )
-        return self.size_param
-
     def build_node(self):
         self.label_topic.set("Display Image")
         self.shape_topic.set("simple")
         self.img_control = self.add_image_control(name="img")
+        self.icon_path_topic.set("image")
         self.cmap = self.add_attribute(
             "cmap",
             StringTopic,
@@ -198,23 +238,16 @@ class ImageDisplayNode(Node):
         )
         self.vmax = self.add_attribute("vmax", FloatTopic, 1, editor_type="float")
         self.slice = self.add_text_control(label="slice: ", name="slice", text=":")
-        self.icon_path_topic.set("image")
         self.format = self.add_attribute(
             "format", StringTopic, "jpg", editor_type="options", options=["jpg", "png"]
         )
 
-    def init_node(self):
-        self.create_figure(self.size_param.get_values())
-        self.size_param.on_update += self.create_figure
-
-    def create_figure(self, size):
-        if hasattr(self, "fig"):
-            plt.close(self.fig)
-        self.fig = plt.figure(
-            figsize=(size["width"] / 128 * 1.299, size["height"] / 128 * 1.299),
-            dpi=128,
-        )  # 1.299 makes pyplot outputs correctly
-        self.ax = self.fig.gca()
+    @param()
+    def param(self, width: int = 256, height: int = 256):
+        if hasattr(self, "renderer"):
+            self.renderer.set_size(width, height)
+        else:
+            self.renderer = Renderer(width, height)
 
     def find_valid_slice(self, data: np.ndarray) -> str | None:
         if data.ndim == 2:
@@ -284,39 +317,25 @@ class ImageDisplayNode(Node):
     def img(self, data):
         data = self.preprocess_data(data)
         # use plt to convert to jpg
-        buf = io.BytesIO()
 
-        try:
-            # chw -> hwc
-            if data.ndim == 3:
-                data = data.transpose(1, 2, 0)
-            self.ax.imshow(
-                data,
-                cmap=self.cmap.get(),
-                vmin=self.vmin.get() if self.use_vmin.get() else None,
-                vmax=self.vmax.get() if self.use_vmax.get() else None,
-            )
-            self.ax.axis("off")
-            self.fig.savefig(
-                buf,
-                format=self.format.get(),
-                bbox_inches="tight",
-                transparent=True,
-                pad_inches=0,
-                dpi=128,
-            )
-            self.img_control.set(buf)
-            buf.seek(0)
-            return buf
-        finally:
-            # buf.close()
-            self.ax.clear()
+        # chw -> hwc
+        if data.ndim == 3:
+            data = data.transpose(1, 2, 0)
+        self.renderer.ax.imshow(
+            data,
+            cmap=self.cmap.get(),
+            vmin=self.vmin.get() if self.use_vmin.get() else None,
+            vmax=self.vmax.get() if self.use_vmax.get() else None,
+        )
+        buf = self.renderer.render(format=self.format.get())
+        self.img_control.set(buf)
+        return buf
 
     def input_edge_removed(self, edge: Edge, port: InputPort):
         self.img_control.set(None)
 
     def destroy(self):
-        plt.close(self.fig)
+        self.renderer.close()
         return super().destroy()
 
 
@@ -329,6 +348,13 @@ class BarPlotNode(Node):
         self.img = self.add_image_control(name="img")
         self.in_port = self.add_in_port("data", 64, "")
 
+    @param()
+    def param(self, width: int = 256, height: int = 256):
+        if hasattr(self, "renderer"):
+            self.renderer.set_size(width, height)
+        else:
+            self.renderer = Renderer(width, height)
+
     def port_activated(self, port: InputPort):
         self.run(self.render, data=port.get())
 
@@ -340,10 +366,14 @@ class BarPlotNode(Node):
             data = data[0]
         if data.ndim != 1:
             raise ValueError(f"Cannot plot with shape {data.shape}")
-        with open_fig() as (fig, ax):
-            ax.bar(range(len(data)), data * 50)
-            buf = render_from_fig(fig)
+        self.renderer.ax.bar(range(len(data)), data * 50)
+        buf = self.renderer.render()
         self.img.set(buf)
+        buf.close()
+
+    def destroy(self):
+        self.renderer.close()
+        return super().destroy()
 
 
 class ScatterPlotNode(Node):
@@ -355,6 +385,13 @@ class ScatterPlotNode(Node):
         self.img = self.add_image_control(name="img")
         self.slice = self.add_text_control(label="slice: ", name="slice", text=":")
         self.in_port = self.add_in_port("data", 64, "")
+
+    @param()
+    def param(self, width: int = 256, height: int = 256):
+        if hasattr(self, "renderer"):
+            self.renderer.set_size(width, height)
+        else:
+            self.renderer = Renderer(width, height)
 
     def edge_activated(self, edge: Edge, port: InputPort):
         if self.in_port.is_all_ready():
@@ -397,22 +434,27 @@ class ScatterPlotNode(Node):
         return data
 
     def update_image(self, data):
-        with open_fig(equal=True) as (fig, ax):
-            for d in data:
-                if len(d.shape) == 3:
-                    for slice in d:
-                        slice = self.preprocess_data(slice)
-                        ax.scatter(slice[:, 0], slice[:, 1], alpha=0.5)
-                else:
-                    d = self.preprocess_data(d)
-                    ax.scatter(d[:, 0], d[:, 1], alpha=0.5)
+        if isinstance(data, list):
+            data = np.array(data)
+        for d in data:
+            if len(d.shape) == 3:
+                for slice in d:
+                    slice = self.preprocess_data(slice)
+                    self.renderer.ax.scatter(slice[:, 0], slice[:, 1], alpha=0.5)
+            else:
+                d = self.preprocess_data(d)
+                self.renderer.ax.scatter(d[:, 0], d[:, 1], alpha=0.5)
 
-            buf = render_from_fig(fig, (-4, 4), (-4, 4))
-
+        buf = self.renderer.render((-4, 4), (-4, 4))
         self.img.set(buf)
+        buf.close()
 
     def input_edge_removed(self, edge: Edge, port: InputPort):
         self.img.set(None)
+
+    def destroy(self):
+        self.renderer.close()
+        return super().destroy()
 
 
 def to_list(data) -> list:
