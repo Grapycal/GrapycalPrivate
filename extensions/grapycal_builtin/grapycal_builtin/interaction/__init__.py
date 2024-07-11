@@ -1,6 +1,9 @@
-from grapycal.sobjects.node import singletonNode
-from grapycal.stores import main_store
-from objectsync.sobject import SObjectSerialized
+from grapycal import singletonNode, Node, main_store, StringTopic, ListTopic
+import torch
+import numpy as np
+import io
+from PIL import Image
+
 from .printNode import *
 from .execNode import *
 from .image import *
@@ -75,7 +78,7 @@ class WebcamNode(Node):
 
         self.out_port.push(img)
 
-    def destroy(self) -> SObjectSerialized:
+    def destroy(self):
         if not self.is_preview.get():
             self.webcam.image.on_set.remove(self._on_image_set)
             self.webcam.source_client.on_set.remove(self._source_client_changed)

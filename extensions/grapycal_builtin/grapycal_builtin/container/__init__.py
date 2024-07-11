@@ -1,6 +1,4 @@
-from grapycal import Node
-from grapycal.sobjects.edge import Edge
-from grapycal.sobjects.port import InputPort
+from grapycal import Node, Edge, InputPort
 
 
 class ListAccumulatorNode(Node):

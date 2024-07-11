@@ -1,20 +1,22 @@
 import re
 
-from grapycal import ListTopic, StringTopic
-from grapycal.extension_api.trait import (
-    Trait,
+from grapycal import (
+    ButtonControl,
+    Edge,
+    FloatTopic,
+    GenericTopic,
+    InputPort,
     InputsTrait,
+    IntTopic,
+    ListTopic,
+    Node,
     OutputsTrait,
+    SourceNode,
+    TextControl,
+    func,
+    param,
+    is_torch_tensor,
 )
-from grapycal.extension_api.utils import is_torch_tensor
-from grapycal.sobjects.controls import TextControl
-from grapycal.sobjects.controls.buttonControl import ButtonControl
-from grapycal.sobjects.edge import Edge
-from grapycal.sobjects.node import Node, deprecated
-from grapycal.sobjects.port import InputPort
-from grapycal.sobjects.sourceNode import SourceNode
-from topicsync.topic import FloatTopic, GenericTopic, IntTopic
-from grapycal.extension_api.decor import func, param
 
 
 class VariableNode(SourceNode):
@@ -25,8 +27,8 @@ class VariableNode(SourceNode):
     :inputs:
         - trigger: to output the variable's value to the `get` port
         - set: set the variable's value
-
-    :outputs:
+    func,
+    is_torch_tensor,
         - get: get the variable's value
 
     """

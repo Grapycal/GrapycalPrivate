@@ -1,11 +1,6 @@
 from typing import Iterable
 
-from grapycal import Node
-from grapycal.extension_api.decor import param
-from grapycal.sobjects.edge import Edge
-from grapycal.sobjects.port import InputPort
-from grapycal.sobjects.sourceNode import SourceNode
-from topicsync.topic import StringTopic
+from grapycal import Node, param, Edge, InputPort, SourceNode, StringTopic
 
 
 class ForNode(Node):

@@ -1,10 +1,7 @@
 from collections import defaultdict
 from typing import TYPE_CHECKING
 
-from grapycal import ListTopic, Node, StringTopic
-from grapycal.sobjects.edge import Edge
-from grapycal.sobjects.port import InputPort, OutputPort
-from objectsync.sobject import SObjectSerialized
+from grapycal import ListTopic, Node, StringTopic, Edge, InputPort, OutputPort
 
 from ..utils import find_next_valid_name
 
@@ -133,7 +130,7 @@ class FuncCallNode(Node):
         for key, value in result.items():
             self.get_out_port(key).push(value)
 
-    def destroy(self) -> SObjectSerialized:
+    def destroy(self):
         self.ext.func_def_manager.calls.remove(self.func_name.get(), self)
         return super().destroy()
 
@@ -228,7 +225,7 @@ class FuncInNode(Node):
             self.get_out_port(key).push(value)
         self.flash_running_indicator()
 
-    def destroy(self) -> SObjectSerialized:
+    def destroy(self):
         if not self.is_preview.get():
             self.ext.func_def_manager.remove_in(self.func_name.get())
         return super().destroy()
@@ -329,7 +326,7 @@ class FuncOutNode(Node):
         caller.push_result(result)
         self.flash_running_indicator()
 
-    def destroy(self) -> SObjectSerialized:
+    def destroy(self):
         if not self.is_preview.get():
             self.ext.func_def_manager.remove_out(self.func_name.get())
         return super().destroy()

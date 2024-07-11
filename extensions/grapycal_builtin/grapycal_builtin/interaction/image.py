@@ -2,17 +2,11 @@ import io
 from contextlib import contextmanager
 from typing import Generator, Literal, Tuple
 
-from grapycal.extension_api.decor import func
 import matplotlib
-from grapycal import FloatTopic, StringTopic, to_numpy, param
-from grapycal.sobjects.edge import Edge
-from grapycal.sobjects.node import Node
-from grapycal.sobjects.port import InputPort
-from grapycal.sobjects.sourceNode import SourceNode
 from matplotlib import pyplot as plt
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
-from topicsync.topic import GenericTopic
+
 
 try:
     import torch
@@ -33,6 +27,19 @@ try:
 except ImportError:
     HAS_PIL = False
 
+
+from grapycal import (
+    FloatTopic,
+    StringTopic,
+    to_numpy,
+    param,
+    Edge,
+    Node,
+    InputPort,
+    SourceNode,
+    func,
+    GenericTopic,
+)
 
 plt.style.use("dark_background")
 matplotlib.use("Agg")

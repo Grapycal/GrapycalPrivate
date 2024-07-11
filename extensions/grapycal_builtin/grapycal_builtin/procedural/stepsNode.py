@@ -1,8 +1,6 @@
 import re
 
-from grapycal import ButtonControl, InputPort, ListTopic
-from grapycal.sobjects.controls.triggerControl import TriggerControl
-from grapycal.sobjects.node import Node
+from grapycal import ButtonControl, InputPort, ListTopic, Node, TriggerControl
 
 
 class StepsNode(Node):

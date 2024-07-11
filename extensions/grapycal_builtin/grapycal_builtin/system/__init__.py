@@ -1,9 +1,8 @@
 import json
 import os
-
 import dotenv
-from grapycal import InputPort, Node, SourceNode, TextControl
-from grapycal.extension_api.decor import func
+
+from grapycal import InputPort, Node, SourceNode, TextControl, func
 
 
 class EnvironmentVariableNode(SourceNode):

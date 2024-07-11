@@ -1,10 +1,7 @@
 import time
-from grapycal import Node
-from grapycal.extension_api.decor import param
-from grapycal.extension_api.trait import ClockTrait
-from grapycal.sobjects.edge import Edge
-from grapycal.sobjects.port import InputPort
 from threading import Lock
+
+from grapycal import Node, param, Edge, InputPort, ClockTrait
 
 
 class LimiterNode(Node):

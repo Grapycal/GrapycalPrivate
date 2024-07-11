@@ -1,14 +1,6 @@
 import io
-from grapycal.extension.utils import NodeInfo
-from grapycal.sobjects.edge import Edge
-from grapycal.sobjects.port import InputPort
-from grapycal.sobjects.sourceNode import SourceNode
-from grapycal import ListTopic
-
 import ast
-
-from objectsync import StringTopic
-from topicsync.topic import GenericTopic
+from grapycal import ListTopic, Edge, InputPort, SourceNode, StringTopic, GenericTopic
 
 
 def separate_last_expr(code) -> tuple[ast.Module, ast.Expr | None]:
@@ -168,11 +160,6 @@ class ExecNode(SourceNode):
 
     def pop_output(self, name, _):
         self.remove_out_port(name)
-
-    def restore_from_version(self, version: str, old: NodeInfo):
-        super().restore_from_version(version, old)
-        self.restore_controls("text", "output_control")
-        self.restore_attributes("inputs", "outputs")
 
     def edge_activated(self, edge: Edge, port: InputPort):
         super().edge_activated(edge, port)

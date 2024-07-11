@@ -4,8 +4,7 @@ from grapycal_builtin.FuncDefManager import FuncDefManager
 
 numpy.set_printoptions(threshold=20)
 
-from grapycal import CommandCtx, command
-from grapycal import Extension
+from grapycal import CommandCtx, command, Extension
 
 
 from .container import *

@@ -1,22 +1,22 @@
 import time
-from typing import Any
 
-from grapycal.extension_api.decor import func
-from grapycal.sobjects.controlPanel import ControlPanel
-from grapycal.sobjects.controls.textControl import TextControl
-from grapycal.sobjects.controls.triggerControl import TriggerControl
-from grapycal import InputPort, param
-from objectsync.sobject import SObjectSerialized
+from grapycal import (
+    func,
+    ControlPanel,
+    StringTopic,
+    TriggerControl,
+    InputPort,
+    param,
+    Node,
+)
 
 from grapycal_builtin.utils import ListDict, ListDictWithNotify
 
 from .forNode import *
 from .funcDef import *
-from .limiterNode import LimiterNode
-from .stepsNode import StepsNode
-from .clock import ClockNode
-
-from grapycal import Node
+from .limiterNode import *
+from .stepsNode import *
+from .clock import *
 
 
 class TaskNodeManager:
@@ -69,7 +69,7 @@ class RunTaskNode(Node):
     def after_jump(self, data):
         self.out_port.push(data)
 
-    def destroy(self) -> SObjectSerialized:
+    def destroy(self):
         if self.is_preview.get():
             return super().destroy()
 
@@ -124,7 +124,7 @@ class TaskNode(Node):
         if task == self.name.get():
             self.jump(None)
 
-    def destroy(self) -> SObjectSerialized:
+    def destroy(self):
         if self.is_preview.get():
             return super().destroy()
 

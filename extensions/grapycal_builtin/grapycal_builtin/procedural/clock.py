@@ -1,8 +1,4 @@
-from grapycal import Node
-from grapycal.sobjects.controls.sliderControl import SliderControl
-from grapycal.sobjects.port import InputPort
-from grapycal.stores import main_store
-from objectsync.sobject import SObjectSerialized
+from grapycal import SliderControl, InputPort, main_store, Node
 
 
 class ClockNode(Node):
@@ -29,7 +25,7 @@ class ClockNode(Node):
             main_store.clock.remove_listener(self.tick)
             main_store.clock.add_listener(self.tick, 1.0 / self.rate_port.get())
 
-    def destroy(self) -> SObjectSerialized:
+    def destroy(self):
         main_store.clock.remove_listener(self.tick)
         return super().destroy()
 
