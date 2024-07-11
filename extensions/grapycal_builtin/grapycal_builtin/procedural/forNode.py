@@ -81,7 +81,7 @@ class RepeatNode(SourceNode):
         super().init_node()
         self.iterator: Iterable | None = None
 
-    @param()
+    @param(shown_ports=[])
     def param(self, times: int = 10):
         """
         Number of times to repeat.

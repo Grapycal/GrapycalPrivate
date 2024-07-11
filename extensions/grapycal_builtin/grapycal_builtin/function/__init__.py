@@ -1,4 +1,5 @@
 from grapycal import ListTopic, Node, ObjDictTopic, TextControl, Edge, InputPort
+from .math import *
 
 
 class LambdaNode(Node):

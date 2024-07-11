@@ -203,7 +203,7 @@ class Renderer:
         plt.close(self.fig)
 
 
-class DisplayImageNode(Node):
+class ShowImageNode(Node):
     """
     Display an image from the input data
     The input data can be a numpy array or a torch tensor, with one of the following shapes:

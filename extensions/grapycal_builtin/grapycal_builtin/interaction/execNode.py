@@ -88,7 +88,7 @@ async def aexec(code, globals_=None, locals_=None, print_=None):
     return result
 
 
-class ExecNode(SourceNode):
+class ExecuteNode(SourceNode):
     """
     Executes Python code. Equivalent to Python's `exec` function or a Notebook cell.
     If the last line is an expression, it will be displayed and returned as the output of the node.
@@ -228,7 +228,7 @@ class ExecNode(SourceNode):
         except Exception as e:
             if self.has_await(stmt):
                 self.print_exception(
-                    f"Failed to run: {e}\n The code seems to be async. Please enable the async toggle of the ExecNode to run async code."
+                    f"Failed to run: {e}\n The code seems to be async. Please enable the async toggle of the ExecuteNode to run async code."
                 )
                 return
             self.print_exception(e, -3)

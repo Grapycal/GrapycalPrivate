@@ -14,6 +14,34 @@ from grapycal.sobjects.node import Node
 from grapycal.sobjects.port import InputPort, OutputPort, Port
 from objectsync import ObjSetTopic, SObject, SObjectSerialized
 
+NODE_TYPE_FALLBACK: dict[str, list[str]] = {}
+
+# 0.20.0
+NODE_TYPE_FALLBACK.update(
+    {
+        "grapycal_builtin.ImageDisplayNode": ["grapycal_builtin.ShowImageNode"],
+        "grapycal_builtin.MultiplicationNode": ["grapycal_builtin.MultiplyNode"],
+        "grapycal_builtin.AdditionNode": ["grapycal_builtin.AddNode"],
+        "grapycal_builtin.SubtractionNode": ["grapycal_builtin.SubtractNode"],
+        "grapycal_builtin.DivisionNode": ["grapycal_builtin.DivideNode"],
+        "grapycal_builtin.ImagePasteNode": ["grapycal_builtin.ImageSourceNode"],
+        "grapycal_builtin.SplitNode": ["grapycal_builtin.GetItemNode"],
+        "grapycal_builtin.TriggerNode": ["grapycal_builtin.RunTaskNode"],
+        "grapycal_builtin.ExecNode": ["grapycal_builtin.ExecuteNode"],
+    }
+)
+
+PORT_NAME_FALLBACK = {"run": ["trigger"]}
+
+
+def get_node_type_with_fallback(original: str, allowed: list[str]):
+    if original in allowed:
+        return original
+    for fallback in NODE_TYPE_FALLBACK.get(original, []):
+        if fallback in allowed:
+            return fallback
+    return None
+
 
 class Editor(SObject):
     frontend_type = "Editor"
@@ -58,16 +86,21 @@ class Editor(SObject):
         edges: list[SObjectSerialized] = []
         node_types = self.node_types.get()
         for obj in serialized.children.values():
-            if obj.type in node_types:
-                nodes.append(obj)
-            elif obj.type == "Edge":
+            if obj.type == "Edge":
                 edges.append(obj)
             else:
-                extension_name, type_name = obj.type.split(".")
-                user_logger.warning(
-                    f"{type_name} is not defined in the current version of {extension_name}. Nodes instances of this type are discarded.",
-                    extra={"key": f"{type_name} node not defined"},
-                )
+                new_node_type = get_node_type_with_fallback(obj.type, node_types)
+                if new_node_type is not None:
+                    obj.type = new_node_type
+                    nodes.append(obj)
+
+                else:
+                    extension_name, type_name = obj.type.split(".")
+                    user_logger.warning(
+                        f"{type_name} is not defined in the current version of {extension_name}. Nodes instances of this type are discarded.",
+                        extra={"key": f"{type_name} node not defined"},
+                    )
+
         self.restore(nodes, edges)
 
     """
@@ -386,6 +419,7 @@ class Editor(SObject):
         #   port_map_2: (port name, new node id) -> new id
 
         port_map_1 = {}
+        port_map_1_loose = {}
         for node in nodes.values():
             old_port_ids: List[str] = node.get_attribute(
                 "in_ports"
@@ -395,6 +429,11 @@ class Editor(SObject):
                 port_map_1[old_port] = (
                     old_port_info.get_attribute("is_input"),
                     old_port_info.get_attribute("name"),
+                    node.id,
+                )
+                port_map_1_loose[old_port] = (
+                    old_port_info.get_attribute("is_input"),
+                    old_port_info.get_attribute("name").split(".")[-1],
                     node.id,
                 )
 
@@ -434,11 +473,21 @@ class Editor(SObject):
 
         # After the nodes are created and before the edges are created, we must map the port ids so edges can find the ports on new nodes
         port_map_2 = {}
+        port_map_2_loose = {}
         for old_serialized, new_node in new_nodes.values():
             ports: List[Port] = new_node.in_ports.get() + new_node.out_ports.get()  # type: ignore
             for port in ports:
                 port_map_2[
                     (port.is_input.get(), port.name.get(), new_node.get_id())
+                ] = port.get_id()
+
+                # the key may conflict but it won't cause errors
+                port_map_2_loose[
+                    (
+                        port.is_input.get(),
+                        port.name.get().split(".")[-1],
+                        new_node.get_id(),
+                    )
                 ] = port.get_id()
 
         existing_ports = []
@@ -449,33 +498,76 @@ class Editor(SObject):
 
         existing_ports = set(existing_ports)
 
+        def port_id_map_strict(old_port_id: str) -> str | None:
+            """
+            try to match with the full port name
+            """
+            try:
+                is_input, port_name, old_node_id = port_map_1[old_port_id]
+            except KeyError:
+                return None
+
+            new_node_id = id_map[old_node_id]
+
+            # try to find the new port id by matching the port name
+            for port_name_to_search in [port_name] + PORT_NAME_FALLBACK.get(
+                port_name, []
+            ):
+                try:
+                    new_port_id = port_map_2[
+                        (is_input, port_name_to_search, new_node_id)
+                    ]
+                    return new_port_id
+                except KeyError:
+                    pass
+            return None
+
+        def port_id_map_loose(old_port_id: str) -> str | None:
+            """
+            try to match with the port name only last part after the dot (if it exists)
+            """
+            try:
+                is_input, port_name, old_node_id = port_map_1_loose[old_port_id]
+            except KeyError:
+                return None
+
+            new_node_id = id_map[old_node_id]
+
+            # try to find the new port id by matching the port name
+            for port_name_to_search in [port_name] + PORT_NAME_FALLBACK.get(
+                port_name, []
+            ):
+                try:
+                    new_port_id = port_map_2_loose[
+                        (is_input, port_name_to_search, new_node_id)
+                    ]
+                    return new_port_id
+                except KeyError:
+                    pass
+            return None
+
         def port_id_map(old_port_id: str) -> str | None:
             """
             With port_map_1 and port_map_2, we can map old ports to new ones by matching their names
             None is returned if the port does not exist in the new editor
             """
 
-            try:
-                is_input, port_name, old_node_id = port_map_1[old_port_id]
-            except KeyError:
-                # fallback to finding the existing port if same_session is True
-                if same_session:
-                    if old_port_id in existing_ports:
-                        return old_port_id
-                    else:
-                        return None
-
-            new_node_id = id_map[old_node_id]
-
-            try:
-                new_port_id = port_map_2[(is_input, port_name, new_node_id)]
-            except KeyError:
+            # if same_session, if the old port id is in the existing ports, return it
+            if same_session:
                 if old_port_id in existing_ports:
                     return old_port_id
-                else:
-                    return None
 
-            return new_port_id
+            # try to match with the full port name
+            new_port_id = port_id_map_strict(old_port_id)
+            if new_port_id is not None:
+                return new_port_id
+
+            # try to match with the port name only last part after the dot (if it exists)
+            new_port_id = port_id_map_loose(old_port_id)
+            if new_port_id is not None:
+                return new_port_id
+
+            return None
 
         # Now we can recreate the edges
 

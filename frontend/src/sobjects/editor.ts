@@ -272,7 +272,7 @@ export class Editor extends CompSObject{
                     this.makeRequest('paste',{data,mouse_pos:mousePos})
                     Workspace.instance.selection.clearSelection()
                 }else{
-                    this.createNode('grapycal_builtin.ExecNode',
+                    this.createNode('grapycal_builtin.ExecuteNode',
                         {text:text}
                     )
                 }
@@ -313,7 +313,7 @@ export class Editor extends CompSObject{
 
     private createExecNode(){
         if(document.activeElement != document.body) return;
-        this.createNode('grapycal_builtin.ExecNode')
+        this.createNode('grapycal_builtin.ExecuteNode')
     }
 
     private selectAll(e: KeyboardEvent){
