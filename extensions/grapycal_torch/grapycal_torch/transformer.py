@@ -1,6 +1,3 @@
-from grapycal.extension_api.trait import (
-    Parameter,
-)
 from grapycal.sobjects.functionNode import FunctionNode
 from grapycal_torch.moduleNode import SimpleModuleNode
 from torch import nn
@@ -9,16 +6,6 @@ import torch
 
 class MultiHeadAttentionNode(SimpleModuleNode):
     module_type = nn.MultiheadAttention
-    hyper_parameters = [
-        Parameter("embed_dim", "int", 1),
-        Parameter("num_heads", "int", 1),
-        Parameter("dropout", "float", 0.0),
-        Parameter("bias", "bool", True),
-        Parameter("add_bias_kv", "bool", False),
-        Parameter("add_zero_attn", "bool", False),
-        Parameter("kdim", "int", 1),
-        Parameter("vdim", "int", 1),
-    ]
 
     def get_label(self, params):
         return f"MultiHeadAttn {params['embed_dim']}"
@@ -26,14 +13,6 @@ class MultiHeadAttentionNode(SimpleModuleNode):
 
 class TransformerEncoderLayerNode(SimpleModuleNode):
     module_type = nn.TransformerEncoderLayer
-    hyper_parameters = [
-        Parameter("d_model", "int", 1),
-        Parameter("nhead", "int", 1),
-        Parameter("dim_feedforward", "int", 1),
-        Parameter("dropout", "float", 0.1),
-        Parameter("activation", "str", "relu"),
-        Parameter("batch_first", "bool", True),
-    ]
     inputs = ["src"]  # will allow more after we have optional inputs feature
 
     def get_label(self, params):
@@ -42,14 +21,6 @@ class TransformerEncoderLayerNode(SimpleModuleNode):
 
 class TransformerDecoderLayerNode(SimpleModuleNode):
     module_type = nn.TransformerDecoderLayer
-    hyper_parameters = [
-        Parameter("d_model", "int", 1),
-        Parameter("nhead", "int", 1),
-        Parameter("dim_feedforward", "int", 1),
-        Parameter("dropout", "float", 0.1),
-        Parameter("activation", "str", "relu"),
-        Parameter("batch_first", "bool", True),
-    ]
     inputs = ["memory", "tgt"]  # will allow more after we have optional inputs feature
 
     def get_label(self, params):
