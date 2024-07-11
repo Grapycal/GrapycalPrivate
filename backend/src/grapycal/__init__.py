@@ -1,4 +1,4 @@
-__version__ = "0.19.0"
+__version__ = "0.19.1"
 from grapycal.utils.resource import get_resource
 from objectsync import (
     DictTopic,
