@@ -1,5 +1,4 @@
 from grapycal import singletonNode, Node, main_store, StringTopic, ListTopic
-import torch
 import numpy as np
 import io
 from PIL import Image
@@ -7,6 +6,15 @@ from PIL import Image
 from .printNode import *
 from .execNode import *
 from .image import *
+
+try:
+    import torch
+
+    HAS_TORCH = True
+    from torch import Tensor
+except ImportError:
+    HAS_TORCH = False
+    Tensor = None
 
 
 class LabelNode(Node):
@@ -67,6 +75,10 @@ class WebcamNode(Node):
         img = Image.open(io.BytesIO(image_bytes))
         # comvert image to torch or numpy
         if self.format.get() == "torch":
+            if not HAS_TORCH:
+                self.print_exception(
+                    "Torch is not installed. Please select numpy format instead."
+                )
             img = torch.from_numpy(np.array(img))
             img = img.permute(2, 0, 1).to(torch.float32) / 255
             if img.shape[0] == 4:
