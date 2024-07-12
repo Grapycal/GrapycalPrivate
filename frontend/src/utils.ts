@@ -292,7 +292,7 @@ export class TextBox{
             this.sizeSimulator.style.font = window.getComputedStyle(this.textarea).font;
             //sync padding
             this.sizeSimulator.style.padding = window.getComputedStyle(this.textarea).padding;
-            this.sizeSimulator.innerText = this.textarea.value;
+            this.sizeSimulator.innerHTML = textToHtml(this.textarea.value);
             let calculatedWidth =this.sizeSimulator.scrollWidth+ 10 // I don't know why it needs more 10px
             this.textarea.style.width = calculatedWidth+ 'px';
 

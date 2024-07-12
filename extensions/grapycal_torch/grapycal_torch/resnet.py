@@ -2,7 +2,7 @@ from typing import TYPE_CHECKING, List, Tuple
 
 from grapycal import GRID
 from grapycal.sobjects.port import OutputPort
-from grapycal_builtin.function.math import AdditionNode
+from grapycal_builtin.function.math import AddNode
 
 from grapycal_torch.activation import ReLUNode
 from grapycal_torch.cnn import Conv2dNode
@@ -22,7 +22,7 @@ class ResNetBasicBlock:
     relu2: ReLUNode = None
     conv2: Conv2dNode = None
     bn2: BatchNorm2dNode = None
-    add1: AdditionNode = None
+    add1: AddNode = None
     downsample_cnn: Conv2dNode = None
     downsample_bn: BatchNorm2dNode = None
 
@@ -123,7 +123,7 @@ class ResNetBasicBlock:
                 num_features=downsample[1],
             )
         self.add1 = self.grapycal_torch.create_node(
-            AdditionNode,
+            AddNode,
             [
                 self.x + GRID * 28,  # add some space
                 self.y - GRID * 3,  # add some space vertically

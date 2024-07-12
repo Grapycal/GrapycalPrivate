@@ -236,8 +236,14 @@ class SimpleModuleNode(ModuleNode):
         self._param_dirty = True
 
     def get_label(self, params):
+        # return (
+        #     self.module_type.__name__
+        #     + " "
+        #     + " ".join(f"{k}={v}" for k, v in params.items())
+        # )
         return (
             self.module_type.__name__
-            + " "
-            + " ".join(f"{k}={v}" for k, v in params.items())
+            + "("
+            + ", ".join(str(v) for k, v in params.items())
+            + ")"
         )

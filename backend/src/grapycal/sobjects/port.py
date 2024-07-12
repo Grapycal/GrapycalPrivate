@@ -1,4 +1,5 @@
 import typing
+import logging
 from typing import TYPE_CHECKING, Any, List
 
 from objectsync import IntTopic, SObject, StringTopic
@@ -12,6 +13,8 @@ from topicsync.topic import GenericTopic
 if TYPE_CHECKING:
     from grapycal.sobjects.edge import Edge
     from grapycal.sobjects.node import Node
+
+logger = logging.getLogger(__name__)
 
 
 class Port(SObject):
@@ -125,7 +128,12 @@ class InputPort(Port, typing.Generic[T]):
             control_type, **control_kwargs
         )
         if control_value is not UNSPECIFY_CONTROL_VALUE:
-            self.default_control.set_from_port(control_value)
+            try:
+                self.default_control.set_from_port(control_value)
+            except Exception as e:  # do not raise because it may happen when node definition is changed, which is normal
+                logger.warning(
+                    f"Failed to set control value for {self.default_control}: {e}"
+                )
 
         # this topic affects css
         self.control_takes_label = self.add_attribute(

@@ -446,6 +446,7 @@ class DecorTrait(Trait):
 
         # If the port is a trigger port, run the corresponding node_func
         if port.get_name().startswith(f"{self.name}.tr."):
+            port.clear_edges()
             func_name = port.get_name().split(".")[-1]
             node_func = self.node_funcs[func_name]
             if not self.needs_trigger_port(node_func):
@@ -571,6 +572,12 @@ def iterate_sign_sources(
         signature = inspect.signature(sign_source)
         for param_item_name, arg in signature.parameters.items():
             if param_item_name == "self":
+                continue
+            # filter out *args and **kwargs
+            if arg.kind in {
+                inspect.Parameter.VAR_POSITIONAL,
+                inspect.Parameter.VAR_KEYWORD,
+            }:
                 continue
             yield param_item_name, arg
 
@@ -698,7 +705,7 @@ def collect_input_output_params(
             params[param_item_name].append(par)
             cur_params[param_item_name] = par
 
-        node_params[param_item_name] = NodeParam(name=param.name, params=cur_params)
+        node_params[param.name] = NodeParam(name=param.name, params=cur_params)
 
     return inputs, outputs, params, node_funcs, node_params
 

@@ -223,7 +223,6 @@ class ShowImageNode(Node):
     category = "interaction"
 
     def build_node(self):
-        self.label_topic.set("Display Image")
         self.shape_topic.set("simple")
         self.img_control = self.add_image_control(name="img")
         self.icon_path_topic.set("image")
