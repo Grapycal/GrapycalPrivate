@@ -1,10 +1,16 @@
 from abc import abstractmethod
 from typing import TYPE_CHECKING, Any, final
 
-from grapycal import EventTopic
-from grapycal.extension_api.node_def import NodeFuncSpec, NodeParamSpec
-from grapycal.sobjects.node import Node
-from objectsync import StringTopic
+from grapycal import (
+    EventTopic,
+    SHOW_ALL_PORTS,
+    SHOW_ALL_PORTS_T,
+    NodeFuncSpec,
+    NodeParamSpec,
+    Node,
+    StringTopic,
+)
+
 from torch import Tensor, nn
 
 from grapycal_torch.store import GrapycalTorchStore
@@ -140,12 +146,8 @@ class SimpleModuleNode(ModuleNode):
     module_type: type[nn.Module] = nn.Module
     annotation_override: dict[str, Any] = {}
     default_override: dict[str, Any] = {}
-    inputs: list[str] = []
-    max_in_degree = [1]
-    outputs = ["output"]
+    shown_input_ports: SHOW_ALL_PORTS_T | list[str] = SHOW_ALL_PORTS
     shape = "simple"
-    display_port_names: bool | None = None
-
     """
     define the hyper parameters of the module. They will be passed in the constructor of the module.
 
@@ -172,6 +174,7 @@ class SimpleModuleNode(ModuleNode):
                 self.module_type.forward,
                 annotation_override=self.annotation_override,
                 default_override=self.default_override,
+                shown_ports=self.shown_input_ports,
             )
         ]
 

@@ -1,5 +1,11 @@
 __version__ = "0.20.0+dev"
 from grapycal.extension_api.decor import func, param
+from grapycal.extension_api.node_def import (
+    SHOW_ALL_PORTS,
+    SHOW_ALL_PORTS_T,
+    NodeFuncSpec,
+    NodeParamSpec,
+)
 from grapycal.extension_api.trait import (
     ClockTrait,
     InputsTrait,
@@ -109,4 +115,8 @@ __all__ = [
     "TriggerControl",
     "SliderControl",
     "ClockTrait",
+    "SHOW_ALL_PORTS",
+    "SHOW_ALL_PORTS_T",
+    "NodeFuncSpec",
+    "NodeParamSpec",
 ]

@@ -14,6 +14,7 @@ class Conv2dNode(SimpleModuleNode):
 class ConvTranspose2dNode(SimpleModuleNode):
     module_type = nn.ConvTranspose2d
     default_override = {"in_channels": 1, "out_channels": 1, "kernel_size": 3}
+    shown_input_ports = ["input"]
     icon_path = "cnn"
 
     def get_label(self, params):
