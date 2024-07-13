@@ -127,11 +127,12 @@ const buildConfig = __BUILD_CONFIG__
 
 function getWsUrl(): string{
     const wsUrlParam = new URLSearchParams(window.location.search).get('ws_url')
+    const protocol = location.protocol == 'https:' ? 'wss' : 'ws'
     if(wsUrlParam != null)
         return wsUrlParam
     if(buildConfig.wsPort == null)
-        return `ws://${location.hostname}:${location.port}/ws`
-    return `ws://${location.hostname}:${buildConfig.wsPort}/ws`
+        return `${protocol}://${location.hostname}:${location.port}/ws`
+    return `${protocol}://${location.hostname}:${buildConfig.wsPort}/ws`
 }
 
 documentReady(() => {
