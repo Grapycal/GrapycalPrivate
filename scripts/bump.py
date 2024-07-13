@@ -38,6 +38,7 @@ version_number_locations = [
     'frontend/package-lock.json|"version":',
     'frontend/package-lock.json|      "version":',
     "frontend/src/version.ts|export const LIB_VERSION",
+    'frontend/dist/index.html|<script src="main.js?',
 ]
 
 
