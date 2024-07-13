@@ -5,6 +5,7 @@ from typing import Dict, List, Literal, Sequence, Tuple, Type, cast
 
 from grapycal_torch.transformer import (
     BinaryPositionalEncodingNode,
+    GenerateSquareSubsequenceMaskNode,
     LinearPositionalEncodingNode,
     MultiHeadAttentionNode,
     SinusoidalPositionalEncodingNode,
@@ -151,6 +152,7 @@ class GrapycalTorch(Extension):
         BinaryPositionalEncodingNode,
         LinearPositionalEncodingNode,
         SinusoidalPositionalEncodingNode,
+        GenerateSquareSubsequenceMaskNode,
     ] + generated_nodes
 
     def provide_stores(self):

@@ -1,4 +1,4 @@
-from grapycal.sobjects.functionNode import FunctionNode
+from grapycal import FunctionNode, Node, func
 from grapycal_torch.moduleNode import SimpleModuleNode
 from torch import nn
 import torch
@@ -6,6 +6,7 @@ import torch
 
 class MultiHeadAttentionNode(SimpleModuleNode):
     module_type = nn.MultiheadAttention
+    default_override = {"batch_first": True}
 
     def get_label(self, params):
         return f"MultiHeadAttn {params['embed_dim']}"
@@ -13,7 +14,7 @@ class MultiHeadAttentionNode(SimpleModuleNode):
 
 class TransformerEncoderLayerNode(SimpleModuleNode):
     module_type = nn.TransformerEncoderLayer
-    inputs = ["src"]  # will allow more after we have optional inputs feature
+    default_override = {"batch_first": True}
 
     def get_label(self, params):
         return f"TransformerEncoderLayer\n dim={params['d_model']}, head={params['nhead']}, dim_ff={params['dim_feedforward']}"
@@ -21,7 +22,7 @@ class TransformerEncoderLayerNode(SimpleModuleNode):
 
 class TransformerDecoderLayerNode(SimpleModuleNode):
     module_type = nn.TransformerDecoderLayer
-    inputs = ["memory", "tgt"]  # will allow more after we have optional inputs feature
+    default_override = {"batch_first": True}
 
     def get_label(self, params):
         return f"TransformerDecoderLayer\n dim={params['d_model']}, head={params['nhead']}, dim_ff={params['dim_feedforward']}"
@@ -84,3 +85,12 @@ class SinusoidalPositionalEncodingNode(FunctionNode):
         for d in range(dim // 2):
             res.append(torch.cos(torch.arange(length) / 10000 ** (2 * d / dim)))
         return torch.stack(res, dim=1).unsqueeze(0).repeat(batch_size, 1, 1)
+
+
+class GenerateSquareSubsequenceMaskNode(Node):
+    category = "torch/generative"
+    label = "Square Subseq Mask"
+
+    @func()
+    def mask(self, length: int = 1) -> torch.Tensor:
+        return torch.nn.Transformer.generate_square_subsequent_mask(length)
