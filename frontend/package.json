@@ -1,6 +1,6 @@
 {
   "name": "grapycal-client",
-  "version": "0.19.1",
+  "version": "0.19.2",
   "main": "app.ts",
   "devDependencies": {
     "@web/dev-server": "^0.1.35",
