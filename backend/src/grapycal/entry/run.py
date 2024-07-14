@@ -144,6 +144,8 @@ def main():
         print("Exiting")
         sys.exit(1)
 
+    sys.path.append(args.cwd)
+
     # make extensions available
     if args.extensions_path is not None:
         sys.path.append(args.extensions_path)
