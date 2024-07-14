@@ -552,15 +552,15 @@ class Editor(SObject):
             None is returned if the port does not exist in the new editor
             """
 
-            # if same_session, if the old port id is in the existing ports, return it
-            if same_session:
-                if old_port_id in existing_ports:
-                    return old_port_id
-
             # try to match with the full port name
             new_port_id = port_id_map_strict(old_port_id)
             if new_port_id is not None:
                 return new_port_id
+
+            # if same_session, if the old port id is in the existing ports, return it
+            if same_session:
+                if old_port_id in existing_ports:
+                    return old_port_id
 
             # try to match with the port name only last part after the dot (if it exists)
             new_port_id = port_id_map_loose(old_port_id)
