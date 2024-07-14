@@ -296,6 +296,9 @@ def run(cmds: CmdSelector):
     parser.add_argument(
         "--port", type=int, default=7943, help="Port Grapycal will listen to"
     )
+    parser.add_argument(
+        "--host", type=str, default="localhost", help="Host Grapycal will listen to"
+    )
 
     args = parser.parse_args(cmds.args)
 
@@ -322,9 +325,9 @@ def run(cmds: CmdSelector):
 
     while True:
         print_welcome(args.port)
-        core_return_code = os.system(
-            f'python {HERE/"entry/launcher.py"} --frontend-path {GRAPYCAL_ROOT/"frontend"} --port {args.port} --cwd {CWD}'
-        )
+        command = f'python {HERE/"entry/launcher.py"} --frontend-path {GRAPYCAL_ROOT/"frontend"} --port {args.port} --cwd {CWD} --host {args.host}'
+        print(f"Running command: {command}")
+        core_return_code = os.system(command)
 
         if core_return_code in [3, 4, 5]:
             acquire_license()
