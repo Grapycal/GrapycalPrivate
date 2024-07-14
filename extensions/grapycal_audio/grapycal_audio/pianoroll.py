@@ -104,16 +104,21 @@ class PianoRoll:
         pr.set_metadata(name=path.split("/")[-1].split(".mid")[0])
         return pr
 
-    def __init__(self, data: dict):
+    def __init__(self, data: dict | list[Note]):
         # [onset time, pitch, velocity]
-        self.notes = [Note(*note) for note in data["onset_events"]]
-        self.notes = sorted(self.notes)  # ensure the event is sorted by time
+        if isinstance(data, dict):
+            self.notes = [Note(*note) for note in data["onset_events"]]
+            self.notes = sorted(self.notes)  # ensure the event is sorted by time
 
-        if "pedal_events" in data:
-            # Timestamps of pedal up events. (Otherwise the pedal is always down)
-            self.pedal = data["pedal_events"]
-            self.pedal = sorted(self.pedal)
+            if "pedal_events" in data:
+                # Timestamps of pedal up events. (Otherwise the pedal is always down)
+                self.pedal = data["pedal_events"]
+                self.pedal = sorted(self.pedal)
+            else:
+                self.pedal = None
+
         else:
+            self.notes = data
             self.pedal = None
 
         if len(self.notes):
