@@ -335,15 +335,26 @@ def run(cmds: CmdSelector):
             break
 
 
-def dev():
+def dev(cmds: CmdSelector):
     """
     Development mode. Debug use only.
     """
     # python scripts/build_frontend.py
     os.system(f"python {GRAPYCAL_ROOT/'scripts/build_frontend.py'}")
+
+    parser = argparse.ArgumentParser(prog=cmds.prefix)
+    parser.add_argument(
+        "--port", type=int, default=7943, help="Port Grapycal will listen to"
+    )
+    parser.add_argument(
+        "--host", type=str, default="localhost", help="Host Grapycal will listen to"
+    )
+
+    args = parser.parse_args(cmds.args)
+
     try:
         os.system(
-            f'python {HERE/"entry/launcher.py"} --extensions-path {GRAPYCAL_ROOT/"extensions"} --frontend-path {GRAPYCAL_ROOT/"frontend/dist"} --port 7943 --cwd {CWD}'
+            f'python {HERE/"entry/launcher.py"} --extensions-path {GRAPYCAL_ROOT/"extensions"} --frontend-path {GRAPYCAL_ROOT/"frontend/dist"} --port {args.port} --cwd {CWD} --host {args.host}'
         )
     except KeyboardInterrupt:
         pass
