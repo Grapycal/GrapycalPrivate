@@ -96,18 +96,14 @@ class ModuleNode(Node):
             param_str = f"{num_params}"
         self.print("created module", self.module, "\nparameters:", param_str)
 
+        if self.module_mover.move_if_needed(self.module):  # type: ignore
+            self.print("moved to", self.module_mover.get_target_device())
+
     def to(self, device):
         self.module_mover.set_target_device(device)
 
     @abstractmethod
     def create_module(self) -> nn.Module:
-        pass
-
-    @abstractmethod
-    def forward(self):
-        """
-        Consume the input from the input ports, run a forward pass, and output the result to the output ports
-        """
         pass
 
     def get_module(self) -> nn.Module:
@@ -140,6 +136,10 @@ class ModuleNode(Node):
     def destroy(self):
         self.torch_store.mn.remove(self)
         return super().destroy()
+
+    def create_module_if_needed(self):
+        if self.module is None:
+            self.create_module_task()
 
 
 class SimpleModuleNode(ModuleNode):
@@ -198,8 +198,6 @@ class SimpleModuleNode(ModuleNode):
             return
         if self._param_dirty or self.module is None:
             self.create_module_task()
-        if self.module_mover.move_if_needed(self.module):  # type: ignore
-            self.print("moved to", self.module_mover.get_target_device())
 
         for inp_name, inp in inputs.items():
             if (

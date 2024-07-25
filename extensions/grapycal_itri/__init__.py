@@ -1,13 +1,19 @@
 import json
 import os
 
-from grapycal import Extension, Node, SourceNode, TextControl
-from grapycal.sobjects.controls.sliderControl import SliderControl
-from grapycal.sobjects.functionNode import FunctionNode
-from grapycal.sobjects.port import InputPort
+from grapycal import (
+    Extension,
+    Node,
+    SourceNode,
+    TextControl,
+    SliderControl,
+    FunctionNode,
+    InputPort,
+    func,
+)
 
 # from grapycal_torch.moduleNode import SimpleModuleNode
-from grapycal_torch.moduleNode import SimpleModuleNode
+from grapycal_torch.moduleNode import ModuleNode, SimpleModuleNode
 from grapycal_torch.store import GrapycalTorchStore
 from openai import AsyncOpenAI, OpenAI
 from torch.nn.modules import Module
@@ -221,16 +227,8 @@ class GPT2ChineseDecodeNode(FunctionNode):
         return decoded.replace(" ", "")
 
 
-class GPT2ChineseNode(SimpleModuleNode):
-    category = "torch/network"
-
-    inputs = ["inp"]
-    max_in_degree = [1]
-    outputs = ["logits", "loss"]
-
-    def build_node(self):
-        super().build_node()
-        self.label_topic.set("GPT2 Chinese")
+class GPT2ChineseNode(ModuleNode):
+    label = "GPT2 Chinese"
 
     def create_module(self) -> Module:
         module = GPT2LMHeadModel.from_pretrained(
@@ -239,9 +237,11 @@ class GPT2ChineseNode(SimpleModuleNode):
         assert isinstance(module, Module)
         return module
 
-    def forward(self, inp):
+    @func()
+    def output(self, inp):
+        self.create_module_if_needed()
         res = self.module(inp, labels=inp)
-        return res.logits, res.loss
+        return {"loss": res.loss, "logits": res.logits}
 
 
 class VectorDbMockNode(FunctionNode):
@@ -265,4 +265,4 @@ class VectorDbMockNode(FunctionNode):
         return "空氣調節，簡稱空調，是包含溫度、濕度、空氣清淨度以及空氣循環的控制系統。這與冷氣機／空調供應冷氣、暖氣或除濕的作用原理均類似，大部分利用冷媒在壓縮機的作用下，發生蒸發或凝結，從而引發週遭空氣的蒸發或凝結，以達到改變溫、濕度的目的。冷氣機及暖氣機的效率會用性能係數來表示，是輸入功和提供熱能（或抽出熱能）的比例值，一般來說，直流馬達比交流省電，變頻比傳統壓縮機省電，因為能夠節省大量的電費，直流變頻型態逐漸成為市場主流。"
 
 
-del SimpleModuleNode, Node, FunctionNode
+del SimpleModuleNode, Node, FunctionNode, ModuleNode
