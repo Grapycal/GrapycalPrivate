@@ -10,6 +10,7 @@ description = ""
 [tool.poetry.dependencies]
 python = "^3.11"
 transformers = "^4.11.3"
+openai = "^1.21.2"
 
 [build-system]
 requires = ["poetry-core"]
