@@ -5,5 +5,12 @@ authors = ["eri24816 <a931eric@gmail.com>"]
 packages = [
     { include = "grapycal_itri", from=".."}
 ]
+description = ""
 
-[dependencies]
+[tool.poetry.dependencies]
+python = "^3.11"
+transformers = "^4.11.3"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
