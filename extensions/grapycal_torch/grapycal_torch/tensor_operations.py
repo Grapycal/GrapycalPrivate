@@ -295,6 +295,15 @@ class GatherNode(FunctionNode):
         return torch.gather(inp, dim=self.dim.get(), index=index)
 
 
+def choose_from_top(probs, n=20):
+    ind = torch.topk(probs, n).indices
+    top_prob = probs[ind]
+    top_prob = top_prob / (top_prob).sum()  # Normalize
+    choice = torch.multinomial(top_prob, 1)[0]
+    token_id = ind[choice]
+    return int(token_id)
+
+
 class ChooseFromTopNode(FunctionNode):
     category = "torch/operations"
     inputs = ["inp"]
@@ -331,12 +340,14 @@ class ChooseFromTopNode(FunctionNode):
             probs = inp
 
         n = self.n.get()
-        ind = torch.topk(probs, n).indices
-        top_prob = probs[ind]
-        top_prob = top_prob / (top_prob).sum()  # Normalize
-        choice = torch.multinomial(top_prob, 1)[0]
-        token_id = ind[choice]
-        return int(token_id)
+
+        if len(probs.shape) == 2:
+            result = []
+            for i in range(probs.shape[0]):
+                result.append(choose_from_top(probs[i], n))
+            return torch.tensor(result)
+        else:
+            return choose_from_top(probs, n)
 
 
 class SoftmaxNode(FunctionNode):
