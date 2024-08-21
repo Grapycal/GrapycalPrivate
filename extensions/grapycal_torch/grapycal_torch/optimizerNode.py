@@ -167,7 +167,7 @@ class TrainNode(Node):
     def create_optimizer_if_needed(self):
         try:
             params_device = self.get_modules()[0].parameters().__next__().device
-        except StopIteration | IndexError:
+        except (StopIteration, IndexError):
             params_device = self.get_store(
                 GrapycalTorchStore
             ).settings.default_device.get()
