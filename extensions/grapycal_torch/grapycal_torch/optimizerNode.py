@@ -211,7 +211,7 @@ class SaveNode(Node):
             "network", control_type=OptionControl, options=["net a", "net b"]
         )
         self.path_port = self.add_in_port("file", control_type=TextControl)
-        self.save_port = self.add_in_port("save", control_type=ButtonControl)
+        self.save_port = self.add_in_port("save", control_type=ButtonControl, activate_on_control_change=True)
 
     def init_node(self):
         self.to_unlink = setup_net_name_ctrl(
@@ -223,7 +223,7 @@ class SaveNode(Node):
         if self.is_new:
             self.path.set("network.pt")
 
-    def edge_activated(self, edge: Edge, port: InputPort):
+    def port_activated(self, port: InputPort):
         if port == self.save_port:
             self.run(self.save)
             port.get()
@@ -249,7 +249,7 @@ class LoadNode(Node):
             "network", control_type=OptionControl, options=["net a", "net b"]
         )
         self.path_port = self.add_in_port("file", control_type=TextControl)
-        self.load_port = self.add_in_port("load", control_type=ButtonControl)
+        self.load_port = self.add_in_port("load", control_type=ButtonControl, activate_on_control_change=True)
 
     def init_node(self):
         self.to_unlink = setup_net_name_ctrl(
@@ -261,7 +261,7 @@ class LoadNode(Node):
         if self.is_new:
             self.path.set("network.pt")
 
-    def edge_activated(self, edge: Edge, port: InputPort):
+    def port_activated(self, port: InputPort):
         if port == self.load_port:
             self.run(self.load)
             port.get()
