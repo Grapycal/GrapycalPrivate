@@ -10,8 +10,8 @@ from typing import Awaitable, Callable
 from grapycal.core.background_runner import RunnerInterrupt
 import uvicorn
 from grapycal.entry.args import parse_args
-from fastapi import FastAPI, WebSocket
-from fastapi.responses import HTMLResponse
+from fastapi import FastAPI, HTTPException, WebSocket
+from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from grapycal import OpenAnotherWorkspaceStrategy
 
@@ -98,6 +98,13 @@ def make_app(
             await workspace._objectsync._topicsync.handle_client(client)
         except SystemExit:
             workspace.exit()
+
+    @app.get("/download/{path:path}")
+    async def download(path: str):
+        '''Download local file by path'''
+        if not os.path.exists(path):
+            raise HTTPException(status_code=404, detail="File not found: " + path)
+        return FileResponse(path)
 
     if frontend_path is not None:
 
