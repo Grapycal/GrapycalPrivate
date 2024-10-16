@@ -56,7 +56,7 @@ class ReadJsonNode(Node):
 
     @func()
     def data(self, path: str = "data.json"):
-        with open(path, "r") as f:
+        with open(path, "r", encoding="utf-8") as f:
             return json.load(f)
 
 
@@ -71,6 +71,6 @@ class WriteJsonNode(Node):
         self.css_classes.append("fit-content")
 
     @func()
-    def done(self, path: str = "data.json", data: dict = {}):
-        with open(path, "w") as f:
+    def done(self, path: str = "data.json", data: dict|list|str|int|float = {}):
+        with open(path, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False)

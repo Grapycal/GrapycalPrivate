@@ -361,16 +361,17 @@ class ExtensionManager:
                 prefix="",
             )
             if node_type.label is not None:
-                main_store.slash.register(
-                    node_type.label,
-                    lambda ctx,
-                    args,
-                    n=node_type_name: self._create_node_slash_listener(
-                        ctx, args, n
-                    ),  # the lambda is necessary to capture the value of n
-                    source=name,
-                    prefix="",
-                )
+                if node_type.label != node_type_name.split(".")[1][:-4]:
+                    main_store.slash.register(
+                        node_type.label,
+                        lambda ctx,
+                        args,
+                        n=node_type_name: self._create_node_slash_listener(
+                            ctx, args, n
+                        ),  # the lambda is necessary to capture the value of n
+                        source=name,
+                        prefix="",
+                    )
             for port in node_type.search:
                 main_store.slash.register(
                     port,

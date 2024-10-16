@@ -224,15 +224,6 @@ def load_or_reload_module(module_name: str):
     if module_name not in sys.modules:
         module = importlib.import_module(module_name)
     else:
-        # if the module is obfuscated, we can't reload it. This seems to be a limitation of Pyarmor.
-        # Check if the module is obfuscated by checking if it is started with # Pyarmor
-
-        file = sys.modules[module_name].__file__
-        if file is not None and open(file).readline().startswith("# Pyarmor"):
-            raise ImportError(
-                f"Only source code extensions can be reloaded. {module_name} is not. If you want to reload it, please restart the app."
-            )
-
         # delete all decentants of the module from sys.modules.
         # this trick makes importlib.import_module reload the module completely
         # (importlib.reload only reloads the module itself, not its decentants)
