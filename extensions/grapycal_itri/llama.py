@@ -53,6 +53,7 @@ class LLaMA3Node(Node):
         self.train_port = self.add_in_port('train with dataset', max_edges=1)
         self.loss_port = self.add_out_port('loss')
         self.epoch_port = self.add_out_port('epoch')
+        self.css_classes.append('fit-content')
 
     def init_node(self):
         self.tokenizer: Optional[PreTrainedTokenizer] = None
@@ -70,8 +71,9 @@ class LLaMA3Node(Node):
     def output_callback(self, control, state: TrainerState):
         if self.stop_training_flag:
             control.should_training_stop = True
-        self.loss_port.push(state.log_history[-1]['loss'])
-        self.epoch_port.push(state.epoch)
+        if 'loss' in state.log_history[-1]:
+            self.loss_port.push(state.log_history[-1]['loss'])
+            self.epoch_port.push(state.epoch)
 
     def train(self, port:InputPort) -> None:
         if self.training:
@@ -87,12 +89,21 @@ class LLaMA3Node(Node):
         assert self.tokenizer is not None
 
         dataset = []
-        
-        for data in port.get():
-            context = data["context"]
-            qa_pairs = data["qa_pairs"]
-            for question, answer in qa_pairs:
+
+        port_input = port.get()
+
+        if isinstance(port_input, list) and isinstance(port_input[0], str):
+            for data in port_input:
+                context = ""
+                question = ""
+                answer = data
                 dataset.append(data_proc(self.tokenizer, context, question, answer))
+        else:
+            for data in port_input:
+                context = data["context"]
+                qa_pairs = data["qa_pairs"]
+                for question, answer in qa_pairs:
+                    dataset.append(data_proc(self.tokenizer, context, question, answer))
 
         args = TrainingArguments(
             output_dir=str(Path(self.save_dir)/'output'),
@@ -186,13 +197,13 @@ class LLaMA3Node(Node):
             task_type=TaskType.CAUSAL_LM, 
             #target_modules=["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"],
             target_modules=['q_proj', 'k_proj', 'v_proj'],
-            inference_mode=False, # 训练模式
-            r=self.lora_rank, # Lora 秩
-            lora_alpha=self.lora_alpha, # Lora alaph，具体作用参见 Lora 原理
-            lora_dropout=0.1# Dropout 比例
+            inference_mode=False,
+            r=self.lora_rank,
+            lora_alpha=self.lora_alpha,
+            lora_dropout=0.1
         )
         self.model.add_adapter(config, "lora")
-        
+        self.calculate_param()
         
     def download(self):
         snapshot_download('LLM-Research/Meta-Llama-3.1-8B-Instruct', cache_dir=self.save_dir, revision='master')
@@ -219,6 +230,20 @@ class LLaMA3Node(Node):
         ]
         response = self.tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0]
         return response
+
+    def calculate_param(self) -> None:
+        """
+        Prints the number of trainable parameters in the model.
+        """
+        trainable_params = 0
+        all_param = 0
+        for _, param in self.model.named_parameters():
+            all_param += param.numel()
+            if param.requires_grad:
+                trainable_params += param.numel()
+        self.print(
+            f"trainable params: {trainable_params} || all params: {all_param} || trainable%: {100 * trainable_params / all_param}"
+        )
     
     def destroy(self) -> SObjectSerialized:
         if self.training:
