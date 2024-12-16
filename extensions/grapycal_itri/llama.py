@@ -10,6 +10,7 @@ from modelscope import snapshot_download , AutoTokenizer
 from transformers import AutoModelForCausalLM,BitsAndBytesConfig, TrainerCallback
 import torch
 from peft import LoraConfig
+from peft import PeftModel
 from peft.utils.peft_types import TaskType
 
 from transformers import TrainingArguments
@@ -48,7 +49,8 @@ class LLaMA3Node(Node):
     label = 'LLaMA3'
 
     def build_node(self):
-        self.load_btn = self.add_button_control('Load')
+        self.load_pretrained_btn = self.add_button_control('Load Pretrained')
+        self.load_finetuned_btn = self.add_button_control('Load Fine-tuned')
         self.stop_training_btn = self.add_button_control('Stop Training')
         self.train_port = self.add_in_port('train with dataset', max_edges=1)
         self.loss_port = self.add_out_port('loss')
@@ -58,9 +60,11 @@ class LLaMA3Node(Node):
     def init_node(self):
         self.tokenizer: Optional[PreTrainedTokenizer] = None
         self.model: Optional[LlamaForCausalLM] = None
-        self.load_btn.on_click += self.load
+        self.load_pretrained_btn.on_click += lambda: self.load(finetuned=False)
+        self.load_finetuned_btn.on_click += lambda: self.load(finetuned=True)
         self.train_port.on_activate += self.train
-        self.load_btn.label.set('Load')
+        self.load_pretrained_btn.label.set('Load Pretrained')
+        self.load_finetuned_btn.label.set('Load Fine-tuned')
         self.training = False
         self.stop_training_flag = False
         self.stop_training_btn.on_click += self.stop_training
@@ -150,6 +154,8 @@ class LLaMA3Node(Node):
         lora_alpha:int = 32,
         save_steps:int=100,
         num_train_epochs:int=1,
+        max_new_tokens:int=512,
+        ckpt_to_load:str='checkpoint-100'
     ) -> None:
         
         self.save_dir = save_dir
@@ -158,9 +164,12 @@ class LLaMA3Node(Node):
         self.lora_alpha = lora_alpha
         self.save_steps = save_steps
         self.num_train_epochs = num_train_epochs
+        self.max_new_tokens = max_new_tokens
+        self.ckpt_to_load = ckpt_to_load
 
     @background_task
-    def load(self) -> None:
+    def load(self, finetuned=False) -> None:
+        print(finetuned)
         if self.training:
             self.print('Cannot load model while training')
             return
@@ -170,7 +179,8 @@ class LLaMA3Node(Node):
             self.download()
         try:
             self.print('Loading model and tokenizer...')
-            self.load_btn.label.set('Loading...')
+            self.load_pretrained_btn.label.set('Loading...')
+            self.load_finetuned_btn.label.set('Loading...')
             self.load_()
         except Exception as e:
             self.print_exception(e)
@@ -178,10 +188,37 @@ class LLaMA3Node(Node):
             try:
                 self.download()
                 self.load_()
+
             except Exception:
-                self.load_btn.label.set('Load')
+                self.load_pretrained_btn.label.set('Load Pretrained')
+                self.load_finetuned_btn.label.set('Load Fine-tuned')
                 raise
-        self.load_btn.label.set('Reload')
+
+        try:
+            if not finetuned:
+                config = LoraConfig(
+                    task_type=TaskType.CAUSAL_LM, 
+                    #target_modules=["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"],
+                    target_modules=['q_proj', 'k_proj', 'v_proj'],
+                    inference_mode=False,
+                    r=self.lora_rank,
+                    lora_alpha=self.lora_alpha,
+                    lora_dropout=0.1
+                )
+                self.model.add_adapter(config, "lora")
+            
+            else:
+                self.model = PeftModel.from_pretrained(self.model, model_id=Path(self.save_dir)/'output'/self.ckpt_to_load)
+                self.print(f'Loaded fine-tuned model from {Path(self.save_dir)/"output"}/{self.ckpt_to_load}')
+
+        except Exception as e:
+            self.print_exception(e)
+            self.load_pretrained_btn.label.set('Load Pretrained')
+            self.load_finetuned_btn.label.set('Load Fine-tuned')
+            return
+
+        self.load_pretrained_btn.label.set('Reload Pretrained')
+        self.load_finetuned_btn.label.set('Reload Fine-tuned')
         self.print('Model and tokenizer loaded.')
     
     def load_(self):
@@ -193,16 +230,7 @@ class LLaMA3Node(Node):
         self.tokenizer.pad_token = eot
         self.tokenizer.pad_token_id = eot_id
 
-        config = LoraConfig(
-            task_type=TaskType.CAUSAL_LM, 
-            #target_modules=["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"],
-            target_modules=['q_proj', 'k_proj', 'v_proj'],
-            inference_mode=False,
-            r=self.lora_rank,
-            lora_alpha=self.lora_alpha,
-            lora_dropout=0.1
-        )
-        self.model.add_adapter(config, "lora")
+
         self.calculate_param()
         
     def download(self):
@@ -224,7 +252,7 @@ class LLaMA3Node(Node):
         
         input_ids = self.tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
         model_inputs = self.tokenizer([input_ids], return_tensors="pt").to('cuda')
-        generated_ids = self.model.generate(model_inputs.input_ids,max_new_tokens=512)
+        generated_ids = self.model.generate(model_inputs.input_ids,max_new_tokens=self.max_new_tokens)
         generated_ids = [
             output_ids[len(input_ids):] for input_ids, output_ids in zip(model_inputs.input_ids, generated_ids)
         ]
