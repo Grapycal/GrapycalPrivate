@@ -11,6 +11,12 @@ description = ""
 python = "^3.11"
 transformers = "^4.11.3"
 openai = "^1.21.2"
+langchain-community = "^0.3.12"
+Jinja2 = "^3.1.4"
+langchain-text-splitters = "^0.3.3"
+langchain-openai = "^0.2.12"
+
+
 
 [build-system]
 requires = ["poetry-core"]

@@ -1,7 +1,7 @@
 from pathlib import Path
 from grapycal import Node, param, func
 from typing import Callable, Optional
-from grapycal.sobjects.node import background_task
+from grapycal.sobjects.node import background_task, task
 from grapycal.sobjects.port import InputPort
 from objectsync.sobject import SObjectSerialized
 from transformers.models.llama.modeling_llama import LlamaForCausalLM
@@ -17,6 +17,50 @@ from transformers import TrainingArguments
 
 from transformers import Trainer, DataCollatorForSeq2Seq
 from transformers.trainer_callback import TrainerControl, TrainerState
+
+
+# langchain
+
+from langchain_core.documents import Document
+
+import os
+import dotenv
+dotenv.load_dotenv()
+os.environ["LANGCHAIN_TRACING_V2"] = "true"
+
+class RagNode(Node):
+    category = 'torch'
+    label = 'RAG'
+    def build_node(self):
+        self.corpus_port = self.add_in_port('corpus', max_edges=1)
+        self.corpus_port.on_activate += self.process_corpus
+
+    def init_node(self):
+        self.vector_store = None
+
+    @task
+    def process_corpus(self, corpus_port:InputPort):
+        if not os.environ.get("OPENAI_API_KEY"):
+            raise ValueError("OPENAI_API_KEY is not set")
+        from langchain_openai import OpenAIEmbeddings
+        embeddings = OpenAIEmbeddings(model="text-embedding-3-large")
+        from langchain_core.vectorstores import InMemoryVectorStore
+        
+        vector_store = InMemoryVectorStore(embeddings)
+        all_splits = [Document(page_content=split) for split in corpus_port.get()]
+        
+        # Index chunks
+        _ = vector_store.add_documents(documents=all_splits)
+
+        self.vector_store = vector_store
+    
+    @func()
+    def retrieved_context(self, question:str) -> str:
+        if self.vector_store is None:
+            raise ValueError("Vector store is not initialized. Please send corpus through the corpus port first.")
+        retrieved_docs = self.vector_store.similarity_search(question)
+        docs_content = "\n\n".join(doc.page_content for doc in retrieved_docs)
+        return docs_content
 
 
 def data_proc(tokenizer: PreTrainedTokenizer, instruction_str:str, input_str:str, output_str:str):
