@@ -25,7 +25,10 @@ from langchain_core.documents import Document
 
 import os
 import dotenv
-dotenv.load_dotenv()
+import dotenv
+import pathlib
+dotenvpath = pathlib.Path('.env')
+dotenv.load_dotenv(dotenvpath.absolute())
 os.environ["LANGCHAIN_TRACING_V2"] = "true"
 
 class RagNode(Node):
